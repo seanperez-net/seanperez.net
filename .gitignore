@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+server/
+.wrangler/
+tsconfig.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+
+# Logs
+*.log
+
+# Claude Code and other local AI tooling: never committed
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
+.playwright-mcp/
