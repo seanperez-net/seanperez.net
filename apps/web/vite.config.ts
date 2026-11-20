@@ -3,6 +3,7 @@
  * When building, the adapter config is used which loads this file and extends it.
  */
 import { qwikVite } from "@qwik.dev/core/optimizer";
+import { qwikMcp } from "@qwik.dev/mcp";
 import { qwikRouter } from "@qwik.dev/router/vite";
 import { defineConfig, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -22,6 +23,7 @@ errorOnDuplicatesPkgDeps(devDependencies, dependencies);
 export default defineConfig(({ command, mode }): UserConfig => {
   return {
     plugins: [
+      qwikMcp(),
       qwikRouter(),
       qwikVite(),
       tsconfigPaths({ root: "." }),
