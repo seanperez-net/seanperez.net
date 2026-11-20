@@ -5,6 +5,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "seanperez-net",
+  // The seanperez.net Cloudflare account. An identifier, not a credential. Pinned so a deploy
+  // can never land in another account the logged-in user also has access to.
+  "account_id": "f90e0eed6a9a5a04351354f206c5cacb",
   "main": "./dist/_worker.js",
   "compatibility_date": "2025-12-28",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -12,6 +15,14 @@
     "binding": "ASSET",
     "directory": "./dist",
   },
+  /**
+   * Custom domain: Cloudflare creates the DNS record and certificate on deploy.
+   * The seanperez.net zone must be in the account that deploys.
+   */
+  "routes": [
+    { "pattern": "seanperez.net", "custom_domain": true },
+    { "pattern": "www.seanperez.net", "custom_domain": true },
+  ],
   "observability": {
     "enabled": true,
   },
