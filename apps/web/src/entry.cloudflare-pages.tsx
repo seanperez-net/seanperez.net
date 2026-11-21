@@ -14,7 +14,12 @@ import {
 import render from "./entry.ssr";
 
 declare global {
-  type QwikRouterPlatform = PlatformCloudflareWorkers;
+  // `Env` is generated from wrangler.jsonc into worker-configuration.d.ts (`pnpm cf-typegen`).
+  // `Omit` first: the adapter types `env` as `Record<string, any>`, and intersecting with that
+  // would keep every unknown binding name valid.
+  type QwikRouterPlatform = Omit<PlatformCloudflareWorkers, "env"> & {
+    env: Env;
+  };
 }
 
 const fetch = createQwikRouter({ render });

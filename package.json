@@ -4,10 +4,10 @@
   "packageManager": "pnpm@11.17.0",
   "scripts": {
     "dev": "pnpm --filter @seanperez/web dev",
-    "build": "pnpm --filter @seanperez/web build",
+    "build": "pnpm --filter @seanperez/ui build && pnpm --filter @seanperez/web build",
     "preview": "pnpm --filter @seanperez/web preview",
     "deploy": "pnpm --filter @seanperez/web run deploy",
-    "check-types": "pnpm -r --parallel run check-types",
+    "check-types": "pnpm --filter @seanperez/web run build.types && pnpm --filter @seanperez/ui exec tsc --noEmit",
     "lint": "pnpm -r --parallel run lint",
     "format": "pnpm -r --parallel run fmt",
     "format:check": "pnpm -r --parallel run fmt.check"

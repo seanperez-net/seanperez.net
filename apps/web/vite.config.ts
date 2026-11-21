@@ -16,6 +16,17 @@ const { dependencies = {}, devDependencies = {} } = pkg as any as {
   [key: string]: unknown;
 };
 errorOnDuplicatesPkgDeps(devDependencies, dependencies);
+
+/**
+ * Dev only: Cloudflare bindings from wrangler.jsonc, emulated locally, exposed as `platform.env`
+ * (https://next.qwik.dev/docs/deployments/cloudflare-workers/#vite-configuration). A build must
+ * not start the emulator, so wrangler is only imported under `vite dev`.
+ */
+let platform = {};
+if (process.env.NODE_ENV === "development") {
+  const { getPlatformProxy } = await import("wrangler");
+  platform = await getPlatformProxy();
+}
 /**
  * Note that Vite normally starts from `index.html` but the qwikRouter plugin makes start at `src/entry.ssr.tsx` instead.
  */
@@ -24,7 +35,7 @@ export default defineConfig(({ command, mode }): UserConfig => {
   return {
     plugins: [
       qwikMcp(),
-      qwikRouter(),
+      qwikRouter({ platform }),
       qwikVite(),
       tsconfigPaths({ root: "." }),
       tailwindcss(),
