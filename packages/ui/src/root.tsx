@@ -6,7 +6,9 @@ import {
   useQwikRouter,
 } from "@qwik.dev/router";
 
-import "./global.css";
+import { ThemeModeScript } from "./components/theme-toggle";
+
+import "./dev.css";
 
 export default component$(() => {
   useQwikRouter();
@@ -22,6 +24,8 @@ export default component$(() => {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+        <ThemeModeScript />
 
         <DocumentHeadTags />
 

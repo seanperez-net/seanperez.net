@@ -1,0 +1,7 @@
+@theme static {
+  --opacity-dragged: 0.16;
+  --opacity-focus: 0.1;
+  --opacity-hover: 0.08;
+  --opacity-pressed: 0.12;
+  --opacity-disabled: 0.38;
+}

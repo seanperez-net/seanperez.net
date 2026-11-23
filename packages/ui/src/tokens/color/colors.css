@@ -1,0 +1,12 @@
+/*
+ * M3 colour roles as Tailwind v4 theme colours: `bg-primary`, `text-on-surface`,
+ * `border-outline-variant`, ... Static default scheme (blue seed) in light and dark, each at
+ * standard, medium and high contrast. `ThemeRoot` replaces the values at runtime when a source
+ * colour is chosen.
+ */
+@import "./light.css";
+@import "./dark.css";
+@import "./light-mc.css";
+@import "./light-hc.css";
+@import "./dark-mc.css";
+@import "./dark-hc.css";

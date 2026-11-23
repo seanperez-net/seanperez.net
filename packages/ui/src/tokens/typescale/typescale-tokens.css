@@ -1,0 +1,96 @@
+/* M3 type scale: display, headline, title, body, label (large / medium / small). */
+@theme static {
+  /* Body styles */
+  --text-body-large: 1rem;
+  --text-body-large--line-height: 1.5rem;
+  --text-body-large--letter-spacing: 0.03125rem;
+
+  --text-body-medium: 0.875rem;
+  --text-body-medium--line-height: 1.25rem;
+  --text-body-medium--letter-spacing: 0.015625rem;
+
+  --text-body-small: 0.75rem;
+  --text-body-small--line-height: 1rem;
+  --text-body-small--letter-spacing: 0.025rem;
+
+  /* Display styles */
+  --font-display: var(--font-brand);
+  --text-display-large: 3.5625rem;
+  --text-display-large--line-height: 4rem;
+  --text-display-large--letter-spacing: -0.015625rem;
+  --text-display-large--font-variation-GRAD: 0;
+  --text-display-large--font-variation-opsz: 18;
+
+  --text-display-medium: 2.8125rem;
+  --text-display-medium--line-height: 3.25rem;
+  --text-display-medium--letter-spacing: 0rem;
+
+  --text-display-small: 2.25rem;
+  --text-display-small--line-height: 2.75rem;
+  --text-display-small--letter-spacing: 0rem;
+
+  /* Headline styles */
+  --text-headline-large: 2rem;
+  --text-headline-large--line-height: 2.5rem;
+  --text-headline-large--letter-spacing: 0rem;
+
+  --text-headline-medium: 1.75rem;
+  --text-headline-medium--line-height: 2.25rem;
+  --text-headline-medium--letter-spacing: 0rem;
+
+  --text-headline-small: 1.5rem;
+  --text-headline-small--line-height: 2rem;
+  --text-headline-small--letter-spacing: 0rem;
+
+  /* Label styles */
+  --text-label-large: 0.875rem;
+  --text-label-large--line-height: 1.25rem;
+  --text-label-large--letter-spacing: 0.00625rem;
+
+  --text-label-medium: 0.75rem;
+  --text-label-medium--line-height: 1rem;
+  --text-label-medium--letter-spacing: 0.03125rem;
+
+  --text-label-small: 0.6875rem;
+  --text-label-small--line-height: 1rem;
+  --text-label-small--letter-spacing: 0.03125rem;
+
+  /* Title styles */
+  --font-title: var(--font-brand);
+  --text-title-large: 1.375rem;
+  --text-title-large--line-height: 1.75rem;
+  --text-title-large--letter-spacing: 0rem;
+
+  --text-title-medium: 1rem;
+  --text-title-medium--line-height: 1.5rem;
+  --text-title-medium--letter-spacing: 0.009375rem;
+
+  --text-title-small: 0.875rem;
+  --text-title-small--line-height: 1.25rem;
+  --text-title-small--letter-spacing: 0.00625rem;
+}
+
+@theme inline {
+  --font-body: var(--font-plain);
+  --text-body-large--font-weight: var(--font-weight-regular);
+  --text-body-small--font-weight: var(--font-weight-regular);
+  --text-body-medium--font-weight: var(--font-weight-regular);
+  --text-display-large--font-weight: var(--font-weight-regular);
+  --text-display-medium--font-weight: var(--font-weight-regular);
+  --text-display-small--font-weight: var(--font-weight-regular);
+
+  --font-headline: var(--font-brand);
+  --text-headline-large--font-weight: var(--font-weight-regular);
+  --text-headline-medium--font-weight: var(--font-weight-regular);
+  --text-headline-small--font-weight: var(--font-weight-regular);
+
+  --font-label: var(--font-plain);
+  --text-label-large--font-weight: var(--font-weight-medium);
+  --text-label-large-prominent--font-weight: var(--font-weight-bold);
+  --text-label-medium--font-weight: var(--font-weight-medium);
+  --text-label-medium--font-weight-prominent: var(--font-weight-bold);
+  --text-label-small--font-weight: var(--font-weight-medium);
+  --text-title-large--font-weight: var(--font-weight-regular);
+  --text-title-medium--font-weight: var(--font-weight-medium);
+  --text-title-small--font-weight: var(--font-weight-medium);
+}

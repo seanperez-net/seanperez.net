@@ -65,4 +65,26 @@ export default tseslint.config(
       },
     },
   },
+  {
+    rules: {
+      // Only `tailwind-variants/lite`: the full entry bundles a class-merging engine. Classes
+      // are chosen with variant props, never merged at runtime.
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "tailwind-variants",
+              message:
+                "Import from 'tailwind-variants/lite' (no merge engine).",
+            },
+            {
+              name: "tailwind-merge",
+              message: "No runtime class merging: use variant props.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

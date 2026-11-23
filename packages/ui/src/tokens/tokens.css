@@ -1,0 +1,18 @@
+/*
+ * @seanperez/ui design tokens: Material 3, as Tailwind v4 `@theme` variables.
+ *
+ * In the app's stylesheet, after `@import "tailwindcss"`:
+ *   @import "@seanperez/ui/global";
+ *   @source "<path to>/packages/ui/src";
+ *
+ * The blocks are `@theme static`: Tailwind normally drops theme variables no utility uses, but
+ * every token must exist as a CSS variable (component CSS and runtime themes read them directly).
+ */
+@import "./color/colors.css";
+@import "./elevation/elevation-tokens.css";
+@import "./motion/motion-tokens.css";
+@import "./shape/shape-tokens.css";
+@import "./state/state-tokens.css";
+@import "./typeface/typeface-tokens.css";
+@import "./typescale/typescale-tokens.css";
+@import "./layout/layout-tokens.css";

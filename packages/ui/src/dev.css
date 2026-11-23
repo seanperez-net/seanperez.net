@@ -1,0 +1,4 @@
+/* The library's own playground (src/routes) only: Tailwind plus the library's global styles.
+   Not part of the published library. */
+@import "tailwindcss";
+@import "./global.css";

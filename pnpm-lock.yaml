@@ -72,6 +72,10 @@ importers:
         version: 4.165.0(@cloudflare/workers-types@5.20261119.1)(@types/node@25.6.0)
 
   packages/ui:
+    dependencies:
+      tailwind-variants:
+        specifier: ^4.0.2
+        version: 4.0.2
     devDependencies:
       '@eslint/js':
         specifier: latest
@@ -82,6 +86,9 @@ importers:
       '@qwik.dev/router':
         specifier: latest
         version: 2.0.0-rc.5(@qwik.dev/core@2.0.0-rc.5(@oxc-project/types@0.156.0)(esbuild@0.28.2)(prettier@3.7.4)(rolldown@1.2.19)(vite@8.2.4(@types/node@25.6.0)(esbuild@0.28.2)(jiti@2.7.0)(less@4.9.1(supports-color@10.2.2))(sass@1.108.2)(stylus@0.62.0(supports-color@10.2.2))(yaml@2.9.1)))(supports-color@10.2.2)(typescript@5.9.3)(vite@8.2.4(@types/node@25.6.0)(esbuild@0.28.2)(jiti@2.7.0)(less@4.9.1(supports-color@10.2.2))(sass@1.108.2)(stylus@0.62.0(supports-color@10.2.2))(yaml@2.9.1))
+      '@tailwindcss/vite':
+        specifier: ^4.1.4
+        version: 4.3.5(vite@8.2.4(@types/node@25.6.0)(esbuild@0.28.2)(jiti@2.7.0)(less@4.9.1(supports-color@10.2.2))(sass@1.108.2)(stylus@0.62.0(supports-color@10.2.2))(yaml@2.9.1))
       '@types/node':
         specifier: 25.6.0
         version: 25.6.0
@@ -100,6 +107,12 @@ importers:
       prettier:
         specifier: 3.7.4
         version: 3.7.4
+      prettier-plugin-tailwindcss:
+        specifier: ^0.6.11
+        version: 0.6.14(prettier@3.7.4)
+      tailwindcss:
+        specifier: ^4.1.4
+        version: 4.3.5
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -4365,6 +4378,10 @@ packages:
   symbol-observable@4.0.0:
     resolution: {integrity: sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==}
     engines: {node: '>=0.10'}
+
+  tailwind-variants@4.0.2:
+    resolution: {integrity: sha512-sZvOFkfe5LlYG/crRX5IvP3oUHmJPu+7WmrLQFvF0kCRq51C+lurlzFMm/jURG/5keT7VOJ/it0N3jkzYux85w==}
+    engines: {node: '>=16.9.x', pnpm: '>=7.x'}
 
   tailwindcss@4.3.5:
     resolution: {integrity: sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==}
@@ -9381,6 +9398,8 @@ snapshots:
   symbol-observable@1.2.0: {}
 
   symbol-observable@4.0.0: {}
+
+  tailwind-variants@4.0.2: {}
 
   tailwindcss@4.3.5: {}
 

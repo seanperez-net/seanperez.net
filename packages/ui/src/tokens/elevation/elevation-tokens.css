@@ -1,0 +1,23 @@
+@theme static {
+  --shadow-color-key: rgb(0 0 0 / 0.3);
+  --shadow-color-ambient: rgb(0 0 0 / 0.15);
+  --shadow-0: none;
+}
+
+@theme inline {
+  --shadow-1:
+    0px 1px 2px 0px var(--shadow-color-key),
+    0px 1px 3px 1px var(--shadow-color-ambient);
+  --shadow-2:
+    0px 1px 2px 0px var(--shadow-color-key),
+    0px 2px 6px 2px var(--shadow-color-ambient);
+  --shadow-3:
+    0px 1px 3px 0px var(--shadow-color-key),
+    0px 4px 8px 3px var(--shadow-color-ambient);
+  --shadow-4:
+    0px 2px 3px 0px var(--shadow-color-key),
+    0px 6px 10px 4px var(--shadow-color-ambient);
+  --shadow-5:
+    0px 4px 4px 0px var(--shadow-color-key),
+    0px 8px 12px 6px var(--shadow-color-ambient);
+}

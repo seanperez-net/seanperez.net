@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* The UI library's global styles (Material 3 tokens, dark variant, breakpoints), and its
+   source for Tailwind to scan for the classes its components use. */
+@import "@seanperez/ui/global";
+@source "../../../packages/ui/src";

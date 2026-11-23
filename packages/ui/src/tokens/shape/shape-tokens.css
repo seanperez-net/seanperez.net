@@ -1,0 +1,17 @@
+@theme static {
+  --radius-none: 0;
+  --radius-xs: 4px;
+  --radius-xs-top: 4px 4px 0 0;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-lg-top: 16px 16px 0 0;
+  --radius-lg-start: 16px 0 0 16px;
+  --radius-lg-end: 0 16px 16px 0;
+  --radius-lg-increased: 20px;
+  --radius-xl: 28px;
+  --radius-xl-top: 28px 28px 0 0;
+  --radius-xl-increased: 32px;
+  --radius-xxl: 48px;
+  --radius-full: 9999px;
+}

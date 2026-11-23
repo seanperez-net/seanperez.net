@@ -1,33 +1,32 @@
-/**
- * WHAT IS THIS FILE?
+/*
+ * @seanperez/ui global styles: the design tokens, the dark variant, the Material 3 breakpoints
+ * and the page base. The consuming app imports it after Tailwind and lets Tailwind scan the
+ * library's source for class names:
  *
- * Globally applied styles. No matter which components are in the page or matching route,
- * the styles in here will be applied to the Document, without any sort of CSS scoping.
+ *   @import "tailwindcss";
+ *   @import "@seanperez/ui/global";
+ *   @source "<path to>/packages/ui/src";
  *
+ * Do NOT import "tailwindcss" here: the consuming app does that.
  */
-html {
-  -webkit-text-size-adjust: 100%;
-  -moz-tab-size: 4;
-  -o-tab-size: 4;
-  tab-size: 4;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    "Noto Sans",
-    sans-serif,
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Segoe UI Symbol",
-    "Noto Color Emoji";
+@import "./tokens/tokens.css";
+
+/* Dark mode follows the `dark` class on <html> (set by ThemeModeScript and ThemeToggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Material 3 window size classes in place of Tailwind's default breakpoints:
+     compact < 600px, sm = medium, md = expanded, lg = large, xl = extra-large. */
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 840px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1600px;
 }
 
-body {
-  padding: 0;
-  line-height: inherit;
+@layer base {
+  body {
+    background: var(--color-surface-container);
+    color: var(--color-on-surface);
+    font-family: var(--font-plain);
+  }
 }

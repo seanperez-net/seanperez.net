@@ -1,0 +1,37 @@
+{
+  // Tailwind CSS IntelliSense (bradlc.vscode-tailwindcss): Tailwind v4 has no tailwind.config.js,
+  // so each workspace's CSS entry (the file with `@import "tailwindcss"`) is mapped to the files
+  // it styles. Without this the extension finds no project in the monorepo and gives no
+  // completions, hovers or lint.
+  "tailwindCSS.experimental.configFile": {
+    "apps/web/src/global.css": "apps/web/**",
+    "packages/ui/src/dev.css": "packages/ui/**"
+  },
+  // Classes inside tailwind-variants `tv({ base, variants, slots })` calls and the `cn()` helper.
+  "tailwindCSS.classFunctions": ["tv", "cn"],
+  "tailwindCSS.classAttributes": ["class", "className"],
+  // The Tailwind linter (part of the extension).
+  "tailwindCSS.lint.cssConflict": "warning",
+  "tailwindCSS.lint.invalidApply": "error",
+  "tailwindCSS.lint.invalidVariant": "error",
+  "tailwindCSS.lint.invalidTailwindDirective": "error",
+  "tailwindCSS.lint.suggestCanonicalClasses": "warning",
+  "tailwindCSS.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.claude/**",
+    "**/lib/**",
+    "**/dist/**",
+    "**/server/**",
+    "**/.wrangler/**"
+  ],
+  "files.associations": { "*.css": "tailwindcss" },
+
+  // ESLint: each package has its own flat config (eslint.config.js).
+  "eslint.workingDirectories": [{ "pattern": "apps/*" }, { "pattern": "packages/*" }],
+
+  // Prettier with prettier-plugin-tailwindcss sorts the classes on save.
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" }
+}

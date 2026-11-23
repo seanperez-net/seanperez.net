@@ -1,0 +1,67 @@
+@theme static {
+  --transition-duration-extra-long-1: 700ms;
+  --transition-duration-extra-long-2: 800ms;
+  --transition-duration-extra-long-3: 900ms;
+  --transition-duration-extra-long-4: 1000ms;
+  --transition-duration-long-1: 450ms;
+  --transition-duration-long-2: 500ms;
+  --transition-duration-long-3: 550ms;
+  --transition-duration-long-4: 600ms;
+  --transition-duration-medium-1: 250ms;
+  --transition-duration-medium-2: 300ms;
+  --transition-duration-medium-3: 350ms;
+  --transition-duration-medium-4: 400ms;
+  --transition-duration-short-1: 50ms;
+  --transition-duration-short-2: 100ms;
+  --transition-duration-short-3: 150ms;
+  --transition-duration-short-4: 200ms;
+  --transition-duration-linear-indeterminate: 2s;
+  --transition-duration-arc: 1333ms;
+
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-indeterminate: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-legacy: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-legacy-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-legacy-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-linear: cubic-bezier(0, 0, 1, 1);
+  --ease-linear-determinate: cubic-bezier(0.4, 0, 0.6, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* ── M3 Spring-to-Curve Web Conversion (Physics System, May 2025) ──
+	 * Official cubic-bezier approximations for M3 spring tokens.
+	 * Spatial = position, rotation, size, corners (CAN overshoot).
+	 * Effects = color, opacity (MUST NOT overshoot).
+	 * Fast = small components (switch, checkbox, button).
+	 * Default = partial-screen (dialog, sheet, expanded rail).
+	 * Slow = full-screen, content refresh.
+	 */
+
+  /* Expressive Scheme — bouncy overshoot */
+  --ease-expressive-fast-spatial: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --ease-expressive-default-spatial: cubic-bezier(0.38, 1.21, 0.22, 1);
+  --ease-expressive-slow-spatial: cubic-bezier(0.39, 1.29, 0.35, 0.98);
+  --ease-expressive-fast-effects: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --ease-expressive-default-effects: cubic-bezier(0.34, 0.8, 0.34, 1);
+  --ease-expressive-slow-effects: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* Standard Scheme — minimal bounce */
+  --ease-spring-fast-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --ease-spring-default-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --ease-spring-slow-spatial: cubic-bezier(0.27, 1.06, 0.18, 1);
+  --ease-spring-fast-effects: cubic-bezier(0.31, 0.94, 0.34, 1);
+  --ease-spring-default-effects: cubic-bezier(0.34, 0.8, 0.34, 1);
+  --ease-spring-slow-effects: cubic-bezier(0.34, 0.88, 0.34, 1);
+
+  /* Spring durations (pair with spring easing above) */
+  --transition-duration-spring-fast: 350ms;
+  --transition-duration-spring-default: 500ms;
+  --transition-duration-spring-slow: 650ms;
+  --transition-duration-spring-fast-effects: 150ms;
+  --transition-duration-spring-default-effects: 200ms;
+  --transition-duration-spring-slow-effects: 300ms;
+}

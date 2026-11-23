@@ -10,10 +10,14 @@
       "types": "./lib/index.d.ts",
       "import": "./lib/index.qwik.mjs",
       "require": "./lib/index.qwik.cjs"
-    }
+    },
+    "./tokens": "./src/tokens/tokens.css",
+    "./global": "./src/global.css"
   },
   "files": [
-    "lib"
+    "lib",
+    "src/tokens",
+    "src/global.css"
   ],
   "engines": {
     "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
@@ -48,15 +52,21 @@
     "@eslint/js": "latest",
     "@qwik.dev/core": "2.0.0-rc.5",
     "@qwik.dev/router": "latest",
+    "@tailwindcss/vite": "^4.1.4",
     "@types/node": "25.6.0",
     "eslint": "10.0.3",
     "eslint-plugin-qwik": "2.0.0-rc.5",
     "globals": "17.0.0",
     "np": "^8.0.4",
     "prettier": "3.7.4",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "tailwindcss": "^4.1.4",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
     "vite": "8.2.4",
     "vite-tsconfig-paths": "^4.2.1"
+  },
+  "dependencies": {
+    "tailwind-variants": "^4.0.2"
   }
 }

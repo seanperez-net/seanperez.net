@@ -1,0 +1,25 @@
+/*
+ * M3 window size classes as CONTAINER sizes: `@medium:` and `@expanded:` variants respond to the
+ * width of the nearest `@container` (the Layout), not the browser window, so a layout adapts
+ * wherever it is placed. https://m3.material.io/foundations/layout/applying-layout
+ * compact < 600px, medium 600px+, expanded 840px+, large 1200px+.
+ */
+@theme static {
+  --container-medium: 37.5rem;
+  --container-expanded: 52.5rem;
+  --container-large: 75rem;
+
+  /* Page margin (16px compact; 24px from the medium window size, set below), the gap between
+     neighbouring items, and the top app bar's height. */
+  --spacing-layout-margin: 1rem;
+  --spacing-layout-gutter: 0.5rem;
+  --spacing-layout-app-bar: 4rem;
+}
+
+@layer base {
+  @media (width >= 37.5rem) {
+    :root {
+      --spacing-layout-margin: 1.5rem;
+    }
+  }
+}
