@@ -10,6 +10,10 @@
  * Do NOT import "tailwindcss" here: the consuming app does that.
  */
 @import "./tokens/tokens.css";
+/* Component tokens and utilities (focus ring, menu fallbacks, ...), as e-store's `app.css`. */
+@import "./tokens/utilities.css";
+/* The scaffold grid utilities `Layout.*` is built from. */
+@import "./tokens/layout/layout.css";
 
 /* Dark mode follows the `dark` class on <html> (set by ThemeModeScript and ThemeToggle). */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -29,4 +33,74 @@
     color: var(--color-on-surface);
     font-family: var(--font-plain);
   }
+
+  /* Every scroll area's bar is the main pane's: e-store's `global.css` rule (owner there,
+     2026-11-20: "they should be the same as the main pane one on everything"; owner here,
+     2026-11-23: the search list showed the browser's grey bar because this rule was not ported).
+     The `scrollbar-pane` look (tokens/utilities.css) as the default for every element under
+     <body>, in the base layer so any utility still wins (`scrollbar-pane` with its track margins,
+     a `--scrollbar-thumb` colour). The document's own bar (<html>) is the browser's. Desktop
+     pointers only.
+     Differs from e-store (same fix as our `scrollbar-pane`): the webkit test is
+     `::-webkit-scrollbar-thumb`, and the webkit rules sit inside it, because Firefox 153 ESR
+     answers true for `::-webkit-scrollbar` and e-store's reset left it with an unstyled bar
+     (MDN BCD; e-store finding 1). */
+  @media (pointer: fine) {
+    body * {
+      scrollbar-color: var(--scrollbar-thumb, var(--color-primary)) transparent;
+      scrollbar-width: thin;
+
+      @supports selector(::-webkit-scrollbar-thumb) {
+        scrollbar-width: auto;
+        scrollbar-color: auto;
+
+        &::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        &::-webkit-scrollbar-thumb {
+          background-color: var(--scrollbar-thumb, var(--color-primary));
+          border-radius: 9999px;
+        }
+        &::-webkit-scrollbar-track {
+          background: transparent;
+          margin-block-start: var(
+            --scrollbar-track-margin-start,
+            var(--scrollbar-track-margin, 20px)
+          );
+          margin-block-end: var(
+            --scrollbar-track-margin-end,
+            var(--scrollbar-track-margin, 20px)
+          );
+        }
+        &::-webkit-scrollbar-corner {
+          background: transparent;
+        }
+        &::-webkit-scrollbar-button {
+          display: none;
+          height: 0;
+          width: 0;
+        }
+      }
+    }
+  }
+}
+
+/* ThemeToggle puts `theme-transitioning` on <html> for 200ms while it swaps light and dark, so
+   the colours fade instead of snapping. It is only there during the swap, so the components'
+   own hover and press transitions are untouched the rest of the time. */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    background-color 200ms var(--ease-standard, ease),
+    color 200ms var(--ease-standard, ease),
+    border-color 200ms var(--ease-standard, ease),
+    outline-color 200ms var(--ease-standard, ease),
+    fill 200ms var(--ease-standard, ease),
+    box-shadow 200ms var(--ease-standard, ease),
+    /* Kept in the list so this rule does not cancel the toggle's own sliding icons. */
+    translate 300ms var(--ease-standard, ease),
+    scale 200ms var(--ease-standard, ease) !important;
 }

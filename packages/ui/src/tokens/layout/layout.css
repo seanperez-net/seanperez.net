@@ -1,0 +1,434 @@
+/*
+ * Material 3 scaffold grid: the layout utilities `Layout.*` is built from.
+ * https://m3.material.io/foundations/layout/scaffold/overview
+ *
+ * Every region (rails, drawer, app bar, panes, footer) is a direct child of ONE grid and places
+ * itself on its named lines. Margins and gaps are grid tracks, never margin or padding.
+ *
+ *   compact (< 600px):
+ *     [frame] margin | body | margin [frame]
+ *
+ *   medium and up (600px+):
+ *     rail | nav | margin | body | margin | spacer | support | trail
+ *
+ *     rail     the navigation rail (leading), full height
+ *     nav      the rail's docked drawer; 0px while closed; a track from 600px
+ *     body     the primary pane, <main>
+ *     support  the supporting pane, <aside>; 0px while collapsed; a track from 840px
+ *     trail    the companion rail (trailing); 0px without one
+ *
+ *   rows: bar (the top app bar) | body | bottom (the bottom margin; the footer sits in it)
+ *
+ * A track's size is a CSS variable, and `Layout.Root` only sets data attributes on the scaffold
+ * (`data-nav`, `data-support`), and the regions mark themselves
+ * (`data-layout-rail`, `data-layout-trail`, `data-layout-footer`): the rules below turn those into track sizes, so the
+ * server-rendered page is laid out right before any JavaScript runs.
+ */
+
+/* The page margin: 16px compact, 24px from 600px. Resolved on the scaffold as well, so a value
+   set on the scaffold (or above it) reaches every track that reads it. */
+:root,
+.layout-scaffold {
+  --layout-margin: var(--layout-margin-compact);
+  @media (min-width: 600px) {
+    --layout-margin: var(--layout-margin-medium);
+  }
+}
+
+/* ── Compact layout mode (e-store `tokens/layout/layout.css` 460-467, 2026-11-23) ─────
+ * `Layout.Root layoutMode="compact"` (`data-layout-mode`): the margin is the compact 16px at
+ * every width, the pane spacer 16px, the scrollbar's track inset 8px (it clears a 16px corner).
+ * Not ported: e-store's `--layout-scaffold-bottom` override (there `@theme` froze the bottom row
+ * at 24px; ours reads `var(--layout-margin)` on the scaffold itself, so it follows) and its
+ * `--layout-item-*` density tokens (our Item does not read them). */
+.layout-scaffold[data-layout-mode="compact"] {
+  --layout-margin: var(--layout-margin-compact);
+  --layout-pane-spacer: 16px;
+  --scrollbar-track-margin: 8px;
+}
+
+/* ── The pane radius (e-store `tokens/layout/layout.css` 1181-1199, 2026-11-23) ────────────
+ * What a pane's corners are at this width and layout mode: square below 600px, 28px from
+ * 600px, 16px in a compact layout. The panes, the floating / docked drawer card and
+ * `Card rounded="pane"` all read it, so their corners always match. e-store's
+ * `data-pref-rounded` user preferences are not ported. */
+.layout-scaffold {
+  --layout-pane-radius: 0px;
+}
+@media (min-width: 600px) {
+  .layout-scaffold {
+    --layout-pane-radius: var(--radius-xl, 28px);
+  }
+  .layout-scaffold[data-layout-mode="compact"] {
+    --layout-pane-radius: var(--radius-lg, 16px);
+  }
+}
+
+@utility layout-scaffold {
+  display: grid;
+  height: var(--layout-scaffold-height, 100dvh);
+  overflow: hidden;
+  transition:
+    grid-template-columns 300ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    grid-template-rows 300ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+
+  grid-template-columns:
+    [frame-start] var(--layout-scaffold-margin-start, var(--layout-margin))
+    [body-col-start] var(--layout-scaffold-content, 1fr)
+    [body-col-end] var(--layout-scaffold-margin-end, var(--layout-margin))
+    [frame-end];
+  grid-template-rows:
+    [bar-start] var(--layout-scaffold-bar, auto)
+    [bar-end body-start] var(--layout-scaffold-body, minmax(0, 1fr))
+    [body-end bottom-start] var(--layout-scaffold-bottom, 0px)
+    [bottom-end];
+
+  @media (min-width: 600px) {
+    grid-template-columns:
+      [rail-start] var(--layout-scaffold-rail, auto)
+      [rail-end nav-start] var(--layout-scaffold-nav, 0px)
+      [nav-end frame-start] var(
+        --layout-scaffold-margin-start,
+        var(--layout-margin)
+      )
+      [body-col-start] var(--layout-scaffold-content, 1fr)
+      [body-col-end] var(--layout-scaffold-margin-end, var(--layout-margin))
+      [frame-end spacer-start] var(--layout-scaffold-support-spacer, 0px)
+      [spacer-end support-start] var(--layout-scaffold-support, 0px)
+      [support-end trail-start] var(
+        --layout-scaffold-trail,
+        var(--layout-scaffold-trailing, 0px)
+      )
+      [trail-end];
+    grid-template-rows:
+      [bar-start] var(--layout-scaffold-bar, auto)
+      [bar-end body-start] var(--layout-scaffold-body, minmax(0, 1fr))
+      [body-end bottom-start] var(
+        --layout-scaffold-bottom,
+        var(--layout-margin)
+      )
+      [bottom-end];
+  }
+}
+
+/* ── Leading edge ─────────────────────────────────────────────────────────────
+ * No rail: the start margin is the page margin. With a rail, or a docked drawer, that region IS
+ * the boundary and the start margin collapses. */
+@media (min-width: 600px) {
+  .layout-scaffold:has([data-layout-rail]) {
+    --layout-scaffold-margin-start: 0px;
+  }
+}
+/* `data-nav` with a `Layout.Drawer` inside: the drawer (e-store's floating drawer, docked by the
+   rail's menu button) has a track from 600px, as e-store's (`sm:col-[nav]`). Below 600px the drawer
+   is the modal sheet and takes no room. The start margin is 0px while docked, as e-store's
+   (`[data-drawer-docked]`): the primary pane begins at the track's end (owner 2026-11-23: "make
+   the margin gap ... a little smaller"). The docked drawer paints no surface (e-store's and the
+   reference app's) and keeps a 4px end margin (`me-1`) inside the track. */
+@media (min-width: 600px) {
+  .layout-scaffold[data-nav]:has([data-layout-drawer]) {
+    --layout-scaffold-nav: var(--layout-drawer-panel-width);
+    /* e-store's (`layout.tsx` ~1765, `--layout-scaffold-margin-start: 0px` while a panel is
+       docked): the primary pane starts at the drawer track's end, no margin track between. */
+    --layout-scaffold-margin-start: 0px;
+  }
+}
+
+/* ── Trailing edge ────────────────────────────────────────────────────────────
+ *   no supporting pane, no trail   margin-end = the page margin
+ *   supporting pane expanded       margin-end 0, spacer, the pane, then a trailing margin
+ *   trail (companion rail)         margin-end 0: the primary pane runs up to the rail
+ * The supporting pane has a track from 840px (Material 3: two panes from the expanded window
+ * size). Below that its track is 0px and the pane is a modal side sheet. */
+@media (min-width: 840px) {
+  .layout-scaffold[data-support="expanded"] {
+    --layout-scaffold-support: var(--layout-support-expanded);
+    --layout-scaffold-support-spacer: var(--layout-pane-spacer);
+    --layout-scaffold-margin-end: 0px;
+    --layout-scaffold-trailing: var(--layout-margin);
+  }
+}
+@media (min-width: 600px) {
+  .layout-scaffold:has([data-layout-trail]):not([data-trail="hidden"]) {
+    --layout-scaffold-trail: var(--layout-trail-width);
+    --layout-scaffold-margin-end: 0px;
+  }
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────────
+ * One line of small print sits IN the bottom margin row from 600px. Below 600px there is no
+ * bottom margin, so the row takes the footer's own height. */
+.layout-scaffold:has([data-layout-footer]) {
+  --layout-scaffold-bottom: auto;
+  @media (min-width: 600px) {
+    --layout-scaffold-bottom: minmax(var(--layout-margin), auto);
+  }
+}
+
+/* ── Placement on the scaffold grid ───────────────────────────────────────── */
+
+/* Navigation rail: full height; the app bar starts after it. No column below 600px. */
+@utility scaffold-rail {
+  grid-row: 1 / -1;
+  @media (min-width: 600px) {
+    grid-column: rail-start / rail-end;
+  }
+}
+
+/* The rail's docked drawer: beside the rail, UNDER the app bar, in the panes' row. It has no
+   surface of its own: it sits on the scaffold, like the rail. */
+@utility scaffold-nav {
+  @media (min-width: 600px) {
+    grid-column: nav-start / nav-end;
+    grid-row: body-start / body-end;
+  }
+}
+
+/* Top app bar: window-wide when compact, from the rail's end to the far edge from 600px (so it
+   runs above the drawer too). */
+@utility scaffold-appbar {
+  grid-row: bar-start / bar-end;
+  grid-column: 1 / -1;
+  @media (min-width: 600px) {
+    grid-column: rail-end / trail-end;
+  }
+}
+
+/* Primary pane: edge to edge when compact, inside the margins from 600px. */
+@utility scaffold-body {
+  grid-column: frame-start / frame-end;
+  grid-row: body-start / body-end;
+  @media (min-width: 600px) {
+    grid-column: body-col-start / body-col-end;
+  }
+}
+
+/* Supporting pane: its own track. */
+@utility scaffold-support {
+  grid-column: support-start / support-end;
+  grid-row: body-start / body-end;
+}
+
+/* Companion rail: the trailing track, beside the panes. */
+@utility scaffold-trail {
+  grid-row: body-start / body-end;
+  @media (min-width: 600px) {
+    grid-column: trail-start / trail-end;
+  }
+}
+
+/* Footer: the bottom row, under the panes. */
+@utility scaffold-footer {
+  grid-row: bottom-start / bottom-end;
+  grid-column: 1 / -1;
+  @media (min-width: 600px) {
+    grid-column: rail-end / trail-end;
+  }
+}
+
+/* ── App bar ruler grid ───────────────────────────────────────────────────────
+ * The bar IS this grid: every gap in it is a track, so nothing in the bar has a padding or a
+ * margin. The side insets are the same margins as a pane, less the 8px a 40px icon button
+ * overhangs so its 24px icon sits on the margin line. Beside a rail the start inset is 0.
+ *
+ *   inset | leading | 12 | title | 12 + 8 | pane (flexible) | 8 | trailing | inset
+ */
+@utility layout-appbar-rulers {
+  display: grid;
+  grid-template-columns:
+    [inset-start] max(
+      0px,
+      calc(
+        var(--layout-appbar-rulers-inset-start, var(--layout-margin)) -
+          var(--layout-icon-button-overhang)
+      )
+    )
+    [leading-start] auto
+    [leading-end] var(--layout-app-bar-title-inset)
+    [title-start] auto
+    [title-end] calc(
+      var(--layout-app-bar-title-inset) + var(--layout-app-bar-pane-inset)
+    )
+    [pane-start] minmax(0, 1fr)
+    [pane-end] var(--layout-app-bar-pane-inset)
+    [trailing-start] auto
+    [trailing-end] max(
+      0px,
+      calc(
+        var(--layout-appbar-rulers-inset-end, var(--layout-margin)) -
+          var(--layout-icon-button-overhang)
+      )
+    )
+    [inset-end];
+  align-items: center;
+  height: var(--layout-app-bar-height);
+}
+@utility appbar-leading {
+  grid-column: leading-start / leading-end;
+}
+@utility appbar-title {
+  grid-column: title-start / title-end;
+}
+@utility appbar-pane {
+  grid-column: pane-start / pane-end;
+}
+@utility appbar-trailing {
+  grid-column: trailing-start / trailing-end;
+}
+@media (min-width: 600px) {
+  .layout-scaffold:has([data-layout-rail]) .layout-appbar-rulers {
+    --layout-appbar-rulers-inset-start: 0px;
+  }
+  /* With a companion rail the end inset is 16px, so the bar's last 40px button (hung 8px into
+     the inset) is centred on the rail's 56px column. This holds while the rail is HIDDEN too:
+     the bar's controls must not move when the side panel opens or closes. */
+  .layout-scaffold:has([data-layout-trail]) .layout-appbar-rulers {
+    --layout-appbar-rulers-inset-end: 16px;
+  }
+}
+
+/* ── Pane ruler grid ──────────────────────────────────────────────────────────
+ * A pane's own grid. Its insets are tracks; the header takes the title row and sticks while the
+ * pane scrolls; everything else goes in the body row, in the content column. */
+@utility layout-pane-rulers {
+  display: grid;
+  grid-template-columns:
+    [inset-start] var(--layout-pane-rulers-inset-start, var(--layout-margin))
+    [pane-start] var(--layout-pane-rulers-content, minmax(0, 1fr))
+    [pane-end] var(--layout-icon-button-overhang)
+    [action-end] calc(
+      var(--layout-pane-rulers-inset-end, var(--layout-margin)) -
+        var(--layout-icon-button-overhang)
+    )
+    [inset-end];
+  grid-template-rows:
+    [title-start] var(--layout-pane-rulers-title, auto)
+    [title-end body-start] var(
+      --layout-pane-rulers-body,
+      minmax(min-content, 1fr)
+    )
+    [body-end];
+  /* Top and bottom insets. With a header the header is the top inset. */
+  padding-block: var(--layout-margin);
+  scroll-padding-block-start: var(--layout-margin);
+  &:has(.pane-header-bleed) {
+    padding-block-start: 0px;
+    row-gap: var(--layout-pane-header-gap);
+    scroll-padding-block-start: calc(
+      var(--layout-pane-header) + var(--layout-pane-header-gap)
+    );
+  }
+  > :not(.pane-header-bleed) {
+    grid-column: pane-start / pane-end;
+    grid-row: body-start / body-end;
+  }
+}
+
+/* Pane header: the title row. Its background runs inset to inset, its content sits on the
+   pane's content column, and it stays put while the pane scrolls. */
+@utility pane-header-bleed {
+  grid-row: title-start / title-end;
+  grid-column: inset-start / inset-end;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  height: var(--layout-pane-header);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-pane-sticky);
+  /* The title row runs 8px into the end inset (`action-end`), so a close button at its end has
+     its icon on the margin line without a negative margin. */
+  > * {
+    grid-column: pane-start / action-end;
+  }
+}
+
+/* ── Drawer ruler grids ───────────────────────────────────────────────────────
+ * M3 navigation drawer: rows sit 12px from the drawer's edges and have 16px inside, so the
+ * heading starts on the rows' text line (12 + 16 = 28px). All of it is tracks. */
+@utility layout-drawer-header-rulers {
+  display: grid;
+  grid-template-columns:
+    [inset-start] calc(
+      var(--layout-drawer-inset) + var(--layout-drawer-row-inset)
+    )
+    [title-start] minmax(0, 1fr)
+    [title-end action-start] auto
+    [action-end] calc(
+      var(--layout-drawer-inset) + var(--layout-drawer-row-inset) -
+        var(--layout-icon-button-overhang)
+    )
+    [inset-end];
+  align-items: center;
+  height: var(--layout-pane-header);
+  flex-shrink: 0;
+  > :first-child {
+    grid-column: title-start / title-end;
+  }
+  > :last-child:not(:first-child) {
+    grid-column: action-start / action-end;
+  }
+}
+@utility layout-drawer-rulers {
+  display: grid;
+  grid-template-columns:
+    [inset-start] var(--layout-drawer-inset)
+    [row-start] minmax(0, 1fr)
+    [row-end] var(--layout-drawer-inset)
+    [inset-end];
+  align-content: start;
+  /* The bottom inset, as the pane ruler grid has. */
+  padding-block-end: var(--layout-margin);
+  > * {
+    grid-column: row-start / row-end;
+  }
+}
+
+/* ── Footer and companion rail ruler grids ────────────────────────────────── */
+@utility layout-footer-rulers {
+  display: grid;
+  grid-template-columns:
+    [inset-start] var(--layout-margin)
+    [footer-start] minmax(0, 1fr)
+    [footer-end] var(--layout-margin)
+    [inset-end];
+  align-content: center;
+  > * {
+    grid-column: footer-start / footer-end;
+  }
+}
+/* The companion rail's column: an 8px top inset row, then one row per button. */
+@utility layout-trail-rulers {
+  grid-template-rows: [inset-start] var(--layout-trail-inset) [tabs-start];
+  grid-auto-rows: max-content;
+  justify-items: center;
+  align-content: start;
+  /* The inset row is held by a generated box, so the buttons flow from the row after it. */
+  &::before {
+    content: "";
+    grid-row: inset-start / tabs-start;
+  }
+}
+
+/* ── Rail ruler grid ──────────────────────────────────────────────────────────
+ * The rail's rows: a header as tall as the app bar (so the menu button is on the bar's row),
+ * the destinations, a footer, and the bottom margin. */
+@utility layout-rail-rulers {
+  display: grid;
+  grid-template-rows:
+    [rail-header-start] var(--layout-rail-header, var(--layout-pane-header))
+    [rail-header-end rail-body-start] minmax(0, 1fr)
+    [rail-body-end rail-footer-start] auto
+    [rail-footer-end rail-margin-start] var(
+      --layout-rail-margin-bottom,
+      var(--layout-margin)
+    )
+    [rail-margin-end];
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ── Scrollbar track margin (from e-store's layout.css) ──────────────────────
+ * A pane's sticky header covers its top corner: the track starts below the header instead. */
+.scrollbar-pane:has(> .pane-header-bleed) {
+  --scrollbar-track-margin-start: var(--layout-pane-header);
+}

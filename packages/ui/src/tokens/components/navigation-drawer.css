@@ -1,0 +1,10 @@
+/*
+ * Navigation drawer tokens, from e-store's `tokens/components/navigation-drawer.css`.
+ *
+ * Only the width is taken: `w-nav-drawer` is the one name e-store's components use from that
+ * file (`navDrawerVariants`, the modal drawer: 360dp, M3). The docked drawer's track is
+ * `--layout-drawer-width` in `layout/layout-tokens.css`; keep the two equal.
+ */
+@theme static {
+  --width-nav-drawer: 360px;
+}

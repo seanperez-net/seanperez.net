@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @seanperez/web dev",
     "dev:ui": "pnpm --filter @seanperez/ui dev --port 5174",
-    "build": "pnpm --filter @seanperez/ui build && pnpm --filter @seanperez/web build",
+    "build": "pnpm --filter @seanperez/ui build && pnpm --filter @seanperez/web og && pnpm --filter @seanperez/web build",
     "preview": "pnpm --filter @seanperez/web preview",
     "deploy": "pnpm --filter @seanperez/web run deploy",
     "check-types": "pnpm --filter @seanperez/web run build.types && pnpm --filter @seanperez/ui exec tsc --noEmit",

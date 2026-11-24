@@ -1,7 +1,58 @@
 /*
- * M3 typeface tokens. No font files are bundled: Roboto is used when the app or the device
- * provides it, otherwise the system UI font.
+ * M3 typeface tokens. Roboto (the Material 3 typeface) and Fira Code (mono) are bundled: the Latin subset in the
+ * three weights the type scale uses, copied from `@fontsource/roboto` (SIL Open Font License)
+ * into `./fonts`, the way e-store does it. Other scripts fall back to the system UI font.
  */
+@layer base {
+  @font-face {
+    font-family: "Roboto";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url("./fonts/roboto-latin-400-normal.woff2") format("woff2");
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+      U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Roboto";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 500;
+    src: url("./fonts/roboto-latin-500-normal.woff2") format("woff2");
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+      U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Roboto";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 700;
+    src: url("./fonts/roboto-latin-700-normal.woff2") format("woff2");
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+      U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  /* The mono face, as e-store's: Fira Code, the variable Latin file (one file for weights 300 to
+     700), from `@fontsource-variable/fira-code` 5.3.0 (byte-identical to e-store's copy; SIL Open
+     Font License, `fonts/OFL-fira-code.txt`). Only downloaded when something uses `font-mono`. */
+  @font-face {
+    font-family: "Fira Code Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 300 700;
+    src: url("./fonts/fira-code-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+      U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+}
+
 @theme static {
   --font-brand:
     "Roboto", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
@@ -10,7 +61,7 @@
     "Roboto", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Fira Code Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 
   --font-weight-regular: 400;

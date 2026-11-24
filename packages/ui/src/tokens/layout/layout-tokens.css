@@ -1,25 +1,66 @@
 /*
- * M3 window size classes as CONTAINER sizes: `@medium:` and `@expanded:` variants respond to the
- * width of the nearest `@container` (the Layout), not the browser window, so a layout adapts
- * wherever it is placed. https://m3.material.io/foundations/layout/applying-layout
- * compact < 600px, medium 600px+, expanded 840px+, large 1200px+.
+ * Material 3 layout tokens: the spacing of the scaffold (margins, gutters, pane spacer) and the
+ * fixed sizes of its regions (rails, drawer, supporting pane, app bar, pane header).
+ * https://m3.material.io/foundations/layout/grids-spacing/overview
+ * https://m3.material.io/foundations/layout/scaffold/overview
+ *
+ * The grid that uses them is in `layout.css`.
  */
 @theme static {
-  --container-medium: 37.5rem;
-  --container-expanded: 52.5rem;
-  --container-large: 75rem;
+  /* Page margin: 16dp in a compact window (< 600px), 24dp from medium. `--layout-margin`
+     (layout.css) is the one that switches between them. */
+  --layout-margin-compact: 16px;
+  --layout-margin-medium: 24px;
 
-  /* Page margin (16px compact; 24px from the medium window size, set below), the gap between
-     neighbouring items, and the top app bar's height. */
-  --spacing-layout-margin: 1rem;
-  --spacing-layout-gutter: 0.5rem;
-  --spacing-layout-app-bar: 4rem;
-}
+  /* Gutter between grid columns: 8dp minimum. */
+  --layout-gutter: 8px;
 
-@layer base {
-  @media (width >= 37.5rem) {
-    :root {
-      --spacing-layout-margin: 1.5rem;
-    }
-  }
+  /* Gap between two panes. */
+  --layout-pane-spacer: 24px;
+
+  /* Navigation rail (leading) and its docked drawer. */
+  --layout-rail-width: 88px;
+  --layout-nav-width: 256px;
+  --layout-drawer-width: 360px;
+  /* e-store's floating drawer card (and the docked one): 240px wide (e-store's `w-60` and its
+     md-density docked width), on e-store's `--layout-drawer-bg`. The colour is e-store's choice
+     (owner 2026-11-23: "the drawer has a different color then the rail and the top app bar"),
+     not an M3 role for a floating card; it equals M3's modal drawer role. */
+  --layout-drawer-panel-width: 240px;
+  --layout-drawer-bg: var(--color-surface-container-low);
+
+  /* Companion rail (trailing) and the supporting pane it opens. */
+  --layout-trail-width: 56px;
+  --layout-support-expanded: 320px;
+  --layout-side-sheet-max: 400px;
+
+  /* Top app bar and every pane header: 64dp. */
+  --layout-app-bar-height: 64px;
+  --layout-pane-header: 64px;
+  --layout-pane-header-gap: 16px;
+
+  /* Smallest touch target. */
+  --layout-touch-target: 48px;
+
+  /* Insets inside the bars and the drawer. They size TRACKS of the ruler grids in layout.css:
+     the parts themselves carry no padding and no margin. */
+  /* Either side of the top app bar's title (M3: 12dp between a leading icon and the title). */
+  --layout-app-bar-title-inset: 12px;
+  /* Either side of the app bar's middle column (the search bar). */
+  --layout-app-bar-pane-inset: 8px;
+  /* How far a 40dp icon button hangs into a margin so its 24dp icon sits ON the margin line. */
+  --layout-icon-button-overhang: 8px;
+  /* M3 navigation drawer: 12dp from the drawer's edge to a row, rows 56dp high, 16dp inside. */
+  --layout-drawer-inset: 12px;
+  --layout-drawer-row-height: 56px;
+  --layout-drawer-row-inset: 16px;
+  /* Above the companion rail's first button. */
+  --layout-trail-inset: 8px;
+
+  /* Stacking inside a pane, then of the scaffold's own regions. */
+  --z-pane-sticky: 10;
+  --z-scaffold-rail: 10;
+  --z-scaffold-app-bar: 20;
+  --z-scaffold-drawer: 30;
+  --z-scaffold-skip: 50;
 }

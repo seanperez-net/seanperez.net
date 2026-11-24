@@ -1,6 +1,30 @@
-import { Slot, component$, useStylesScoped$ } from "@qwik.dev/core";
+import { Slot, component$ } from "@qwik.dev/core";
+import { tv } from "tailwind-variants/lite";
+import { Button } from "../button";
+import { Card } from "../card";
+import { Checkbox } from "../checkbox";
+import { Select } from "../select";
+import { Separator } from "../separator";
+import { TextField } from "../text-field";
 import type { KnobDefs, KnobsState } from "./knob";
-import styles from "./knobs.css?inline";
+
+/**
+ * The frame is our outlined `Card` (M3: 1dp `outline-variant`, 12dp corners, `surface`, and the
+ * `--field-bg` a floated field label paints), the line between preview and panel our
+ * `Separator`. Only the two-column grid, stacked below 40rem, is the frame's own.
+ */
+const knobsVariants = tv({
+  slots: {
+    grid: "grid grid-cols-1 min-[40rem]:grid-cols-[minmax(0,1fr)_auto_minmax(14rem,18rem)]",
+    preview: "grid min-h-48 place-items-center p-8",
+    panel: "flex flex-col gap-3 p-4",
+    header: "flex items-baseline justify-between gap-2",
+    title: "text-title-small text-on-surface-variant",
+    colorKnob: "flex flex-col gap-1 text-body-medium",
+    colorInput:
+      "block h-10 w-full cursor-pointer rounded-xs border border-outline bg-transparent p-1",
+  },
+});
 
 export type KnobsProps = {
   // Any knob set: the panel only needs the definitions and a place to write values.
@@ -17,112 +41,121 @@ type Values = Record<string, string | number | boolean>;
  * default slot, and a panel of controls ("knobs") changes its props live.
  */
 export const Knobs = component$<KnobsProps>((props) => {
-  useStylesScoped$(styles);
-
+  const cls = knobsVariants();
   const defs = props.knobs.defs as KnobDefs;
   const values = props.knobs.values as Values;
 
   return (
-    <section class="knobs">
-      <div class="preview">
-        <Slot />
-      </div>
-      <aside class="panel" aria-label="Component controls">
-        <div class="header">
-          <h3 class="title">{props.title ?? "Knobs"}</h3>
-          <button
-            type="button"
-            class="reset"
-            onClick$={() => {
-              for (const name in defs) {
-                values[name] = defs[name].value;
-              }
-            }}
-          >
-            Reset
-          </button>
+    <Card.Root variant="outlined">
+      <section class={cls.grid()}>
+        <div class={cls.preview()}>
+          <Slot />
         </div>
-        {Object.entries(defs).map(([name, def]) => {
-          const label = def.label ?? name;
-          switch (def.type) {
-            case "boolean":
-              return (
-                <label key={name} class="knob inline">
-                  <span>{label}</span>
-                  <input
-                    type="checkbox"
-                    class="check"
+        {/* Wide: a vertical line beside the panel; stacked: a horizontal one above it. The panel
+            is already a named landmark, so the lines are decorative. */}
+        <Separator
+          decorative
+          orientation="vertical"
+          class="max-[40rem]:hidden"
+        />
+        <Separator decorative class="min-[40rem]:hidden" />
+        <aside class={cls.panel()} aria-label="Component controls">
+          <div class={cls.header()}>
+            <h3 class={cls.title()}>{props.title ?? "Knobs"}</h3>
+            {/* Our `Button` (text look, extra small), not a bare <button>. */}
+            <Button
+              look="text"
+              size="xs"
+              label="Reset"
+              onClick$={() => {
+                for (const name in defs) {
+                  values[name] = defs[name].value;
+                }
+              }}
+            />
+          </div>
+          {Object.entries(defs).map(([name, def]) => {
+            const label = def.label ?? name;
+            switch (def.type) {
+              case "boolean":
+                return (
+                  <Checkbox
+                    key={name}
+                    label={label}
                     checked={values[name] as boolean}
-                    onChange$={(_, el) => (values[name] = el.checked)}
+                    onChange$={(checked) => (values[name] = checked)}
                   />
-                </label>
-              );
-            case "number":
-              return (
-                <label key={name} class="knob">
-                  <span>{label}</span>
-                  <input
+                );
+              case "number":
+                return (
+                  <TextField
+                    key={name}
                     type="number"
-                    class="control"
+                    label={label}
                     min={def.min}
                     max={def.max}
                     step={def.step}
-                    value={values[name] as number}
+                    value={String(values[name])}
                     onInput$={(_, el) => {
-                      if (!Number.isNaN(el.valueAsNumber)) {
-                        values[name] = el.valueAsNumber;
+                      // A field may be a textarea; this one is `type="number"`.
+                      const number = Number((el as HTMLInputElement).value);
+                      if (el.value !== "" && !Number.isNaN(number)) {
+                        values[name] = number;
                       }
                     }}
                   />
-                </label>
-              );
-            case "select":
-              return (
-                <label key={name} class="knob">
-                  <span>{label}</span>
-                  <select
-                    class="control"
-                    onChange$={(_, el) => (values[name] = el.value)}
+                );
+              case "select":
+                return (
+                  <Select.Root
+                    key={name}
+                    value={values[name] as string}
+                    options={def.options.map((option) => ({
+                      value: option,
+                      label: option,
+                    }))}
+                    onValueChange$={(value) => (values[name] = value)}
                   >
-                    {def.options.map((option) => (
-                      <option
-                        key={option}
-                        value={option}
-                        selected={values[name] === option}
-                      >
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              );
-            case "color":
-              return (
-                <label key={name} class="knob">
-                  <span>{label}</span>
-                  <input
-                    type="color"
-                    class="control"
+                    <Select.Label label={label} />
+                    <Select.Trigger>
+                      <Select.Value />
+                    </Select.Trigger>
+                    <Select.Content>
+                      {def.options.map((option) => (
+                        <Select.Item key={option} value={option}>
+                          {option}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                    <Select.SupportingText />
+                  </Select.Root>
+                );
+              // No M3 colour field exists: the browser's colour input, as before.
+              case "color":
+                return (
+                  <label key={name} class={cls.colorKnob()}>
+                    <span>{label}</span>
+                    <input
+                      type="color"
+                      class={cls.colorInput()}
+                      value={values[name] as string}
+                      onInput$={(_, el) => (values[name] = el.value)}
+                    />
+                  </label>
+                );
+              default:
+                return (
+                  <TextField
+                    key={name}
+                    label={label}
                     value={values[name] as string}
                     onInput$={(_, el) => (values[name] = el.value)}
                   />
-                </label>
-              );
-            default:
-              return (
-                <label key={name} class="knob">
-                  <span>{label}</span>
-                  <input
-                    type="text"
-                    class="control"
-                    value={values[name] as string}
-                    onInput$={(_, el) => (values[name] = el.value)}
-                  />
-                </label>
-              );
-          }
-        })}
-      </aside>
-    </section>
+                );
+            }
+          })}
+        </aside>
+      </section>
+    </Card.Root>
   );
 });

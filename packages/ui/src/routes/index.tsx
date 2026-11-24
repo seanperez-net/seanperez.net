@@ -6,12 +6,12 @@ export default component$(() => {
   return (
     <>
       <Layout.PaneHeader title="Overview" />
-      <div class="grid max-w-2xl gap-4">
+      <div class="grid max-w-2xl content-start gap-4">
         <p>
           Material 3 components for Qwik, styled with Tailwind and
           tailwind-variants on the Material 3 design tokens. This page is built
-          with the library itself: the app bar, both panes and the footer are{" "}
-          <code>Layout</code> parts.
+          with the library itself: the rails, the drawer, the app bar, both
+          panes and the footer are <code>Layout</code> parts.
         </p>
         <p>
           Pick a component from the list. Each demo has knobs that change its

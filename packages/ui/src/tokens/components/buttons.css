@@ -1,0 +1,16 @@
+/*
+ * Button size tokens, from e-store's `tokens/components/buttons.css`. NOT PROOFED: no e-store
+ * component reads them (its buttons size themselves with `h-10`, `size-10`, ...); kept so the
+ * file and names match. `--margin-icon-button` centres a 40px icon button in M3's 48px target.
+ * Plain `@theme`, as e-store: Tailwind emits a variable only once a utility uses it.
+ */
+@theme {
+  --min-width-button: calc(64px - 24px - 24px);
+  --height-icon-button: 40px;
+  --width-icon-button: 40px;
+}
+
+@theme inline {
+  --margin-icon-button: max(0px, (48px - var(--height-icon-button)) / 2)
+    max(0px, (48px - var(--width-icon-button)) / 2);
+}

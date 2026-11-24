@@ -3,6 +3,8 @@
 /lib
 /lib-types
 /server
+# Open Graph cards: drawn by `pnpm og` (scripts/og.ts) on every build
+/public/og
 
 # Development
 node_modules

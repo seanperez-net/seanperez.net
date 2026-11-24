@@ -1,0 +1,136 @@
+/*
+ * Component tokens and utilities, as e-store's `tokens/utilities.css`: the per-component CSS
+ * files, then the one-off utilities. `global.css` imports this after `tokens.css`.
+ *
+ * Of e-store's one-off utilities only those its button, icon button, ripple, list, item, menu,
+ * switch, toggle group and avatar use are here. Add the others from e-store when a component
+ * that needs them is ported.
+ */
+@import "./components/focus-ring.css";
+@import "./components/buttons.css";
+@import "./components/navigation-drawer.css";
+@import "./components/menu.css";
+@import "./components/progress.css";
+@import "./components/loading-indicator.css";
+
+/* RippleSurface: no grey flash over a tapped control on iOS / Android. */
+@utility -webkit-tap-highlight-color-transparent {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* M3 pane scrollbar: a thin primary thumb on a transparent track. From e-store's
+ * `scrollbar-pane` (tokens/utilities.css), PROOFED 2026-11-23 against MDN browser-compat-data and
+ * the CSS Scrollbars spec, with two fixes (second agent's review):
+ *
+ * - The webkit branch is tested with `::-webkit-scrollbar-thumb`, not `::-webkit-scrollbar`.
+ *   Firefox 153 to 154 (153 is the ESR) answers true for `::-webkit-scrollbar` but honours none of
+ *   the thumb or track styles, so e-store's test reset Firefox to an unstyled bar there. No
+ *   Firefox supports `-thumb` (BCD).
+ * - The pseudo-element rules sit INSIDE that test, so Firefox never sees the 8px width (which
+ *   would switch it to classic bars).
+ *
+ * Firefox uses the standard properties. Chrome 121+ and Safari 18.2+ IGNORE the webkit parts
+ * unless both standard properties are `auto` (spec, MDN), hence the reset inside the test.
+ * Desktop only (`pointer: fine`): iOS and Android keep their own overlay bars.
+ *
+ * The thumb colour is `--scrollbar-thumb` (default primary). Each end of the track is held off a
+ * rounded corner by `--scrollbar-track-margin` (20px, e-store's: on a 28px corner the curve is
+ * only about 1px in at 20px), or by `-start` / `-end` where a header or footer covers that corner.
+ * Not checked in a browser other than Chrome on macOS. */
+@utility scrollbar-pane {
+  @media (pointer: fine) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb, var(--color-primary)) transparent;
+
+    @supports selector(::-webkit-scrollbar-thumb) {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+
+      &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: var(--scrollbar-thumb, var(--color-primary));
+        border-radius: 9999px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+        margin-block-start: var(
+          --scrollbar-track-margin-start,
+          var(--scrollbar-track-margin, 20px)
+        );
+        margin-block-end: var(
+          --scrollbar-track-margin-end,
+          var(--scrollbar-track-margin, 20px)
+        );
+      }
+      &::-webkit-scrollbar-button {
+        display: none;
+        height: 0;
+        width: 0;
+      }
+      &::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+    }
+  }
+}
+
+/* M3 touch target: a control smaller than 48 x 48dp still takes the pointer over at least that
+ * area (m3.material.io/components/buttons/specs: "Extra small and small icon buttons must have
+ * a target size of 48x48dp or larger"; /styles/icons/applying-icons). An invisible `::after`
+ * centred on the control, at least 48px and at least the control's own size; a press on it is a
+ * press on the control. The host must be positioned and must not clip (`overflow: hidden`).
+ *
+ * e-store does the same with a `<span class="touch">` inside each control (IconButton only, xs /
+ * sm). A pseudo-element needs no markup, so every small control gets it from one class; it uses
+ * the `::after` layer, which our controls leave free (state layers are `::before`). */
+@utility touch-target {
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+  }
+}
+
+/*
+ * `--field-bg` follows the surface an element paints. From e-store's `tokens/utilities.css`
+ * (2026-11-23). CSS cannot ask "what colour is behind me" (`background-color: inherit` copies the
+ * parent's, usually `transparent`), but custom properties inherit, and the element that paints a
+ * surface knows its colour: each surface utility declares the matching `--field-bg`, and the
+ * nearest painted ancestor wins. The avatar's presence glyph cuts its outline out of it, so the
+ * cut-out matches the app bar (`surface-container`) or the menu it sits on. Set `--field-bg`
+ * yourself over a background that is not a `bg-surface*` class.
+ */
+.bg-surface {
+  --field-bg: var(--color-surface);
+}
+.bg-surface-container-lowest {
+  --field-bg: var(--color-surface-container-lowest);
+}
+.bg-surface-container-low {
+  --field-bg: var(--color-surface-container-low);
+}
+.bg-surface-container {
+  --field-bg: var(--color-surface-container);
+}
+.bg-surface-container-high {
+  --field-bg: var(--color-surface-container-high);
+}
+.bg-surface-container-highest {
+  --field-bg: var(--color-surface-container-highest);
+}
+.bg-surface-variant {
+  --field-bg: var(--color-surface-variant);
+}
+.bg-surface-dim {
+  --field-bg: var(--color-surface-dim);
+}
+.bg-surface-bright {
+  --field-bg: var(--color-surface-bright);
+}

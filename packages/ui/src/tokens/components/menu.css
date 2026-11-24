@@ -1,0 +1,51 @@
+/*
+ * Menu placement fallbacks, from e-store's `tokens/components/menu.css`. `Menu.Content` names
+ * them LAST in its `position-try-fallbacks`, after the flips.
+ *
+ * A menu that fits neither below nor above its trigger stays below and scrolls in the space left
+ * there. `position-area` makes that area the containing block, so `max-block-size: 100%` would be the
+ * room below the trigger; 0.75rem is kept free of the window edge (insets left `auto` count as 0). `-end` mirrors `align="end"` (the
+ * menu's end edge on the trigger's).
+ */
+@position-try --qds-menu-scroll-below {
+  position-area: block-end span-inline-end;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin-block-start: 4px;
+  max-block-size: calc(100% - 0.75rem);
+}
+
+@position-try --qds-menu-scroll-below-end {
+  position-area: block-end span-inline-start;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin-block-start: 4px;
+  max-block-size: calc(100% - 0.75rem);
+}
+
+/* `side="top"`'s last fallback: a menu that fits neither above nor below its trigger stays above
+   and scrolls in the room there, not in the few rows left below a trigger that sits near the
+   bottom of the window. */
+@position-try --qds-menu-scroll-above {
+  position-area: block-start span-inline-end;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin-block-end: 4px;
+  max-block-size: calc(100% - 0.75rem);
+}
+
+@position-try --qds-menu-scroll-above-end {
+  position-area: block-start span-inline-start;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin-block-end: 4px;
+  max-block-size: calc(100% - 0.75rem);
+}

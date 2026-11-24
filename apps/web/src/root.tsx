@@ -12,7 +12,9 @@ import "./global.css";
 
 export default component$(() => {
   useQwikRouter();
-  const { url } = useLocation();
+  // Read the URL in the JSX below, not here: a read in the body subscribes the root, and a
+  // client navigation would then re-render it (useQwikRouter throws). See QWIK-DEFAULTS.md.
+  const loc = useLocation();
 
   /**
    * This is the root of a QwikRouter site. It contains the document's `<head>` and `<body>`. You can adjust them as you see fit.
@@ -29,7 +31,7 @@ export default component$(() => {
 
         <DocumentHeadTags />
 
-        <link rel="canonical" href={url.href} />
+        <link rel="canonical" href={loc.url.href} />
       </head>
       <body>
         <RouterOutlet />

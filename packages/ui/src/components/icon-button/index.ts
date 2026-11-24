@@ -1,2 +1,15 @@
-export { IconButton, iconButtonVariants } from "./icon-button";
-export type { IconButtonProps } from "./icon-button";
+export {
+  IconButton,
+  iconButtonLooks,
+  iconButtonShapes,
+  iconButtonSizes,
+  iconButtonVariants,
+  iconButtonWidths,
+} from "./icon-button";
+export type {
+  IconButtonLook,
+  IconButtonProps,
+  IconButtonShape,
+  IconButtonSize,
+  IconButtonWidth,
+} from "./icon-button";
