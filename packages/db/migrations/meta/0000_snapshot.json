@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7db02a2d-b5fe-45e5-830a-71790f254f5d",
+  "id": "e66ef3e6-eabd-4923-be34-271002d31c1c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "contact_account": {
@@ -429,6 +429,22 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "search_title": {
+          "name": "search_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "search_text": {
+          "name": "search_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
         }
       },
       "indexes": {

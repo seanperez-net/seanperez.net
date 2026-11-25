@@ -72,7 +72,7 @@ export const navigationRailVariants = tv({
       "before:bg-on-surface",
       "before:opacity-0",
       "before:content-['']",
-      "group-hover/rail-item:before:opacity-(--opacity-hover)",
+      "group-hover/rail-item:before:opacity-hover",
       "group-focus-visible/rail-item:outline-2",
       "group-focus-visible/rail-item:outline-secondary",
       "group-data-current/rail-item:bg-secondary-container",

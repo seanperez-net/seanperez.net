@@ -117,7 +117,7 @@ test("forwards to OWNER_NOTIFY_TO FIRST, then reads and stores the mail as sourc
   assert.equal(row.account_id, null);
 });
 
-test("existing form rows default to source 'form' (migration 0006)", async () => {
+test("existing form rows default to source 'form'", async () => {
   const db = await freshDb();
   await db
     .prepare(

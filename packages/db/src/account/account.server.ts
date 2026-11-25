@@ -1,5 +1,5 @@
 /**
- * Contact accounts and email verification (server only; D1 `DB`, migration 0004). The plan is
+ * Contact accounts and email verification (server only; D1 `DB`). The plan is
  * `.claude/notes/contact-verify-email-plan-2026-11-25.md` (owner's answers 2026-11-25: memory
  * `contact-creates-account`, "DECIDED"). Hand-rolled on Web Crypto, no package (memory
  * `keep-it-basic`; Better Auth was reverted on 2026-11-22).
@@ -151,7 +151,6 @@ export function maskEmail(email: string): string {
   const tld = dot > 0 ? domain.slice(dot) : "";
   return `${user.slice(0, 1)}***@${host.slice(0, 1)}***${tld}`;
 }
-
 
 // --- sessions ---------------------------------------------------------------------------------
 
@@ -553,11 +552,11 @@ interface TokenRow {
  * one for the account, else a new verified one), and the waiting messages of exactly the sessions
  * it upgrades (this browser's only). The token is claimed first (single use), then the rest is one batch.
  *
- * Messages are confirmed by SESSION (migration 0005, `message.session_hash`; security review gap
+ * Messages are confirmed by SESSION (`message.session_hash`; security review gap
  * 2026-11-25): before, every waiting message of the account was confirmed, including one a
  * stranger had sent from another browser by typing the same address. Now another session's
  * waiting messages stay unconfirmed and go with the 7-day purge; a row with no `session_hash`
- * (sent between 0004 and 0005) matches no session and is never confirmed by a code or link. No
+ * matches no session and is never confirmed by a code or link. No
  * time bound any more: a message sent from the session before a "Send the email again" token is
  * the same browser's and is confirmed with it.
  */
@@ -935,7 +934,7 @@ export type DeleteOwnResult =
  * sends.
  *
  * Also the messages with the SAME address and NO account (security review gap, 2026-11-25): rows
- * from before accounts existed (migration 0003, or accounts not set up), and rows the owner's
+ * saved while accounts were not set up, and rows the owner's
  * `deleteAccount` unlinked. Matched on the address as stored (`lower(trim(email))`, since those
  * rows kept the address as typed) against the account's normalized address. Safe only because
  * the session is VERIFIED: this browser proved it reads that mailbox. Another account's
@@ -994,7 +993,10 @@ export async function deleteOwnAccount(
       .delete(messageReply)
       .where(
         and(
-          inArray(messageReply.message_id, messageIds(eq(message.account_id, id))),
+          inArray(
+            messageReply.message_id,
+            messageIds(eq(message.account_id, id)),
+          ),
           allowed(),
         ),
       ),
@@ -1004,19 +1006,17 @@ export async function deleteOwnAccount(
     // enforces foreign keys, so the sessions go with it (ON DELETE CASCADE)...
     d.delete(contactAccount).where(and(eq(contactAccount.id, id), allowed())),
     // ...and explicitly, once the account is gone (nothing here depends on the cascade).
-    d
-      .delete(contactSession)
-      .where(
-        and(
-          eq(contactSession.account_id, id),
-          notExists(
-            d
-              .select({ one: sql`1` })
-              .from(contactAccount)
-              .where(eq(contactAccount.id, id)),
-          ),
+    d.delete(contactSession).where(
+      and(
+        eq(contactSession.account_id, id),
+        notExists(
+          d
+            .select({ one: sql`1` })
+            .from(contactAccount)
+            .where(eq(contactAccount.id, id)),
         ),
       ),
+    ),
   ]);
   return removed.meta.changes > 0 ? { kind: "deleted" } : { kind: "gone" };
 }

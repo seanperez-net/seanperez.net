@@ -1,5 +1,5 @@
 /**
- * The local contact book's STORAGE (2026-11-24; was `imported-store.ts`, imported contacts only):
+ * The local contact book's STORAGE (2026-11-24):
  * one JSON document, `contacts.local`, in THIS browser (`local-store.ts`: OPFS, else IndexedDB),
  * never sent anywhere. Every change goes through the shared seam `changeLocalDoc`
  * (`local-store.ts`): read-change-write under a Web Lock, announced to the other open tabs
@@ -18,28 +18,16 @@ import {
   changeLocalDoc,
   onLocalDocChange,
   readLocalDoc,
-  writeLocalDoc,
   type DocChange,
 } from "../local-store";
-import {
-  bookFromImported,
-  expireTrash,
-  parseBook,
-  type LocalBook,
-} from "./local-book";
+import { expireTrash, parseBook, type LocalBook } from "./local-book";
 
 export const CONTACTS_DOC = "contacts.local";
 const DOC = CONTACTS_DOC;
-/** The first version's document (imported contacts only); read once, then removed. */
-const OLD_DOC = "contacts.imported";
 
 /** The book as stored, with the Trash's 30 days applied (saved with the next change). */
 export async function loadBook(now = Date.now()): Promise<LocalBook> {
-  const raw = await readLocalDoc(DOC);
-  if (raw !== null && raw !== undefined)
-    return expireTrash(parseBook(raw), now);
-  const old = await readLocalDoc(OLD_DOC);
-  return expireTrash(bookFromImported(old, now), now);
+  return expireTrash(parseBook(await readLocalDoc(DOC)), now);
 }
 
 /** What a change did; `saved` false = kept in this page only (no storage, or quota). */
@@ -64,8 +52,6 @@ export async function changeBook<T = undefined>(
       return { doc: out.book, result: out.result };
     },
   );
-  // The old document is read only while the new one is missing; once saved it can go.
-  if (change.saved) await writeLocalDoc(OLD_DOC, null);
   return { book: change.doc, saved: change.saved, result: change.result };
 }
 

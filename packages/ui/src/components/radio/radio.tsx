@@ -62,6 +62,8 @@ export const radioVariants = tv({
       "data-checked:border-primary group-hover/radio:data-checked:border-primary",
       "transition-colors duration-short-4 ease-standard motion-reduce:transition-none",
       // M3 state layer: a 40dp circle, on-surface (unselected) or primary (selected).
+      // Physical `left-1/2` on purpose (L10 exception): centring is the same in both directions;
+      // `inset-s-1/2` with `-translate-1/2` would sit off-centre in right-to-left.
       "before:absolute before:top-1/2 before:left-1/2 before:size-10 before:-translate-1/2",
       "before:rounded-full before:bg-on-surface before:opacity-0 before:content-['']",
       "before:pointer-events-none before:transition-opacity",

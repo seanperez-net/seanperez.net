@@ -28,8 +28,8 @@ export const useContactId = routeLoader$(({ params, error }) => {
 });
 
 /**
- * `/contacts/<id>/`: one of the SITE's contacts in the detail pane, linkable (the old `/about/`
- * résumé lives here now: `/about/` is a 301 to the owner's contact). In single-pane mode the
+ * `/contacts/<id>/`: one of the SITE's contacts in the detail pane, linkable (the owner's résumé
+ * lives in his: `/contacts/sean-perez/`). In single-pane mode the
  * layout hides the list, and the profile shows a back button.
  *
  * Google Contacts' person page (`ContactPerson`, 2026-11-24). The visitor's LOCAL OVERRIDE (owner,

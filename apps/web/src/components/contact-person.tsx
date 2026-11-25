@@ -117,8 +117,9 @@ const RecentInteractions = component$<{ accountId: string; rowKey: string }>(
         title="Recent interactions"
         full
         variant="filled"
+        titleSize="medium"
       >
-        <List.Root aria-labelledby="person-interactions">
+        <List.Root density="compact" aria-labelledby="person-interactions">
           {rows.value.map((i) => (
             <List.Item
               key={i.threadId}
@@ -709,8 +710,15 @@ export const ContactPerson = component$<ContactPersonProps>(
               busy={saving}
             />
           ) : (
-            <div class="grid content-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_360px]">
+            // Google's card widths (measured 2026-11-25, `.claude/notes/e-store-contacts-update-
+            // 2026-11-25.md`): full width in a narrow pane; from 576px of pane the cards stack
+            // at 520 (Google's 1000px window); from 896 (= 520 + 16 + 360) two columns, 520 and
+            // 360. Container queries: the supporting pane narrows the article, not the window.
+            <div class="grid content-start gap-4 @xl:grid-cols-[520px] @4xl:grid-cols-[520px_360px]">
               <div class="grid min-w-0 content-start gap-4">
+                {/* The PROFILE first (owner, 2026-11-25: "the profile should always be on the
+                    top"), above the visitor's own Contact details. */}
+                <Slot />
                 {(record.emails.length > 0 ||
                   record.phones.length > 0 ||
                   !!record.notes ||
@@ -720,8 +728,12 @@ export const ContactPerson = component$<ContactPersonProps>(
                     title={detailsTitle}
                     full
                     variant="filled"
+                    titleSize="medium"
                   >
-                    <List.Root aria-labelledby="person-details">
+                    <List.Root
+                      density="compact"
+                      aria-labelledby="person-details"
+                    >
                       {record.emails.map((e) => (
                         <List.Item
                           key={`e${e.value}`}
@@ -775,7 +787,6 @@ export const ContactPerson = component$<ContactPersonProps>(
                     </List.Root>
                   </ResumeSection>
                 )}
-                <Slot />
               </div>
               {/* Google's second column: recent interactions, History. */}
               <div class="grid min-w-0 content-start gap-4">
@@ -793,7 +804,8 @@ export const ContactPerson = component$<ContactPersonProps>(
                 {state.ready.value && (
                   <section
                     aria-labelledby="person-history"
-                    class="grid gap-2 px-4"
+                    // Google: 32px row pitch (20 + 12), inset 16 like the cards' content.
+                    class="grid gap-3 px-4"
                     data-contact-history=""
                   >
                     <h3

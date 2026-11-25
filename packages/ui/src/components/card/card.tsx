@@ -305,11 +305,28 @@ const Header = component$<HeaderProps>((all) => {
   );
 });
 
-/** M3 headline: title-large, on-surface. */
-const Title = component$<PropsOf<"h3">>((all) => {
-  const { class: className, ...rest } = { ...all };
+/**
+ * M3 headline: title-large (default), on-surface. `size="medium"`: title-medium (16/20, 500), for a
+ * dense details card (Google Contacts' person-page cards, measured 2026-11-25; M3 fixes no card
+ * headline size, title-medium is an M3 type role).
+ */
+export const cardTitleVariants = tv({
+  base: "text-on-surface",
+  variants: {
+    size: {
+      large: "text-title-large",
+      medium: "text-title-medium",
+    },
+  },
+  defaultVariants: { size: "large" },
+});
+
+type TitleProps = PropsOf<"h3"> & VariantProps<typeof cardTitleVariants>;
+
+const Title = component$<TitleProps>((all) => {
+  const { class: className, size, ...rest } = { ...all };
   return (
-    <h3 {...rest} class={["text-title-large text-on-surface", className]}>
+    <h3 {...rest} class={[cardTitleVariants({ size }), className]}>
       <Slot />
     </h3>
   );

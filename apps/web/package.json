@@ -28,6 +28,7 @@
     "serve": "wrangler dev",
     "start": "vite --open --mode ssr",
     "qwik": "qwik",
+    "test": "node --test scripts/*-test.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install webkit"
   },

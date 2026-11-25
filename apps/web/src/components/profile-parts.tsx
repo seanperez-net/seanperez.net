@@ -20,7 +20,7 @@ import { ResumeSection, type ResumeSectionVariant } from "./resume-section";
 
 /**
  * The profile's parts, shared by `/profile/` and the Contacts app's profile
- * (`contact-profile.tsx`, which was `/about/` until 2026-11-24; owner: Profile may end up being
+ * (`contact-profile.tsx`; owner: Profile may end up being
  * "my contact card"): ONE data source (`profile.server.ts` `getProfile`) and these components,
  * so the two can be folded together later without rework.
  *
@@ -105,8 +105,10 @@ export const LinkRows = component$<{
   links: ProfileLink[];
   labelledBy?: string;
   label?: string;
-}>(({ links, labelledBy, label }) => (
-  <List.Root aria-labelledby={labelledBy} aria-label={label}>
+  /** The rows' density (`List.Root density`): `compact` in the contact person page's cards. */
+  density?: "default" | "compact";
+}>(({ links, labelledBy, label, density }) => (
+  <List.Root aria-labelledby={labelledBy} aria-label={label} density={density}>
     {links.map((link) => (
       <List.Item
         key={link.href}

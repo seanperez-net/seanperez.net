@@ -1,6 +1,6 @@
 /**
  * The owner's profile in D1 (binding `DB`, table `profile`, ONE row with id = 1,
- * `migrations/0002_create_profile.sql`), through Drizzle (port 2026-11-25). Written only from the admin app's Profile (behind Access).
+ * `migrations/0000_init.sql`), through Drizzle (port 2026-11-25). Written only from the admin app's Profile (behind Access).
  *
  * Defaults are merged PER FIELD: a NULL / empty column shows the default from
  * `profile-seed.ts` (the bio is the résumé summary, the links are its Links, the name the

@@ -27,7 +27,9 @@ export const ProfileCard = component$<{
 }>(({ id, source }) => (
   <Card.Root variant="filled">
     <Card.Header>
-      <Card.Title id={id}>Profile</Card.Title>
+      <Card.Title id={id} size="medium">
+        Profile
+      </Card.Title>
       <Card.Description>{source}</Card.Description>
     </Card.Header>
     <Card.Content variant="full">
@@ -59,31 +61,26 @@ export const ProfileSection = component$<{
   </section>
 ));
 
-/** Experience / Education rows, or the résumé's "To be added." while the list is empty. */
+/** Experience / Education rows (a section is drawn only when its list has entries). */
 const EntryList = component$<{ labelledBy: string; rows: ResumeEntry[] }>(
-  ({ labelledBy, rows }) =>
-    rows.length ? (
-      <List.Root padding="none" aria-labelledby={labelledBy}>
-        {rows.map((entry) => (
-          <List.Item
-            key={entry.title + entry.place}
-            headline={`${entry.title}, ${entry.place}`}
-            supportingText={entry.detail}
-            trailingSupportingText={entry.dates}
-          />
-        ))}
-      </List.Root>
-    ) : (
-      <p class="px-4 text-body-medium text-on-surface-variant">
-        {RESUME.emptyNote}
-      </p>
-    ),
+  ({ labelledBy, rows }) => (
+    <List.Root padding="none" density="compact" aria-labelledby={labelledBy}>
+      {rows.map((entry) => (
+        <List.Item
+          key={entry.title + entry.place}
+          headline={`${entry.title}, ${entry.place}`}
+          supportingText={entry.detail}
+          trailingSupportingText={entry.dates}
+        />
+      ))}
+    </List.Root>
+  ),
 );
 
 /**
  * The OWNER's profile in the card: availability and location, About, then the résumé
- * (Experience, Education, Projects) and Links. Its sections keep the old `/about/` ids
- * (`resume-experience`, ...), so `/about/#...` links still land on them after the 301. Data: the
+ * (Experience, Education, Projects) and Links. Its sections have stable ids
+ * (`resume-experience`, ...) to link to. Data: the
  * D1 profile (`profile`, from the contacts loader) and `content/resume.ts` (a module, never
  * passed through props).
  */
@@ -93,7 +90,11 @@ export const OwnerProfileSections = component$<{
 }>(({ profile, presence }) => (
   <>
     {(presence || profile.location) && (
-      <List.Root padding="none" aria-label="Status and location">
+      <List.Root
+        padding="none"
+        density="compact"
+        aria-label="Status and location"
+      >
         {presence && (
           <List.Item
             start={<AvatarPresenceGlyph presence={presence} />}
@@ -122,16 +123,26 @@ export const OwnerProfileSections = component$<{
         </p>
       </ProfileSection>
     )}
-    <ProfileSection id="resume-experience" title="Experience">
-      <EntryList labelledBy="resume-experience" rows={RESUME.experience} />
-    </ProfileSection>
-    <ProfileSection id="resume-education" title="Education">
-      <EntryList labelledBy="resume-education" rows={RESUME.education} />
-    </ProfileSection>
+    {/* Release 2026-11-25: an empty section is not drawn (no "To be added." on the public
+      résumé); it appears once `content/resume.ts` has entries. */}
+    {RESUME.experience.length > 0 && (
+      <ProfileSection id="resume-experience" title="Experience">
+        <EntryList labelledBy="resume-experience" rows={RESUME.experience} />
+      </ProfileSection>
+    )}
+    {RESUME.education.length > 0 && (
+      <ProfileSection id="resume-education" title="Education">
+        <EntryList labelledBy="resume-education" rows={RESUME.education} />
+      </ProfileSection>
+    )}
     {RESUME.projects.length > 0 && (
       // The public GitHub repos (build time, `scripts/repos.ts`).
       <ProfileSection id="resume-projects" title="Projects">
-        <List.Root padding="none" aria-labelledby="resume-projects">
+        <List.Root
+          padding="none"
+          density="compact"
+          aria-labelledby="resume-projects"
+        >
           {RESUME.projects.map((repo) => (
             <List.Item
               key={repo.url}
@@ -149,7 +160,11 @@ export const OwnerProfileSections = component$<{
     )}
     {profile.links.length > 0 && (
       <ProfileSection id="resume-links" title="Links">
-        <LinkRows links={profile.links} labelledBy="resume-links" />
+        <LinkRows
+          links={profile.links}
+          labelledBy="resume-links"
+          density="compact"
+        />
       </ProfileSection>
     )}
   </>
@@ -157,5 +172,7 @@ export const OwnerProfileSections = component$<{
 
 /** A profile linked by its address (any site): one link row, its brand's mark when known. */
 export const LinkedProfileRow = component$<{ link: ProfileLink }>(
-  ({ link }) => <LinkRows links={[link]} label="Profile link" />,
+  ({ link }) => (
+    <LinkRows links={[link]} label="Profile link" density="compact" />
+  ),
 );

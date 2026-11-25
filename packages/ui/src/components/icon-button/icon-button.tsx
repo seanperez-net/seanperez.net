@@ -421,5 +421,5 @@ export const IconButton = component$<IconButtonProps>((props) => {
 
 /** `showLabel`'s cell: the button over its caption, 62px wide (Google's quick actions). */
 const captionVariants = tv({
-  base: ["inline-flex", "min-w-[62px]", "flex-col", "items-center", "text-center"],
+  base: ["inline-flex", "min-w-15.5", "flex-col", "items-center", "text-center"],
 });

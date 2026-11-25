@@ -6,11 +6,10 @@ import { defineConfig } from "drizzle-kit";
  * wrangler (`wrangler d1 migrations apply seanperez-net --local` from apps/web; `--remote` by the
  * owner), never with `drizzle-kit migrate` / `push`.
  *
- * `out` is the folder both apps' `wrangler.jsonc` `migrations_dir` point at. 0001-0006 were written
- * by hand before Drizzle and stay as they are; `meta/0006_snapshot.json` (generated from
- * `src/schema.ts`, checked by `scripts/schema-test.ts`) and `meta/_journal.json` (entries idx 1-6)
- * are the baseline, so the next generated file is `0007_<name>.sql` (kit numbers from the last
- * journal entry; wrangler reads `migrations/*.sql` and ignores `meta/`). Rules: `.claude/rules/db.md`.
+ * `out` is the folder both apps' `wrangler.jsonc` `migrations_dir` point at. Since the pre-launch
+ * squash (2026-11-25) it starts with ONE generated baseline, `0000_init.sql` (+ `meta/`); every later
+ * file is generated the same way (kit numbers from the last journal entry; wrangler reads
+ * `migrations/*.sql` in name order and ignores `meta/`). Rules: `.claude/rules/db.md`.
  */
 export default defineConfig({
   dialect: "sqlite",

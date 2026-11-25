@@ -22,7 +22,7 @@ export { EMAILS_PER_DAY, dmarcPassed, saveInbound, type InboundRow };
  *    or D1 failure never loses the mail. A failed forward is logged; the row is still saved.
  * 2. Only mail to sean@ and at most `MAX_RAW_BYTES` is read further (forward-only otherwise).
  * 3. Buffer `message.raw` once (single-use stream), parse with postal-mime.
- * 4. Save one row in `message` (`source = 'email'`, migration 0006). No attachments, the text
+ * 4. Save one row in `message` (`source = 'email'`). No attachments, the text
  *    cut to the form's limit, the auth summary from the FIRST `Authentication-Results` header
  *    whose authserv-id is `mx.cloudflare.net` (later ones may come from the sender), and the row
  *    linked to a contact account when the envelope sender matches one AND dmarc=pass.

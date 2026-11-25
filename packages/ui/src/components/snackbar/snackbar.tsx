@@ -92,7 +92,7 @@ export const snackbarVariants = tv({
       "inset-x-4",
       "sm:w-max",
       "sm:min-w-86",
-      "sm:max-w-168",
+      "sm:max-w-2xl",
       "opacity-0",
       "translate-y-2",
       "transition-[opacity,translate,display,overlay]",
@@ -127,7 +127,7 @@ export const snackbarVariants = tv({
   variants: {
     position: {
       center: { container: "sm:inset-x-0 sm:mx-auto" },
-      start: { container: "sm:inset-x-auto sm:start-6" },
+      start: { container: "sm:inset-x-auto sm:inset-s-6" },
     },
     longerAction: {
       // The text takes the whole line; the action goes under it, at the end.

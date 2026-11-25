@@ -510,7 +510,7 @@ test("a stranger's link confirmed by the owner of an already VERIFIED address co
   assert.equal(await confirmedOf(db, "typed by a stranger"), null);
 });
 
-test("a waiting message with no session_hash (sent before 0005) is never confirmed by a code", async () => {
+test("a waiting message with no session_hash (raw SQL) is never confirmed by a code", async () => {
   const db = await freshDb();
   const r = await started(db);
   await db

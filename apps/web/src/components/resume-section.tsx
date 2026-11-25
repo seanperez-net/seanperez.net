@@ -18,10 +18,17 @@ export const ResumeSection = component$<{
    * cards/guidelines, read 2026-11-24), as Google Contacts' detail cards.
    */
   variant?: ResumeSectionVariant;
-}>(({ id, title, full, variant = "outlined" }) => (
+  /**
+   * `medium`: the card title in title-medium (`Card.Title size`), as Google Contacts' person-page
+   * cards (16/20 weight 500, measured 2026-11-25). Default `large` (M3's card headline).
+   */
+  titleSize?: "large" | "medium";
+}>(({ id, title, full, variant = "outlined", titleSize }) => (
   <Card.Root variant={variant}>
     <Card.Header>
-      <Card.Title id={id}>{title}</Card.Title>
+      <Card.Title id={id} size={titleSize}>
+        {title}
+      </Card.Title>
     </Card.Header>
     <Card.Content variant={full ? "full" : "default"}>
       <Slot />

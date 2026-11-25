@@ -44,10 +44,11 @@ export const toggleGroupVariants = tv({
       "duration-200",
       "ease-standard",
       // Shared borders collapse; only the two ends are rounded.
-      "-ml-px",
-      "first-of-type:ml-0",
-      "first-of-type:rounded-l-full",
-      "last-of-type:rounded-r-full",
+      // Logical (L10, 2026-11-25): the overlap and the pill ends follow the reading direction.
+      "-ms-px",
+      "first-of-type:ms-0",
+      "first-of-type:rounded-s-full",
+      "last-of-type:rounded-e-full",
       // State layer: 8% on hover, 10% on focus and press.
       "before:pointer-events-none",
       "before:absolute",
@@ -221,7 +222,7 @@ const ToggleGroupItem = component$<ToggleGroupItemProps>(
           <svg
             viewBox="0 0 24 24"
             aria-hidden="true"
-            class="size-[18px] shrink-0"
+            class="size-4.5 shrink-0"
             data-qds-toggle-group-check=""
           >
             <path

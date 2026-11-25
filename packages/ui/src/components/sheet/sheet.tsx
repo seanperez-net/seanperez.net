@@ -52,9 +52,9 @@ export const sheetVariants = tv({
       "fixed inset-x-0 top-auto bottom-0 z-auto mx-auto my-0 box-border flex w-full max-w-160 flex-col",
       "overflow-hidden border-0 p-0",
       "rounded-t-xl bg-surface-container-low text-on-surface shadow-1",
-      "h-[var(--sheet-drag,var(--sheet-height))] max-h-full",
+      "h-(--sheet-drag,var(--sheet-height)) max-h-full",
       "transition-[height] duration-medium-4 ease-emphasized motion-reduce:transition-none",
-      "data-[sheet-dragging]:transition-none data-[sheet-dragging]:select-none",
+      "data-sheet-dragging:transition-none data-sheet-dragging:select-none",
     ],
     // M3 drag handle: 32×4 indicator in a 48dp touch target, full width so the whole top edge
     // is a grip. `touch-none`: a touch drag here is always the sheet's, never a page pan.

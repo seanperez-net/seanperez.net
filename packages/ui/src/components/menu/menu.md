@@ -149,3 +149,17 @@ m3.material.io/components/menus/specs, read in Chrome 2026-11-24: "Container wid
 280dp max". `Menu.Content` is `min-w-28 max-w-70` (112 / 280px). Rows are not clipped or
 shortened: no row has an overflow or ellipsis rule. (The "…" the owner saw was the account menu's
 own label text, now "Theme colors".)
+
+## Right-to-left placement (L10, 2026-11-25)
+
+`side="bottom"` / `"top"` set `inset-inline-start` / `inset-inline-end` (were `left` / `right`).
+`anchor(start)` resolves against the containing block's direction, so in right-to-left
+`left: anchor(start)` was the trigger's RIGHT edge. Measured in Chrome with `position-try: none`
+(the base position, before fallbacks): before, RTL trigger 759-871, menu 871-1007 (beside it);
+after, trigger 753-865, menu 729-865 (end edges level, as LTR's start edges). With the fallbacks on,
+LTR 510-654 under a 510-621 trigger, RTL 734-878 under 767-878; `align="end"` (account menu) LTR
+1164-1380 under 1340-1380, RTL 8-224 under 8-48. The `@position-try` rules' `left / right: auto`
+still reset the logical insets (they are one property group; `@position-try` declarations win).
+PROOFED 2026-11-25 (Chrome; second agent agreed, and suggested `position-area` for the base as a
+simpler later form). NOT PROOFED: Safari / Firefox. Still open: submenu Left / Right keys are not
+mirrored in right-to-left (above).

@@ -26,19 +26,29 @@ test("owner's page: Profile card, Recent interactions, History", async ({
 }) => {
   await page.goto("/contacts/sean-perez/");
   const article = page.getByRole("article");
-  // ONE Profile card holding the résumé (h4 sections keep the old /about/ ids).
+  // ONE Profile card holding the résumé (h4 sections with stable ids).
   await expect(
     article.getByRole("heading", { name: "Profile", level: 3 }),
   ).toBeVisible();
   await expect(
-    article.getByRole("heading", { name: "Experience", level: 4 }),
-  ).toHaveAttribute("id", "resume-experience");
+    article.getByRole("heading", { name: "Projects", level: 4 }),
+  ).toHaveAttribute("id", "resume-projects");
+  // Experience / Education are not drawn while `content/resume.ts` has none (release 2026-11-25).
+  await expect(article.getByText("To be added.")).toHaveCount(0);
   await expect(
     article.getByRole("heading", { name: "Contact details", level: 3 }),
   ).toBeVisible();
   await expect(
     article.getByRole("link", { name: /Add phone number/ }),
   ).toHaveAttribute("href", /\?edit$/);
+  // The Profile card comes FIRST, above Contact details (owner, 2026-11-25).
+  const profileBox = await article
+    .getByRole("heading", { name: "Profile", level: 3 })
+    .boundingBox();
+  const detailsBox = await article
+    .getByRole("heading", { name: "Contact details", level: 3 })
+    .boundingBox();
+  expect(profileBox!.y).toBeLessThan(detailsBox!.y);
 
   // His welcome message is a recent interaction, a link to the thread.
   const recent = article.getByRole("list", { name: "Recent interactions" });
@@ -106,7 +116,8 @@ test("own contact: History, then link and remove a profile", async ({
     .click();
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(
-    article.getByRole("heading", { name: "Experience", level: 4 }),
+    // Projects: Experience / Education are not drawn while empty (release 2026-11-25).
+    article.getByRole("heading", { name: "Projects", level: 4 }),
   ).toBeVisible();
   await expect(article).toContainText("From Sean Perez's profile");
 

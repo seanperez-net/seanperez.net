@@ -7,6 +7,7 @@
  * never sent to the server in Contacts (the visitor's own contacts exist only in their browser;
  * memory `local-first-no-sync-on-site`).
  */
+import { fold, matchesWords, searchWords } from "@seanperez/db/search/fold";
 import type { AvatarPresence, IconName } from "@seanperez/ui";
 import { findAccount } from "../content/accounts";
 import { CONTACTS, IMPORTED_LABEL_ID, contactHref } from "../content/contacts";
@@ -30,7 +31,8 @@ export interface BookRow {
   icon?: IconName;
   /** A local photo (`photo.ts`). */
   photo?: string;
-  /** Lowercased text the search matches (emails too: the visitor's own data). */
+  /** FOLDED text the search matches (`fold`: lowercase, accents dropped; emails too: the
+   * visitor's own data). */
   haystack: string;
   /** Phone digits, for a search typed as a number. */
   digits: string;
@@ -55,9 +57,11 @@ export const localRow = (c: LocalContact): BookRow => {
     supporting: work || c.emails[0]?.value || c.phones[0]?.value || "",
     seed: c.id,
     photo: c.photo,
-    haystack: [c.name, c.organization, c.title, ...c.emails.map((e) => e.value)]
-      .join(" ")
-      .toLowerCase(),
+    haystack: fold(
+      [c.name, c.organization, c.title, ...c.emails.map((e) => e.value)].join(
+        " ",
+      ),
+    ),
     digits: c.phones.map((p) => phoneDigits(p.value)).join(" "),
     localId: c.id,
     labels: c.labels,
@@ -99,9 +103,11 @@ export function siteRow(row: SiteContactBase, book: LocalBook): BookRow | null {
     presence: row.presence,
     icon: row.icon,
     photo: o?.photo,
-    haystack: [name, work, row.line, ...(o?.emails ?? []).map((e) => e.value)]
-      .join(" ")
-      .toLowerCase(),
+    haystack: fold(
+      [name, work, row.line, ...(o?.emails ?? []).map((e) => e.value)].join(
+        " ",
+      ),
+    ),
     digits: (o?.phones ?? []).map((p) => phoneDigits(p.value)).join(" "),
     siteId: row.id,
     labels: o?.labels ?? row.labels,
@@ -136,16 +142,21 @@ export const allRows = (bases: SiteContactBase[], book: LocalBook): BookRow[] =>
   ].sort((a, b) => a.name.localeCompare(b.name));
 
 /**
- * e-store's `filterContacts`: name, then the other visible lines; a query that is mostly a number
+ * e-store's `filterContacts`, with the site search's word rule (2026-11-25, `@seanperez/db`
+ * `search/fold`): EVERY word of the query is contained in the folded name and visible lines, so
+ * "garcia" finds "García" and "sean perez" finds "Sean A. Perez". A query that is mostly a number
  * also matches phone digits ("555 0100" -> "5550100").
  */
 export function rowMatches(row: BookRow, query: string): boolean {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return true;
   const digits = q.replace(/\D/g, "");
   const asPhone =
     digits.length >= 3 && digits.length >= q.replace(/\s/g, "").length - 2;
-  return row.haystack.includes(q) || (asPhone && row.digits.includes(digits));
+  return (
+    matchesWords(row.haystack, searchWords(q)) ||
+    (asPhone && row.digits.includes(digits))
+  );
 }
 
 /** The row is in the label (`imported` is worked out, never stored). */

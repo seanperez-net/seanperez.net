@@ -223,8 +223,8 @@ export const useSendMessage = routeAction$(
       return { sent: true, needsCode: false };
     }
 
-    // Accounts (owner, 2026-11-25; plan 1.1 to 1.3). A database error (migration 0004 not
-    // applied yet) is logged and the visitor is told to try later.
+    // Accounts (owner, 2026-11-25; plan 1.1 to 1.3). A database error (the migrations
+    // not applied) is logged and the visitor is told to try later.
     try {
       const session = await sessionOf(env, cookie, url);
       // The address this browser is already signed in with: a later message.

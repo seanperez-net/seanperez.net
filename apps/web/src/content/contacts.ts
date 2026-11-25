@@ -13,6 +13,7 @@
  */
 import type { AvatarPresence, IconName, LayoutDrawerItem } from "@seanperez/ui";
 import { ASSISTANT_ACCOUNT, OWNER_ACCOUNT } from "./accounts";
+import { WIP } from "../demo/wip";
 
 /**
  * The book's LABELS (Google Contacts' labels, e-store's `Contact.labels`): demo data, one per
@@ -30,7 +31,8 @@ export const IMPORTED_LABEL_ID = "imported";
 
 export const CONTACT_LABELS: ContactLabel[] = [
   { id: "work", name: "Work" },
-  { id: "apps", name: "Apps" },
+  // WIP: the Apps label holds only the Assistant (release switch, `demo/wip.ts`); off, no label.
+  ...(WIP ? [{ id: "apps", name: "Apps" }] : []),
   {
     id: IMPORTED_LABEL_ID,
     name: "Imported",
@@ -59,7 +61,7 @@ export interface ContactEntry {
   addedAt: string;
 }
 
-export const CONTACTS: ContactEntry[] = [
+const ALL_CONTACTS: ContactEntry[] = [
   {
     id: OWNER_ACCOUNT.contactId!,
     accountId: OWNER_ACCOUNT.id,
@@ -79,6 +81,14 @@ export const CONTACTS: ContactEntry[] = [
     addedAt: "2026-11-24T12:00:00Z",
   },
 ];
+
+/**
+ * The site's contacts. WIP: the Assistant (a placeholder, no AI connected) only with the release
+ * switch on (`demo/wip.ts`); off, `/contacts/assistant/` is a 404 and no list or search shows it.
+ */
+export const CONTACTS: ContactEntry[] = WIP
+  ? ALL_CONTACTS
+  : ALL_CONTACTS.filter((c) => c.kind !== "app");
 
 /**
  * The app's LISTS, one route each (2026-11-24, owner: "give Contacts drawer sections like
@@ -244,7 +254,8 @@ export const contactsDrawerGroups = (
 ): LayoutDrawerItem[] => [
   bySlug(""),
   bySlug("frequent"),
-  bySlug("other"),
+  // WIP: nothing fills "Other contacts" yet; off, no row (its route is a 404).
+  ...(WIP ? [bySlug("other")] : []),
   {
     label: "Fix & manage",
     open: true,

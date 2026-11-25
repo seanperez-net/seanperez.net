@@ -6,7 +6,7 @@ The D1 database code shared by the site (`apps/web`) and the admin (`apps/admin`
 builds compile it.
 
 - `getDb(env.DB)` (`src/client.ts`) gives the Drizzle handle for a D1 binding.
-- New migrations are generated: edit `src/schema.ts`, then `pnpm db:generate --name <what>`.
-  0001-0006 predate Drizzle and are kept as they are; `migrations/meta/` holds the baseline.
+- Migrations are generated: edit `src/schema.ts`, then `pnpm db:generate --name <what>`.
+  `migrations/0000_init.sql` is the one baseline (the pre-launch history was squashed into it).
 - `pnpm test` runs the unit tests on a real local D1 (wrangler's `getPlatformProxy`, in memory),
   including a check that `src/schema.ts` and the migrations build the same tables.

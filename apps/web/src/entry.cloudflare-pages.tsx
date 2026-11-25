@@ -11,6 +11,10 @@ import {
   createQwikRouter,
   type PlatformCloudflarePages as PlatformCloudflareWorkers,
 } from "@qwik.dev/router/middleware/cloudflare-pages";
+import {
+  WEB_SECURITY_HEADERS,
+  withSecurityHeaders,
+} from "@seanperez/server/http/security-headers";
 import render from "./entry.ssr";
 import { handleNodesApi } from "./nodes/node-api.server";
 
@@ -28,10 +32,17 @@ const qwikRouter = createQwikRouter({ render });
 /**
  * Departure (QWIK-DEFAULTS.md 2026-11-24, "live nodes"): `/api/nodes*` is answered here, before
  * the Qwik router (WebSocket upgrades and device POSTs; `src/nodes/node-api.server.ts`).
+ * Departure (QWIK-DEFAULTS.md 2026-11-25, "security headers"): every response the Worker makes
+ * (router, nodes API, the adapter's edge-cache hits and its `env.ASSETS` fallback) gets the
+ * security headers and, for HTML without one, `Cache-Control: no-cache`; 101 upgrades pass as
+ * they are. Assets served before the Worker get the same headers from `public/_headers`.
  */
 const fetch: typeof qwikRouter = async (request, env, ctx) =>
-  (await handleNodesApi(request, env as unknown as Env, ctx)) ??
-  qwikRouter(request, env, ctx);
+  withSecurityHeaders(
+    (await handleNodesApi(request, env as unknown as Env, ctx)) ??
+      (await qwikRouter(request, env, ctx)),
+    WEB_SECURITY_HEADERS,
+  );
 
 export { fetch };
 /**

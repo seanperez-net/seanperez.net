@@ -1,0 +1,7 @@
+# Security contact for seanperez.net (RFC 9116, https://www.rfc-editor.org/rfc/rfc9116).
+# There is no email address here on purpose: report a problem by messaging Sean on the site.
+Contact: https://seanperez.net/messages/sean-perez/
+Expires: 2027-11-25T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://seanperez.net/.well-known/security.txt
+Policy: https://seanperez.net/privacy/

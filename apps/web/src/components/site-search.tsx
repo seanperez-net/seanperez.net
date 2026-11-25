@@ -11,7 +11,7 @@ import { useLocation, useNavigate } from "@qwik.dev/router";
 import { Chip, ChipGroup, Search } from "@seanperez/ui";
 import type { IconName } from "@seanperez/ui";
 import { emptyBook, type LocalBook } from "../contacts/local-book";
-import { loadBook } from "../contacts/local-book-store";
+import { loadBook, onBookChange } from "../contacts/local-book-store";
 import {
   allRows,
   labelOfPath,
@@ -25,6 +25,7 @@ import type { RecentSearch } from "../search/recent";
 import {
   GROUP_LABELS,
   SCOPES,
+  SEARCH_GROUPS,
   cleanQuery,
   searchPageHref,
 } from "../search/types";
@@ -176,13 +177,16 @@ export const SiteSearch = component$(() => {
   const results = useSignal<SearchResults | null>(null);
   const recent = useSignal<RecentSearch[]>([]);
 
-  // SCOPED TO THE APP (owner, 2026-11-24: "doesnt our search do everything when its in a specific
-  // route it should prioritize that label"; Google Contacts' top search): in Contacts the search
-  // starts on the Contacts chip, matches the visitor's LOCAL contacts too (read from their
-  // browser here: the Contacts layout's copy is below the app bar) and, on a label's page, puts
-  // that label's contacts first. Contacts are matched in the browser and the query is NOT sent
-  // to the server for them (second agent: the visitor's contacts' names would land in request
-  // URLs); the other chips still ask `/api/search`. Elsewhere: the site-wide search as before.
+  // CONTACTS ARE MATCHED IN THE BROWSER, on every route (2026-11-25, owner "do whats recomended
+  // for now"; `.claude/notes/local-search-orama-opfs-2026-11-25.md` "Round 2"): the site's
+  // contacts (with the visitor's edits) and the visitor's OWN contacts, read from their browser
+  // when the search opens, folded like the server ("garcia" finds "García"), shown first in the
+  // Contacts group. In All, the server's Contacts rows (the résumé's rows and links) follow, minus
+  // any the browser already has. The Contacts chip never asks the server (second agent,
+  // 2026-11-24: the visitor's contacts' names would land in request URLs).
+  // SCOPED TO THE APP (owner, 2026-11-24: "it should prioritize that label"; Google Contacts' top
+  // search): in Contacts the search starts on the Contacts chip and, on a label's page, puts that
+  // label's contacts first.
   const inContacts = useComputed$(() =>
     loc.url.pathname.startsWith("/contacts/"),
   );
@@ -193,11 +197,21 @@ export const SiteSearch = component$(() => {
   );
   const contactHits = useComputed$(() => {
     const q = cleanQuery(query.value);
-    if (!inContacts.value || !q) return { rows: [] as BookRow[], inLabel: 0 };
+    if (!q) return { rows: [] as BookRow[], inLabel: 0 };
     return searchRows(
       allRows(siteContactBases(), book.value),
       q,
       labelId.value,
+    );
+  });
+  // The server's Contacts rows for this query (the résumé's rows and links) that the browser's
+  // rows do not already show.
+  const serverContacts = useComputed$(() => {
+    const r = results.value;
+    if (!r || r.q !== cleanQuery(query.value)) return [] as SearchHit[];
+    const shown = new Set(contactHits.value.rows.map((row) => row.href));
+    return (r.groups.find((g) => g.group === "contacts")?.hits ?? []).filter(
+      (hit) => !shown.has(hit.href),
     );
   });
   const labelName = useComputed$(() => {
@@ -209,9 +223,10 @@ export const SiteSearch = component$(() => {
     );
   });
 
-  // Opened: read the recent searches (after resume, never in server render), and in Contacts the
-  // visitor's book. Closed: back to the app's chip.
-  useTask$(({ track }) => {
+  // Opened: read the recent searches and the visitor's book (after resume, never in server
+  // render, never at mount), and re-read the book while open when another tab changes it. A change
+  // in this tab is read at the next open. Closed: back to the app's chip.
+  useTask$(({ track, cleanup }) => {
     const isOpen = track(open);
     const start = track(appScope);
     if (isServer) return;
@@ -225,20 +240,21 @@ export const SiteSearch = component$(() => {
     // Not awaited: a task blocks the render that expands the bar until it settles, so awaiting
     // the browser read here left the input hidden when Search moved focus into it (2026-11-24,
     // found in Chrome: in Contacts the opened search had no focus and typing went nowhere).
-    if (inContacts.value)
+    const read = () =>
       void loadBook().then((b) => {
         book.value = b;
       });
+    read();
+    cleanup(onBookChange(read));
   });
 
-  // As you type: debounced, the previous request aborted. Not for Contacts in the Contacts app
-  // (matched in the browser, above).
+  // As you type: debounced, the previous request aborted. Never for the Contacts chip (matched in
+  // the browser only, above).
   useTask$(({ track, cleanup }) => {
     const q = cleanQuery(track(query));
     const s = track(scope);
-    const local = track(inContacts);
     if (isServer) return;
-    if (!q || (local && s === "contacts")) {
+    if (!q || s === "contacts") {
       results.value = null;
       return;
     }
@@ -269,10 +285,11 @@ export const SiteSearch = component$(() => {
   const submit$ = $(async () => {
     const q = cleanQuery(query.value);
     if (!q) return;
-    // In Contacts on its chip: the list pane's "Search results" (`?q=` on this list, the label's
-    // page keeps its label first); otherwise the site's results page.
+    // On the Contacts chip: the Contacts list pane's "Search results" (`?q=`; on a label's page
+    // that list, the label first), where the visitor's own contacts are, never the server;
+    // otherwise the site's results page (which adds the visitor's own contacts after load).
     const href =
-      inContacts.value && scope.value === "contacts"
+      scope.value === "contacts"
         ? `${labelId.value ? loc.url.pathname : "/contacts/"}?${new URLSearchParams({ q })}`
         : searchPageHref(q, scope.value);
     recent.value = addRecent({ label: q, href, group: "search" });
@@ -297,27 +314,41 @@ export const SiteSearch = component$(() => {
   /** The Contacts app's own matches, the label's first; `limit` rows in All. */
   const contactGroups = (limit?: number) => {
     const { rows, inLabel } = contactHits.value;
+    const extra = serverContacts.value;
     const sections = labelId.value
       ? [
-          { label: `In ${labelName.value}`, rows: rows.slice(0, inLabel) },
-          { label: "Other contacts", rows: rows.slice(inLabel) },
+          {
+            label: `In ${labelName.value}`,
+            rows: rows.slice(0, inLabel),
+            extra: [],
+          },
+          { label: "Other contacts", rows: rows.slice(inLabel), extra },
         ]
-      : [{ label: "Contacts", rows }];
+      : [{ label: "Contacts", rows, extra }];
     return sections
-      .filter((section) => section.rows.length)
+      .filter((section) => section.rows.length + section.extra.length)
       .map((section) => (
         <Search.Group key={section.label} label={section.label}>
           {section.rows.slice(0, limit).map(contactRow)}
-          {limit !== undefined && section.rows.length > limit && (
-            <Search.Item
-              label={`See all ${section.rows.length}`}
-              icon="arrow_forward"
-              keepOpen
-              onClick$={() => {
-                scope.value = "contacts";
-              }}
-            />
-          )}
+          {section.extra
+            .slice(
+              0,
+              limit === undefined
+                ? undefined
+                : Math.max(0, limit - section.rows.length),
+            )
+            .map(hitRow)}
+          {limit !== undefined &&
+            section.rows.length + section.extra.length > limit && (
+              <Search.Item
+                label={`See all ${section.rows.length + section.extra.length}`}
+                icon="arrow_forward"
+                keepOpen
+                onClick$={() => {
+                  scope.value = "contacts";
+                }}
+              />
+            )}
         </Search.Group>
       ));
   };
@@ -390,8 +421,8 @@ export const SiteSearch = component$(() => {
           )}
           {!query.value.trim() ? (
             <EmptyBox recent={recent} />
-          ) : inContacts.value && scope.value === "contacts" ? (
-            contactHits.value.rows.length ? (
+          ) : scope.value === "contacts" ? (
+            contactHits.value.rows.length || serverContacts.value.length ? (
               contactGroups()
             ) : (
               <Search.Item
@@ -401,12 +432,18 @@ export const SiteSearch = component$(() => {
             )
           ) : scope.value === "all" ? (
             <>
-              {/* In Contacts, its own matches first (the site's contacts group is replaced). */}
+              {/* In Contacts, its matches first; elsewhere in the groups' order (the server's
+                  contacts group is replaced by the browser's, which has the visitor's own). */}
               {inContacts.value && contactGroups(CONTACT_ROWS)}
-              {results.value?.scope === "all" &&
-                results.value.groups
-                  .filter((g) => !(inContacts.value && g.group === "contacts"))
-                  .map((group) => (
+              {SEARCH_GROUPS.map((name) => {
+                if (name === "contacts")
+                  return inContacts.value ? null : contactGroups(CONTACT_ROWS);
+                const group =
+                  results.value?.scope === "all"
+                    ? results.value.groups.find((g) => g.group === name)
+                    : undefined;
+                return (
+                  group && (
                     <Search.Group key={group.group} label={group.label}>
                       {group.hits.map(hitRow)}
                       {group.total > group.hits.length && (
@@ -420,13 +457,14 @@ export const SiteSearch = component$(() => {
                         />
                       )}
                     </Search.Group>
-                  ))}
+                  )
+                );
+              })}
               {results.value?.scope === "all" &&
                 results.value.q === cleanQuery(query.value) &&
-                !results.value.groups.some(
-                  (g) => !(inContacts.value && g.group === "contacts"),
-                ) &&
-                !contactHits.value.rows.length && (
+                !results.value.groups.some((g) => g.group !== "contacts") &&
+                !contactHits.value.rows.length &&
+                !serverContacts.value.length && (
                   <Search.Item
                     label={`No results for “${cleanQuery(query.value)}”`}
                     disabled

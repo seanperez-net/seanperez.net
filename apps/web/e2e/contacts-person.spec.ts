@@ -41,6 +41,12 @@ test("person page: star, edit in place, delete", async ({ page }) => {
   await expect(page).toHaveURL(/\?edit$/);
   const save = page.getByRole("button", { name: "Save", exact: true });
   await expect(save).toBeDisabled();
+  // "Add email" adds a row and focuses its field (e-store `1ccfeac1e`, ported 2026-11-25).
+  const emails = page.locator('input[name="contact-email"]');
+  const before = await emails.count();
+  await page.getByRole("button", { name: "Add email" }).click();
+  await expect(emails).toHaveCount(before + 1);
+  await expect(emails.last()).toBeFocused();
   await page.getByRole("textbox", { name: "Company" }).fill("Analytical Co");
   await expect(save).toBeEnabled();
   await save.click();

@@ -56,7 +56,7 @@ export const useMessages = routeLoader$(
         })),
       };
     } catch (error) {
-      // Most likely migration 0003 is not applied to this database yet.
+      // Most likely the migrations are not applied to this database yet.
       console.error("admin: messages list failed", error);
       return { ok: false as const, messages: [] };
     }
@@ -107,7 +107,7 @@ export default component$(() => {
         </ChipGroup>
         {!list.value.ok ? (
           <p role="alert" class="text-body-large text-error">
-            The messages could not be read. Is migration 0003 applied?
+            The messages could not be read. Are the migrations applied?
           </p>
         ) : list.value.messages.length === 0 ? (
           <p class="text-body-large text-on-surface-variant">

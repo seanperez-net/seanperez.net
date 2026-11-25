@@ -36,17 +36,7 @@ const isRecent = (value: unknown): value is RecentSearch => {
 export function readRecent(): RecentSearch[] {
   return (
     readPref(NAME, (raw) =>
-      Array.isArray(raw)
-        ? raw
-            .filter(isRecent)
-            // Saved before About became Contacts (2026-11-24).
-            .map((entry) =>
-              (entry.group as string) === "about"
-                ? { ...entry, group: "contacts" as const }
-                : entry,
-            )
-            .slice(0, RECENT_LIMIT)
-        : null,
+      Array.isArray(raw) ? raw.filter(isRecent).slice(0, RECENT_LIMIT) : null,
     ) ?? []
   );
 }

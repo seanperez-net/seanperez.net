@@ -78,7 +78,7 @@ export const layoutVariants = tv({
     skipLink: [
       "fixed",
       "top-3",
-      "left-4",
+      "inset-s-4",
       "z-(--z-scaffold-skip)",
       "translate-y-[-200%]",
       "rounded-full",
@@ -106,10 +106,10 @@ export const layoutVariants = tv({
       "items-center",
       "justify-center",
       "py-3",
-      "[&_[data-qds-fab]]:shadow-none",
-      "[&_[data-qds-fab]]:hover:shadow-1",
-      "[&_[data-qds-fab]]:focus-visible:shadow-none",
-      "[&_[data-qds-fab]]:active:shadow-none",
+      "**:data-qds-fab:shadow-none",
+      "**:data-qds-fab:hover:shadow-1",
+      "**:data-qds-fab:focus-visible:shadow-none",
+      "**:data-qds-fab:active:shadow-none",
     ],
 
     // e-store's floating drawer (`Layout.Drawer`, `drawerType="floating"`): the sub-navigation of
@@ -326,7 +326,7 @@ export const layoutVariants = tv({
       // indented 12dp (e-store's expandable children, `nav-drawer-button.tsx`
       // `padding-inline-start: 0.75rem`), so it does not read as the headline above it. The
       // old 52dp indent lined up with a parent icon that is never drawn (2026-11-24).
-      "data-nested:not-has-[[data-qds-icon]]:ps-7",
+      "data-nested:not-has-data-qds-icon:ps-7",
       "text-label-large",
       "text-on-surface-variant",
       "outline-none",
@@ -364,7 +364,7 @@ export const layoutVariants = tv({
       "group/ld",
       "@container/list-detail",
       "relative",
-      "[grid-row:title-start/body-end]",
+      "row-[title-start/body-end]",
       "flex",
       "min-h-0",
       "flex-col",
@@ -406,7 +406,7 @@ export const layoutVariants = tv({
     // 16px from the end edge (M3 FAB on compact). Below 600px, list view only.
     listDetailFab: [
       "absolute",
-      "end-4",
+      "inset-e-4",
       "bottom-18",
       "sm:hidden",
       "group-data-[view=detail]/ld:hidden",
@@ -656,6 +656,9 @@ export const layoutVariants = tv({
       "ease-standard",
       "motion-reduce:transition-none",
       "group-not-aria-expanded/side:rotate-180",
+      // Mirrored in right-to-left (L10, 2026-11-25): the rail sits on the left there, so the
+      // chevron must point at the left edge while it shows (it pointed into the page).
+      "rtl:-scale-x-100",
     ],
     // A 56 x 48 row holding a 48 x 32 pill. e-store's rows are 44 high; 48 meets M3's touch
     // target without rows overlapping.
@@ -2266,7 +2269,8 @@ const markSheetDismiss = sync$((event: Event, sheet: HTMLElement) => {
 /**
  * The supporting pane: the second pane, opened and closed from `Layout.CompanionRail` (or a
  * `Layout.SupportToggle`). Beside the primary pane from 840px; a modal side sheet below that
- * (a `popover="auto"`: top layer, `::backdrop`, Escape and light dismiss are the browser's).
+ * (a `popover="manual"`: top layer, `::backdrop`; Escape and the scrim press are ours, so the
+ * exit can play: see `markSheetDismiss`).
  * Below 600px, where the companion rail is hidden, it renders its own opener at the bottom end,
  * and with two or more companions the sheet starts with a tab row, one tab per companion.
  * Give it ONE element as its body.
@@ -2515,6 +2519,11 @@ export type LayoutCompanionRailProps = Omit<PropsOf<"nav">, "children"> & {
   hideLabel?: string;
   /** That button's name while the rail is hidden. */
   showLabel?: string;
+  /**
+   * That button's icon (rule U4), drawn as is while the rail shows and turned 180 degrees while
+   * it is hidden. e-store's `ShowSidePanelButton` `icon` (default `chevron_right`).
+   */
+  hideIcon?: IconName;
 };
 
 /**
@@ -2527,6 +2536,7 @@ const LayoutCompanionRail = component$<LayoutCompanionRailProps>(
     hideButton = true,
     hideLabel = "Hide side panel",
     showLabel = "Show side panel",
+    hideIcon = "chevron_right",
     "aria-label": ariaLabel = "Side panel",
     class: className,
     ...rest
@@ -2604,7 +2614,7 @@ const LayoutCompanionRail = component$<LayoutCompanionRailProps>(
           >
             <span class={styles.sideToggleShape()} />
             <span class={styles.sideToggleIcon()}>
-              <Icon name="chevron_right" size="sm" />
+              <Icon name={hideIcon} size="sm" />
             </span>
           </button>
         )}

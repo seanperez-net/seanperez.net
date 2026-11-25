@@ -22,7 +22,7 @@ export const chipGroupVariants = tv({
     /** `wrap`: more rows. `scroll`: one row that scrolls sideways (a 4dp gutter keeps shadows). */
     overflow: {
       wrap: "flex-wrap",
-      scroll: "-m-1 [scrollbar-width:none] flex-nowrap overflow-x-auto p-1",
+      scroll: "-m-1 scrollbar-none flex-nowrap overflow-x-auto p-1",
     },
   },
   defaultVariants: { overflow: "wrap" },

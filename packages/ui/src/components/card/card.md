@@ -36,7 +36,7 @@ container's values only; content at 38% is e-store's and M3's general disabled r
 | `Card.Root`        | `div`, router `Link`, `a`   | The container. Sets `--field-bg` to its fill.                     |
 | `Card.Media`       | `img`, or `div` with a slot | Edge-to-edge thumbnail, image or video (M3 anatomy).              |
 | `Card.Header`      | `header`                    | Headline and subhead, 16dp gutter.                                |
-| `Card.Title`       | `h3`                        | Headline: title-large, on-surface.                                |
+| `Card.Title`       | `h3`                        | Headline: title-large, on-surface. `size="medium"`: title-medium (dense details cards, 2026-11-25). |
 | `Card.Description` | `p`                         | Subhead / supporting text: body-medium, on-surface-variant.       |
 | `Card.Content`     | `div`                       | Body. `full` is edge to edge (a list), the others 16dp.           |
 | `Card.Footer`      | `footer`                    | Actions, 8dp apart, end-aligned.                                  |

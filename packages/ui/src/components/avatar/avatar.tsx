@@ -177,7 +177,7 @@ export const avatarPresenceVariants = tv({
       },
     },
     size: {
-      xs: { ring: "outline-1 outline-offset-1", badge: "size-2 border-1" },
+      xs: { ring: "outline-1 outline-offset-1", badge: "size-2 border" },
       search: { ring: "outline-2 outline-offset-1", badge: "size-2.5" },
       appbar: { ring: "outline-2 outline-offset-2", badge: "size-3" },
       md: { ring: "outline-2 outline-offset-2", badge: "size-3.5" },

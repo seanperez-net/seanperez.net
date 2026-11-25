@@ -11,6 +11,10 @@ import {
   createQwikRouter,
   type PlatformCloudflarePages as PlatformCloudflareWorkers,
 } from "@qwik.dev/router/middleware/cloudflare-pages";
+import {
+  ADMIN_SECURITY_HEADERS,
+  withSecurityHeaders,
+} from "@seanperez/server/http/security-headers";
 import render from "./entry.ssr";
 
 declare global {
@@ -22,6 +26,17 @@ declare global {
   };
 }
 
-const fetch = createQwikRouter({ render });
+const qwikRouter = createQwikRouter({ render });
+
+/**
+ * Departure (QWIK-DEFAULTS.md 2026-11-25, "security headers"): every Worker response gets the
+ * security headers (the page's own `Cache-Control: private, no-store` from `routes/layout.tsx`
+ * is kept). Assets served before the Worker get them from `public/_headers`.
+ */
+const fetch: typeof qwikRouter = async (request, env, ctx) =>
+  withSecurityHeaders(
+    await qwikRouter(request, env, ctx),
+    ADMIN_SECURITY_HEADERS,
+  );
 
 export { fetch };

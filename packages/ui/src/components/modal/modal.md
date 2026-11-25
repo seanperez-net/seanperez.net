@@ -73,8 +73,8 @@ dragging. The press is the single-pointer alternative (WCAG 2.5.7).
 | `fullScreen` | Full-screen dialog      | `surface-container-high`                             | the window                                                                 |
 | `adaptive`   | Full-screen dialog below 600px, basic dialog from 600px | as those two | the window; from 600px 560px (or the window less 24px a side) |
 | `bottom`     | Modal bottom sheet      | `surface-container-low`, 28px top corners, level 1   | at most 640px wide; 72px below the window top (56px once wider than 640px) |
-| `left`       | Modal navigation drawer | `surface-container-low`, 16px inner corners, level 1 | at most 400px wide                                                         |
-| `right`      | Modal side sheet        | same                                                 | same                                                                       |
+| `left`       | Modal navigation drawer (START edge: the right in right-to-left) | `surface-container-low`, 16px inner corners, level 1 | at most 400px wide                                                         |
+| `right`      | Modal side sheet (END edge)        | same                                                 | same                                                                       |
 
 CSS hooks a host may set on `Modal.Content`: `--modal-sheet-width` (a side sheet's width,
 default 100% up to 400px) and `--modal-bar-inset` (the bar's side inset, default 24px).
@@ -236,3 +236,17 @@ const open = useSignal(false);
   </Modal.Content>
 </Modal.Root>;
 ```
+
+## Right-to-left (L10, 2026-11-25)
+
+`position="left"` / `"right"` keep e-store's names but are the START / END edge: logical insets
+(`inset-s-0` / `inset-e-0`), margins (`me-auto` / `ms-auto`) and inner corners (`rounded-e-lg` /
+`rounded-s-lg`), and each slide class has an `rtl:` twin. M3 puts the navigation drawer on the
+leading edge. Renaming the values to `start` / `end` (the second agent's suggestion, keeping
+`left` / `right` as aliases) departs from e-store: OWNER TO DECIDE, not done.
+
+PROOFED 2026-11-25 in Chrome, a 390px iframe, `dir` on its `<html>`: before, the drawer opened
+on the LEFT in right-to-left (0-330, corners `0 16 16 0`) while its menu button sat on the right;
+after, LTR 0-330 corners `0 16 16 0`, RTL 58-388 corners `16 0 0 16`, sliding in from and out to
+the right (mid-slide left 376, mid-exit left 318). Second agent (2026-11-25): logical behaviour
+under the current names is the minimum fix. NOT PROOFED: Safari / iOS.

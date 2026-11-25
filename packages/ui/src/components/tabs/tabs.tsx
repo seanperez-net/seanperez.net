@@ -160,7 +160,7 @@ export const tabsVariants = tv({
           "flex",
           "w-max",
           "min-w-full",
-          "ps-[52px]",
+          "ps-13",
           "*:shrink-0",
           "shadow-[inset_0_-1px_0_var(--color-outline-variant)]",
         ],

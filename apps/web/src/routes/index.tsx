@@ -1,6 +1,6 @@
 import { component$ } from "@qwik.dev/core";
 import { routeLoader$, type DocumentHead } from "@qwik.dev/router";
-import { Icon, Layout, List } from "@seanperez/ui";
+import { EmptyState, Layout, List } from "@seanperez/ui";
 import { formatDate } from "@seanperez/server/feed/format";
 import { listPublished } from "@seanperez/db/feed/posts.server";
 import { pageHead } from "../seo";
@@ -40,15 +40,15 @@ export default component$(() => {
             ))}
           </List.Root>
         ) : (
-          // Empty state: an icon, a line saying what will be here, and why it is empty.
-          <div class="grid justify-items-center gap-2 py-16 text-center text-on-surface-variant">
-            {/* Decorative; `fill-current` takes the wrapper's color (no class on Icon). */}
-            <Icon name="article" size="xl" aria-hidden="true" />
-            <p class="text-title-medium text-on-surface">No posts yet</p>
-            <p class="text-body-medium">
-              New posts will show up here.
-            </p>
-          </div>
+          // The library's empty state (rule B8): what will be here, and why it is empty. `h3`
+          // under the pane's sr-only `h2`; `live={false}`: the state IS the page on load.
+          <EmptyState
+            icon="article"
+            headline="No posts yet"
+            description="New posts will show up here."
+            headingLevel="h3"
+            live={false}
+          />
         )}
       </div>
     </Layout.Pane>

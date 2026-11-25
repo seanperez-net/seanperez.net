@@ -74,7 +74,7 @@ export function clearSessionCookie(cookie: Cookie, url: URL) {
   });
 }
 
-/** The session of this request, or null. A database error (migration 0004 missing) = null. */
+/** The session of this request, or null. A database error = null. */
 export async function sessionOf(
   env: DataEnv,
   cookie: Cookie,

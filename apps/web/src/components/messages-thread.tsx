@@ -30,6 +30,7 @@ import { useMyApps } from "../apps/use-my-apps";
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { MESSAGES_SEARCH_NOTICE, findThread } from "../content/conversations";
 import { DEMO } from "../demo/demo";
+import { WIP } from "../demo/wip";
 import { usePresence } from "../presence/use-presence";
 import {
   ownThreadTitle,
@@ -225,8 +226,9 @@ export const MessagesThread = component$<{
             </div>
           </>
         )}
-        {/* DEMO: Search only says "not built yet"; off, no button. */}
-        {DEMO && (
+        {/* DEMO: Search only says "not built yet"; off, no button. WIP: and only with the
+          release switch on (`demo/wip.ts`), so production builds have no button. */}
+        {DEMO && WIP && (
           <div class="hidden @lg/thread:block">
             <IconButton
               icon="search"
@@ -262,7 +264,8 @@ export const MessagesThread = component$<{
               {contactMe.value && tiny.value && (
                 <Menu.Item onClick$={contactFromMenu$}>Contact me</Menu.Item>
               )}
-              {DEMO && (
+              {/* WIP: as the Search button above. */}
+              {DEMO && WIP && (
                 <Menu.Item onClick$={search$}>
                   Search in this conversation
                 </Menu.Item>

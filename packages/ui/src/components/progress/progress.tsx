@@ -58,7 +58,7 @@ export const linearProgressVariants = tv({
     track: ["relative", "flex-1", "rounded-full", "bg-secondary-container"],
     stop: [
       "absolute",
-      "end-0",
+      "inset-e-0",
       "top-1/2",
       "size-1",
       "-translate-y-1/2",
@@ -80,7 +80,7 @@ export const linearProgressVariants = tv({
         root: "h-2",
         indicator: "h-2",
         track: "h-2",
-        stop: "end-0.5",
+        stop: "inset-e-0.5",
         line: "inset-y-0",
       },
     },
@@ -372,7 +372,7 @@ const Circular = component$<ProgressCommonProps>(
                 // The wave travels one wavelength a second: the path turns by one wavelength
                 // while its dash turns back as far, so the arc itself stays put.
                 showWave &&
-                  "*:origin-center *:animate-[progress-wave-turn_1s_linear_infinite] *:[transform-box:view-box] motion-reduce:*:animate-none",
+                  "*:origin-center *:animate-[progress-wave-turn_1s_linear_infinite] *:transform-view motion-reduce:*:animate-none",
                 "transition-[stroke-dasharray] duration-medium-1 ease-standard motion-reduce:transition-none",
               ]}
               style={{

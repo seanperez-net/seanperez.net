@@ -114,7 +114,7 @@ export const searchBarVariants = tv({
       true: "pointer-events-none cursor-default opacity-disabled",
     },
     size: {
-      default: "h-14 max-w-180 min-w-[360px]",
+      default: "h-14 max-w-180 min-w-90",
       compact: "h-12 max-w-180 min-w-0",
     },
     /**
@@ -177,8 +177,8 @@ export const searchViewVariants = tv({
      * where the bar sits at the end of its column, and is hidden below 600px). */
     layout: {
       fullscreen: {},
-      docked: { docked: "start-0" },
-      adaptive: { docked: "end-0 max-sm:hidden" },
+      docked: { docked: "inset-s-0" },
+      adaptive: { docked: "inset-e-0 max-sm:hidden" },
     },
   },
 });
@@ -194,7 +194,7 @@ export const searchItemVariants = tv({
     "data-highlighted:outline-3 data-highlighted:-outline-offset-3 data-highlighted:outline-secondary",
     "[&>svg]:text-on-surface-variant",
     // With supporting text: M3's two-line list item, 72dp (found with :has(), the CMS rule).
-    "has-[[data-search-supporting]]:min-h-18",
+    "has-data-search-supporting:min-h-18",
     // `disabled` (a "no results" line): not chosen, no state layer.
     "aria-disabled:cursor-default aria-disabled:text-on-surface-variant aria-disabled:hover:bg-transparent",
   ],

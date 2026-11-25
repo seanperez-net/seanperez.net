@@ -1,4 +1,5 @@
-import type { DocumentHead } from "@qwik.dev/router";
+import type { DocumentHead, RequestHandler } from "@qwik.dev/router";
+import { WIP } from "../../../demo/wip";
 import { pageHead } from "../../../seo";
 
 /**
@@ -8,5 +9,10 @@ import { pageHead } from "../../../seo";
  * (`content/conversations.ts` checks).
  */
 export { default } from "../index";
+
+// WIP: not finished (release switch, `demo/wip.ts`): a 404 in production builds.
+export const onGet: RequestHandler = ({ error }) => {
+  if (!WIP) throw error(404, "Not found");
+};
 
 export const head: DocumentHead = ({ url }) => pageHead("/messages/", url);

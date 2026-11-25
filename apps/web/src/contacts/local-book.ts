@@ -239,36 +239,6 @@ export function parseBook(raw: unknown): LocalBook {
   };
 }
 
-/**
- * The first version's document (`contacts.imported`, 2026-11-24: an array of imported contacts
- * with label NAMES and an ISO `importedAt`) as a book. Read once, when the book does not exist yet.
- */
-export function bookFromImported(raw: unknown, now: number): LocalBook {
-  if (!Array.isArray(raw)) return emptyBook();
-  let book = emptyBook();
-  const contacts: ImportedContact[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const e = entry as Record<string, unknown>;
-    if (typeof e.id !== "string" || typeof e.name !== "string") continue;
-    contacts.push({
-      id: e.id,
-      name: e.name,
-      organization: String(e.organization ?? ""),
-      title: String(e.title ?? ""),
-      phones: Array.isArray(e.phones) ? (e.phones as LabelledValue[]) : [],
-      emails: Array.isArray(e.emails) ? (e.emails as LabelledValue[]) : [],
-      labels: Array.isArray(e.labels) ? (e.labels as string[]) : [],
-      notes: String(e.notes ?? ""),
-      importedAt: String(e.importedAt ?? ""),
-    });
-  }
-  book = addImportedContacts(book, contacts, now, () =>
-    crypto.randomUUID(),
-  ).book;
-  return parseBook(book);
-}
-
 // ─── Reads ───────────────────────────────────────────────────────────────────
 
 export const liveContacts = (book: LocalBook) =>

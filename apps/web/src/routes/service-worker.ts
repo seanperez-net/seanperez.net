@@ -20,7 +20,9 @@
 //   the router exposes no file list to a service worker in rc.5.
 // - PAGES (navigations) and their data (`q-loader-*.json`, `q-route.json`, `/api/search`):
 //   network first, so online is always fresh; a copy goes to `spn-pages-<version>` (same build as
-//   the chunks the page asks for), capped. Offline: that copy, else `/offline/`.
+//   the chunks the page asks for), capped. Offline: that copy, else `/offline/`. A navigation
+//   that HAS a saved copy waits at most `NAV_TIMEOUT_MS` for the network (audit L7, 2026-11-25),
+//   then shows the copy; the network answer still lands in the cache for next time.
 // - THE VISITOR'S OWN CONTACTS (`/contacts/local/<id>/`, 2026-11-24): ONE app-shell entry for all
 //   of them (`LOCAL_SHELL`), the page and its loader JSON alike, network first. The HTML holds no
 //   contact (the data is in the browser's own storage), only the frame, so any id's page serves
@@ -32,8 +34,7 @@
 //   the ingest POST are never handled here.
 // - MAP TILES from OpenFreeMap: tiles, fonts and sprites cache first (their URLs are versioned),
 //   style and TileJSON network first; `spn-tiles`, capped, kept across builds.
-// - NEVER stored: anything not GET, `/admin` (Cloudflare Access, `private, no-store`),
-//   `/cdn-cgi/` (Access, Turnstile), `?qaction=` / `?qfunc=` (actions, `server$`), responses
+// - NEVER stored: anything not GET, `/cdn-cgi/` (Access, Turnstile), `?qaction=` / `?qfunc=` (actions, `server$`), responses
 //   marked `no-store`, pages marked `private` (loader JSON excepted, see `storable`), redirects. Other origins (Photon, OSRM, Turnstile) are left
 //   to the browser: they need the internet anyway.
 // - UPDATE: a new build is a new file (the version is in it), so the browser installs it;
@@ -62,6 +63,8 @@ const META = "spn-meta";
 const META_CURRENT = "/__spn/current-build";
 
 const PAGES_MAX = 150;
+/** How long a navigation waits for the network when a saved copy exists (audit L7). */
+const NAV_TIMEOUT_MS = 3500;
 /** The one cache key every `/contacts/local/<id>/` page (and its loader JSON) is stored under. */
 const LOCAL_SHELL = "/contacts/local/shell/";
 const LOCAL_PAGE = /^\/contacts\/local\/[^/]+\/(.*)$/;
@@ -79,7 +82,6 @@ const OFFLINE_URL = "/offline/";
 /** Stored at install. A page that fails here is skipped; it is stored when visited instead. */
 const SHELL_PAGES = [
   "/",
-  // About is the Contacts app since 2026-11-24 (`/about/` is a 301: never stored).
   "/contacts/",
   "/contacts/sean-perez/",
   "/messages/",
@@ -108,8 +110,16 @@ const TILE_HOST = "tiles.openfreemap.org";
  * `private` unless `allowPrivate`. Qwik Router sends EVERY loader's JSON as `no-cache, private`
  * (its default, measured on the built worker 2026-11-24), not because the data is personal: the
  * site's public loaders (posts, profile, contact setup) are the same for everyone, and the only
- * per-person routes (`/admin`) are never handled here. Without them a page opened by a client
+ * per-person data (`/api/me`, `/api/here`; the admin app is its own host) is never stored here. Without them a page opened by a client
  * navigation fails offline, so loader JSON passes `allowPrivate`.
+ *
+ * RULE (audit M1, 2026-11-25): so `no-store` is the ONLY thing that keeps a per-person loader
+ * (one that reads a cookie, the session, a token in the URL, request headers or the visitor's
+ * location) out of this cache and out of the next user's offline copy. Every such loader sets
+ * `cacheControl: { noStore: true }`; `scripts/loader-private-test.ts` fails when one does not.
+ * Chosen over storing only non-`private` loader JSON with an allowlist: loader ids are build
+ * hashes (a brittle list), and the inversion needs a `cacheControl` on each of the 12 public
+ * loaders, where a forgotten one breaks offline silently; the test fails loudly instead.
  */
 function storable(response: Response, allowPrivate = false): boolean {
   if (!response.ok || response.redirected) return false;
@@ -196,20 +206,31 @@ async function networkFirst(
     const response = await fetch(request);
     if (storable(response, allowPrivate)) {
       const copy = response.clone();
+      // A failed write (quota, a cache deleted by activate) only loses this copy (audit L8).
       void caches
         .open(cacheName)
         .then((cache) => cache.put(key, copy))
-        .then(() => trim(cacheName, max));
+        .then(() => trim(cacheName, max))
+        .catch(() => undefined);
     }
     return response;
   } catch (error) {
-    const cached =
-      (await caches.match(key, { cacheName })) ??
-      (await caches.match(key, { cacheName: PRECACHE })) ??
-      (await caches.match(key));
+    const cached = await savedCopy(key, cacheName);
     if (cached) return cached;
     throw error;
   }
+}
+
+/** The newest copy we have of `key`: this cache, then this build's, then any. */
+async function savedCopy(
+  key: Request | string,
+  cacheName: string,
+): Promise<Response | undefined> {
+  return (
+    (await caches.match(key, { cacheName })) ??
+    (await caches.match(key, { cacheName: PRECACHE })) ??
+    (await caches.match(key))
+  );
 }
 
 /** Cache first (the file never changes at that URL); stores what the network gives. */
@@ -229,14 +250,35 @@ async function cacheFirst(
     void caches
       .open(cacheName)
       .then((cache) => cache.put(request, copy))
-      .then(() => (max ? trim(cacheName, max) : undefined));
+      .then(() => (max ? trim(cacheName, max) : undefined))
+      .catch(() => undefined);
   }
   return response;
 }
 
-async function navigate(request: Request): Promise<Response> {
+async function navigate(event: FetchEvent): Promise<Response> {
+  const { request } = event;
+  const network = networkFirst(request, PAGES, PAGES_MAX);
+  const saved = await savedCopy(cacheKey(request), PAGES);
+  if (saved) {
+    // A slow network shows the saved copy after NAV_TIMEOUT_MS (audit L7); the worker stays
+    // alive until the network answer is stored. With no saved copy there is nothing better to
+    // show, so it waits for the network (or the offline page) as before.
+    event.waitUntil(network.catch(() => undefined));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const slow = new Promise<Response>((resolve) => {
+      timer = setTimeout(() => resolve(saved), NAV_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([network, slow]);
+    } catch {
+      return saved;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   try {
-    return await networkFirst(request, PAGES, PAGES_MAX);
+    return await network;
   } catch {
     return (
       (await caches.match(OFFLINE_URL, { cacheName: PRECACHE })) ??
@@ -267,7 +309,6 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   const path = url.pathname;
   if (
-    path.startsWith("/admin") ||
     path.startsWith("/cdn-cgi/") ||
     path === "/service-worker.js" ||
     url.searchParams.has("qaction") ||
@@ -277,7 +318,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(navigate(request));
+    event.respondWith(navigate(event));
   } else if (path.startsWith("/build/") || path.startsWith("/assets/")) {
     event.respondWith(cacheFirst(request, PRECACHE));
   } else if (

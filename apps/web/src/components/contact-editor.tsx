@@ -171,7 +171,11 @@ export const ContactFields = component$<ContactFieldsProps>(
     const rows = (kind: "phones" | "emails") => (
       <div class="grid gap-2">
         {form[kind].map((row, index) => (
-          <div key={row.key} class="flex items-start gap-1">
+          <div
+            key={row.key}
+            class="flex items-start gap-1"
+            data-contact-value-key={row.key}
+          >
             <div class="min-w-0 flex-1">
               <TextField
                 name={kind === "phones" ? "contact-phone" : "contact-email"}
@@ -220,10 +224,21 @@ export const ContactFields = component$<ContactFieldsProps>(
             label={kind === "phones" ? addPhoneLabel : addEmailLabel}
             disabled={form[kind].length >= MAX_VALUES}
             onClick$={() => {
-              form[kind] = [
-                ...form[kind],
-                { key: form.nextKey++, label: "", value: "" },
-              ];
+              const key = form.nextKey++;
+              form[kind] = [...form[kind], { key, label: "", value: "" }];
+              // Focus goes into the new row's field once it has rendered (e-store `1ccfeac1e`,
+              // ported 2026-11-25: a few tries, the render is scheduled, not done, when this
+              // handler returns).
+              const name =
+                kind === "phones" ? "contact-phone" : "contact-email";
+              const selector = `[data-contact-value-key="${key}"] input[name="${name}"]`;
+              const focusNew = (tries: number) => {
+                const input =
+                  document.querySelector<HTMLInputElement>(selector);
+                if (input) input.focus();
+                else if (tries > 0) setTimeout(() => focusNew(tries - 1), 16);
+              };
+              setTimeout(() => focusNew(10), 0);
             }}
           />
         </div>

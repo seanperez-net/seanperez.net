@@ -39,3 +39,9 @@ the root runs after ours (2026-11-23: it was dropped through `...rest` before).
   <ToggleGroup.Item value="light" icon="light_mode" aria-label="Light" />
 </ToggleGroup.Root>
 ```
+
+## Right-to-left (L10, 2026-11-25)
+
+The shared border and the pill ends are logical (`-ms-px`, `first-of-type:rounded-s-full`,
+`last-of-type:rounded-e-full`). Checked in Chrome (390px iframe): LTR first item `9999px 0 0 9999px`
+on the left, RTL first item `0 9999px 9999px 0` on the right. PROOFED.

@@ -4,7 +4,7 @@
  * draws it with library components.
  *
  * PLACEHOLDERS for the owner: `experience` / `education` are EMPTY on purpose (nothing is
- * invented). Fill them in here; an empty list shows `emptyNote`. `summary` and `links` are the
+ * invented). Fill them in here; an empty list's section is not drawn. `summary` and `links` are the
  * profile's defaults (`@seanperez/db` `profile/profile-seed.ts`, 2026-11-25, shared with the
  * admin app): edit them there.
  * Projects are not here: they are the public GitHub repos, `content/repos.json` (build time).
@@ -33,8 +33,6 @@ export interface Resume {
   education: ResumeEntry[];
   projects: Repo[];
   links: ResumeLink[];
-  /** Shown in a section that has no entries yet. */
-  emptyNote: string;
 }
 
 export const RESUME: Resume = {
@@ -45,5 +43,4 @@ export const RESUME: Resume = {
   education: [],
   projects: repoList as Repo[],
   links: PROFILE_SEED.links,
-  emptyNote: "To be added.",
 };

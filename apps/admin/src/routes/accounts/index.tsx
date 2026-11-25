@@ -60,7 +60,7 @@ export default component$(() => {
         </p>
         {!list.value.ok ? (
           <p role="alert" class="text-body-large text-error">
-            The accounts could not be read. Is migration 0004 applied?
+            The accounts could not be read. Are the migrations applied?
           </p>
         ) : list.value.accounts.length === 0 ? (
           <p class="text-body-large text-on-surface-variant">

@@ -48,7 +48,7 @@ export const scrollFieldVariants = tv({
       "align-top",
     ],
     // Positions the two outside tap targets against the container. Min height 120dp.
-    box: ["relative", "flex", "min-h-[120px]"],
+    box: ["relative", "flex", "min-h-30"],
     // The container: `surface-container-lowest`, 16dp corners, hugging its contents down to a
     // per-size minimum width (specs: Measurements).
     container: [
@@ -125,7 +125,7 @@ export const scrollFieldVariants = tv({
     copy: ["flex", "flex-col", "gap-4"],
     item: [
       "flex",
-      "h-[58px]",
+      "h-14.5",
       "shrink-0",
       "snap-center",
       "items-center",
@@ -190,9 +190,9 @@ export const scrollFieldVariants = tv({
      */
     reserveMessage: {
       // Positioned, so it paints over the outside tap target that may reach below the box.
-      true: { root: "[:where(&)]:h-[220px]", message: "relative" },
+      true: { root: "[:where(&)]:h-55", message: "relative" },
       false: {
-        root: ["[:where(&)]:h-[200px]", "box-content", "data-message:pb-5"],
+        root: ["[:where(&)]:h-50", "box-content", "data-message:pb-5"],
         // Out of the grid, from the top of the bottom padding (a wrapped message runs on below
         // it rather than over the container); positioned, so it paints over the outside tap
         // target. Empty, it has no size.
@@ -208,19 +208,19 @@ export const scrollFieldVariants = tv({
     /** Minimum width and side padding (specs: Measurements). */
     size: {
       sm: {
-        container: "min-w-[100px]",
+        container: "min-w-25",
         item: "px-4",
         input: "px-4",
         sizer: "px-4",
       },
       md: {
-        container: "min-w-[120px]",
+        container: "min-w-30",
         item: "px-4",
         input: "px-4",
         sizer: "px-4",
       },
       lg: {
-        container: "min-w-[186px]",
+        container: "min-w-46.5",
         item: "px-6",
         input: "px-6",
         sizer: "px-6",

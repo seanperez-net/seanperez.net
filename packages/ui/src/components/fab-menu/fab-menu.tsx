@@ -75,7 +75,7 @@ export const fabMenuVariants = tv({
       "touch-target",
       // M3 tokens: level 0 at rest, 4 hovered, 3 focused and pressed.
       "shadow-0 hover:shadow-4 focus-visible:shadow-3 active:shadow-3",
-      "transition-[box-shadow] duration-short-4 ease-standard",
+      "transition-shadow duration-short-4 ease-standard",
       "motion-reduce:transition-none",
       "before:absolute before:inset-0 before:rounded-[inherit] before:opacity-0",
       "before:pointer-events-none before:transition-opacity before:content-['']",

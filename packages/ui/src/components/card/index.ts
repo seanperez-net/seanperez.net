@@ -3,6 +3,7 @@ export {
   cardVariants,
   cardVariantNames,
   cardHeaderVariants,
+  cardTitleVariants,
   cardContentVariants,
   cardFooterVariants,
 } from "./card";

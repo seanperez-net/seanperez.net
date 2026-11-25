@@ -15,7 +15,8 @@
     "./account/turnstile-actions": "./src/account/turnstile-actions.ts",
     "./mail/mail.server": "./src/mail/mail.server.ts",
     "./mail/inbound.server": "./src/mail/inbound.server.ts",
-    "./limits/limit.server": "./src/limits/limit.server.ts"
+    "./limits/limit.server": "./src/limits/limit.server.ts",
+    "./http/security-headers": "./src/http/security-headers.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

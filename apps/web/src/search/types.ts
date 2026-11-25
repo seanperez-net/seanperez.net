@@ -5,7 +5,12 @@
  */
 
 /** The groups, in the order All shows them. */
-export const SEARCH_GROUPS = ["posts", "projects", "contacts", "pages"] as const;
+export const SEARCH_GROUPS = [
+  "posts",
+  "projects",
+  "contacts",
+  "pages",
+] as const;
 export type SearchGroup = (typeof SEARCH_GROUPS)[number];
 
 /** A chip: All, or one group. `?in=` in the URL. */
@@ -59,19 +64,14 @@ export interface SearchResults {
 export const ALL_GROUP_ROWS = 3;
 /** Rows inside one chip. */
 export const SCOPE_ROWS = 50;
-/** The query is cut to this many characters and words. */
+/** The query is cut to this many characters (and to `MAX_SEARCH_WORDS` words:
+ * `@seanperez/db/search/fold`, the one word rule). */
 export const MAX_QUERY = 100;
-export const MAX_WORDS = 6;
 
-/** Old `?in=` values still accepted: About became Contacts (2026-11-24), links may say `about`. */
-const SCOPE_ALIASES: Record<string, SearchScope> = { about: "contacts" };
-
-/** `?in=` to a scope (an old name through `SCOPE_ALIASES`); anything else is All. */
+/** `?in=` to a scope; anything else is All. */
 export function parseScope(value: string | null | undefined): SearchScope {
-  if (!value) return "all";
-  const scope = Object.hasOwn(SCOPE_ALIASES, value) ? SCOPE_ALIASES[value] : value;
-  return scope && Object.hasOwn(GROUP_LABELS, scope)
-    ? (scope as SearchScope)
+  return value && Object.hasOwn(GROUP_LABELS, value)
+    ? (value as SearchScope)
     : "all";
 }
 

@@ -170,3 +170,18 @@ Open, for the owner:
 - No Home / End / PageUp / PageDown on the dial (APG slider lists them; M3's key table does not).
 - An empty value shows 12:00 AM / 00:00, so OK without a change commits "00:00".
 - `variant` is read once (mount-only).
+
+## Fixes 2026-11-25
+
+- The hidden `<input name>` (Modal and Inline) carries `disabled` with the picker, so a disabled
+  picker posts nothing (HTML "constructing the entry list" skips disabled controls). Spec:
+  `time-picker.spec.tsx`. PROOFED: HTML spec; second agent agreed.
+- `ModalPicker` reads no props in its body (rule Q12, Qwik rc.5 best practices: "Avoid reading
+  signals, stores, or reactive props directly in a component body"): `ownOpener` and
+  `startView` are `useComputed$`, and `view` is seeded by a `useTask$` on `startView` (it runs on
+  the server too), so a changed `variant` now also changes the view. Run in Chrome: variant knob
+  `input` opens "Enter time" with "Switch to clock"; dial opens the dial, focus on "Hour 7".
+  PROOFED: Qwik MCP best practices (2.0.0-rc.5); second agent agreed. Left as is: `useBindings` /
+  `useBoundSignal` read props in the body by design (shared helpers), and `InlinePicker` still
+  seeds `view` from `props.variant` (not in this item).
+- Not fixed here (same bug, other component): `DatePicker`'s hidden input has no `disabled`.

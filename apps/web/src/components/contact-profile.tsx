@@ -23,11 +23,10 @@ export interface ContactProfileProps {
 }
 
 /**
- * The OWNER's contact page (owner, 2026-11-24): the résumé that was `/about/`, in Google
+ * The OWNER's contact page (owner, 2026-11-24): the résumé, in Google
  * Contacts' person page (`ContactPerson`: actions in the pane header, the avatar with its "+",
  * the labels row; owner: "mine is special because it acts like a resume but make it at least look
- * like the contacts"). Its sections keep About's ids (`resume-experience`, ...), so old
- * `/about/#...` links still land on them after the 301.
+ * like the contacts"). Its sections have stable ids (`resume-experience`, ...) to link to.
  *
  * - The `actions` row: Google's round tonal buttons with a caption (`IconButton showLabel`, owner
  *   2026-11-24): Message (owner: email, chat and video live inside Messages, so one action),

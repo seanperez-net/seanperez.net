@@ -3,6 +3,7 @@ import {
   Form,
   routeAction$,
   routeLoader$,
+  useLocation,
   valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
@@ -10,6 +11,7 @@ import { Button, IconButton, Layout, TextField } from "@seanperez/ui";
 import * as v from "valibot";
 import { requireAdmin } from "@seanperez/server/feed/access.server";
 import { formatDate } from "@seanperez/server/feed/format";
+import { siteOrigin } from "@seanperez/server/hosts";
 import { PROFILE_MAX } from "@seanperez/db/profile/limits";
 import { safeLinkHref } from "@seanperez/db/profile/profile";
 import {
@@ -32,7 +34,7 @@ export const useProfileForm = routeLoader$(async ({ platform }) => {
   try {
     return { ok: true as const, form: await getProfileForm(platform.env.DB) };
   } catch (error) {
-    // The table is missing: migration 0002 not applied yet.
+    // The table is missing: the migrations are not applied yet.
     console.error("profile: admin read failed", error);
     return { ok: false as const };
   }
@@ -82,13 +84,12 @@ export const useSaveProfile = routeAction$(
       });
       return {
         message:
-          "Saved. The profile page shows it now; the Contact me icons within a minute.",
+          "Saved. The site shows it within a minute (its profile cache).",
       };
     } catch (error) {
       console.error("profile: save failed", error);
       return ev.fail(500, {
-        message:
-          "Could not save. Is migration 0002_create_profile applied to this database?",
+        message: "Could not save. Are the migrations applied to this database?",
       });
     }
   },
@@ -109,6 +110,7 @@ export const useSaveProfile = routeAction$(
 export default component$(() => {
   const loaded = useProfileForm();
   const save = useSaveProfile();
+  const loc = useLocation();
   const errors = (save.value?.fieldErrors ?? {}) as Record<
     string,
     string | string[] | undefined
@@ -124,14 +126,21 @@ export default component$(() => {
   return (
     <Layout.Pane role="primary">
       <Layout.PaneHeader title="Profile">
-        <Button type="link" href="/profile/" look="text" label="View profile" />
+        {/* The owner's page on the SITE (another host): a plain new-tab link, not the router. */}
+        <Button
+          type="link"
+          href={`${siteOrigin(loc.url)}/contacts/sean-perez/`}
+          target="_blank"
+          look="text"
+          label="View profile"
+        />
       </Layout.PaneHeader>
       {/* The pane's ONE body element (layout.md). */}
       <div class="grid max-w-3xl content-start gap-6">
         {!loaded.value.ok ? (
           <p role="alert" class="text-body-large text-error">
-            The profile table does not exist yet. Apply migration
-            0002_create_profile to this database.
+            The profile table does not exist yet. Apply the migrations to this
+            database.
           </p>
         ) : (
           <>

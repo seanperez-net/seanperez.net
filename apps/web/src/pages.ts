@@ -55,11 +55,12 @@ export const PAGES = {
       "Contacts: Sean Perez's profile, résumé and projects, and a message form.",
     card: "Contacts",
   },
-  // The Messages app (owner, 2026-11-24): demo conversations; one card for every thread.
+  // The Messages app (owner, 2026-11-24); one card for every thread. No Assistant in the copy:
+  // it is WIP, hidden in production builds (release 2026-11-25, `demo/wip.ts`).
   "/messages/": {
     title: "Messages · Sean Perez",
     description:
-      "A messages app built with Qwik: demo conversations with devices and an assistant.",
+      "A messages app built with Qwik: a welcome from Sean, notes to self and the site's updates.",
     card: "Messages",
   },
   // "How apps work" (2026-11-25): the tutorial "Remove from my apps" opens (owner).
@@ -69,7 +70,7 @@ export const PAGES = {
       "How apps work on this site: remove Contact me, add it back, and where that choice is kept (your browser only).",
     card: "How apps work",
   },
-  // The owner's contact profile: the résumé that was /about/ (301 there, owner 2026-11-24).
+  // The owner's contact profile, with the résumé (owner 2026-11-24).
   "/contacts/sean-perez/": {
     title: "Sean Perez · Contacts",
     description: "Sean Perez: profile, résumé, projects and links.",

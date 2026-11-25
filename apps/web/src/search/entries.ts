@@ -76,4 +76,8 @@ const projects: SearchEntry[] = RESUME.projects.map((repo) => ({
   text: `${repo.name} ${repo.description} ${repo.language}`,
 }));
 
-export const STATIC_ENTRIES: SearchEntry[] = [...pages, ...contacts, ...projects];
+export const STATIC_ENTRIES: SearchEntry[] = [
+  ...pages,
+  ...contacts,
+  ...projects,
+];

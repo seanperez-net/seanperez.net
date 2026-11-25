@@ -63,14 +63,14 @@ export const comboboxVariants = tv({
       "disabled:cursor-default disabled:text-on-surface/38",
     ],
     label: [
-      "pointer-events-none absolute start-4 top-1/2 origin-[0_50%] -translate-y-1/2 select-none",
+      "pointer-events-none absolute inset-s-4 top-1/2 origin-[0_50%] -translate-y-1/2 select-none",
       "text-body-large text-on-surface-variant",
       "transition-all duration-short-4 ease-standard motion-reduce:transition-none",
       "group-hover/combobox:text-on-surface",
       // Floated: on focus, or when the field has text.
-      "peer-focus:start-3 peer-focus:-top-2 peer-focus:translate-y-0 peer-focus:px-1",
+      "peer-focus:inset-s-3 peer-focus:-top-2 peer-focus:translate-y-0 peer-focus:px-1",
       "peer-focus:text-body-small peer-focus:text-primary peer-focus:group-hover/combobox:text-primary",
-      "peer-not-placeholder-shown:start-3 peer-not-placeholder-shown:-top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:px-1",
+      "peer-not-placeholder-shown:inset-s-3 peer-not-placeholder-shown:-top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:px-1",
       "peer-not-placeholder-shown:text-body-small",
       "peer-not-placeholder-shown:bg-(--field-bg,var(--color-surface)) peer-focus:bg-(--field-bg,var(--color-surface))",
       "group-data-invalid/combobox:text-error group-data-invalid/combobox:peer-focus:text-error",

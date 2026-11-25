@@ -1,12 +1,22 @@
 /**
- * The feed's posts in D1 (binding `DB`, table `post`, `migrations/0001_create_post.sql`), through
+ * The feed's posts in D1 (binding `DB`, table `post`, `migrations/0000_init.sql`), through
  * Drizzle (`../schema.ts`, `../client.ts`; port 2026-11-25). Public readers see only published
  * rows (`draft = 0` and a `published_at`); the admin app sees all.
  */
 
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  isNotNull,
+  or,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from "drizzle-orm";
 import { getDb } from "../client.ts";
 import { post } from "../schema.ts";
+import { postSearchColumns } from "../search/fold.ts";
 import { MAX_SLUG, SLUG_PATTERN } from "./limits.ts";
 
 export interface Post {
@@ -31,6 +41,8 @@ const SUMMARY = {
   published_at: post.published_at,
   updated_at: post.updated_at,
 };
+/** A whole post as the app sees it: never the search columns (they stay in D1). */
+const FULL = { ...SUMMARY, body_md: post.body_md };
 
 /** A slug from a title: "Hello, World!" -> "hello-world". */
 export function slugify(title: string): string {
@@ -69,7 +81,7 @@ export async function listPublishedFull(
 ): Promise<Post[]> {
   try {
     return await getDb(db)
-      .select()
+      .select(FULL)
       .from(post)
       .where(PUBLISHED)
       .orderBy(desc(post.published_at))
@@ -129,7 +141,7 @@ export async function getPublished(
   try {
     return (
       (await getDb(db)
-        .select()
+        .select(FULL)
         .from(post)
         .where(and(eq(post.slug, slug), PUBLISHED))
         .get()) ?? null
@@ -137,6 +149,44 @@ export async function getPublished(
   } catch (error) {
     console.error("feed: read failed", error);
     return null;
+  }
+}
+
+/** A post that matched a search: what a result row shows. */
+export type PostMatch = Pick<Post, "slug" | "title" | "body_md">;
+
+/** `word` (folded) is in the folded column. */
+const contains = (folded: SQLWrapper, word: string): SQL =>
+  sql`instr(${folded}, ${word}) > 0`;
+
+/**
+ * The site search over PUBLISHED posts (2026-11-25): EVERY word in the title or the body, title
+ * matches first, then newest. `words` must come from `searchWords` (`../search/fold.ts`): folded,
+ * at most 6 (6 bound parameters each: under D1's 100). Matched on the stored folded text, so
+ * "resume" finds "Résumé" (SQLite's LIKE and lower() fold ASCII only). Errors as `listPublished`.
+ */
+export async function searchPublished(
+  db: D1Database,
+  words: string[],
+  limit: number,
+): Promise<PostMatch[]> {
+  if (!words.length) return [];
+  const inTitle = (w: string) => contains(post.search_title, w);
+  const inBody = (w: string) => contains(post.search_text, w);
+  try {
+    return await getDb(db)
+      .select({ slug: post.slug, title: post.title, body_md: post.body_md })
+      .from(post)
+      .where(and(PUBLISHED, ...words.map((w) => or(inTitle(w), inBody(w)))))
+      .orderBy(
+        desc(sql`(${sql.join(words.map(inTitle), sql` AND `)})`),
+        desc(post.published_at),
+      )
+      .limit(limit);
+  } catch (error) {
+    // No table / column yet (code deployed before the migration) is "no posts".
+    console.error("search: posts failed", error);
+    return [];
   }
 }
 
@@ -151,7 +201,8 @@ export async function getById(
   id: number,
 ): Promise<Post | null> {
   return (
-    (await getDb(db).select().from(post).where(eq(post.id, id)).get()) ?? null
+    (await getDb(db).select(FULL).from(post).where(eq(post.id, id)).get()) ??
+    null
   );
 }
 
@@ -191,6 +242,7 @@ export async function savePost(
         draft,
         published_at: input.publish ? now : null,
         updated_at: now,
+        ...postSearchColumns(input.title, input.body_md),
       })
       .returning({ id: post.id })
       .get();
@@ -205,6 +257,7 @@ export async function savePost(
       draft,
       published_at: sql`CASE WHEN ${draft} = 1 THEN NULL ELSE COALESCE(${post.published_at}, ${now}) END`,
       updated_at: now,
+      ...postSearchColumns(input.title, input.body_md),
     })
     .where(eq(post.id, id));
   return id;

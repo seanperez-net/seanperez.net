@@ -1,7 +1,7 @@
 /**
  * The two apps' origins (2026-11-25: `/admin` moved to its own app, `apps/admin`, on
  * `admin.seanperez.net`; owner decision, memory `admin-decisions-2026-11-25`). A link from one
- * app to the other (the owner's "new message" notice, the 301 from the site's old `/admin/*`, the
+ * app to the other (the owner's "new message" notice, the
  * admin's "Resend verification" link to the site's `/verify/`) is built here, never from the
  * request's own origin. Client-safe: plain strings.
  *

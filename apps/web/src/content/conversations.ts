@@ -43,6 +43,7 @@ import {
   findAccount,
   toChatPerson,
 } from "./accounts";
+import { WIP } from "../demo/wip";
 import { SITE_UPDATES_ID, SITE_UPDATES_NOTE } from "../messages/site-updates";
 
 /** The viewer: the guest account (the account menu's user, same id, so the avatar's tone matches). */
@@ -99,7 +100,8 @@ const said = (
   ...extra,
 });
 
-export const THREADS: DemoThread[] = [
+/** Every conversation, the unfinished ones included (`THREADS` is what the site shows). */
+const ALL_THREADS: DemoThread[] = [
   {
     id: "assistant",
     kind: "assistant",
@@ -170,6 +172,15 @@ export const THREADS: DemoThread[] = [
   },
 ];
 
+/**
+ * WIP: the Assistant is a placeholder (no AI connected, canned replies): only with the release
+ * WIP switch on (`demo/wip.ts`; on under `pnpm dev`, off in builds). Off, its thread is gone, so
+ * `/messages/assistant/` is a 404 and no list, drawer row or search entry names it.
+ */
+export const THREADS: DemoThread[] = WIP
+  ? ALL_THREADS
+  : ALL_THREADS.filter((t) => t.kind !== "assistant");
+
 export const messagesHref = (id: string) =>
   id ? `/messages/${id}/` : "/messages/";
 
@@ -185,14 +196,17 @@ export const MESSAGES_SECTIONS: {
     threads: [OWNER_ACCOUNT.chatId!, GUEST_ACCOUNT.chatId!],
   },
   { id: "spaces", label: "Spaces", threads: [SITE_UPDATES_ID] },
-  { id: "apps", label: "Apps", threads: ["assistant"] },
+  // WIP: the Apps section holds only the Assistant; off, no section.
+  ...(WIP
+    ? [{ id: "apps" as const, label: "Apps", threads: ["assistant"] }]
+    : []),
 ];
 
 /**
  * The Shortcuts section: Home (`/messages/` itself) and two filtered views shown in the detail
  * pane. Their slugs are reserved: no thread may use them (checked below).
  */
-export const MESSAGES_SHORTCUTS: {
+const ALL_SHORTCUTS: {
   slug: "" | "mentions" | "starred";
   label: string;
   icon: IconName;
@@ -214,13 +228,22 @@ export const MESSAGES_SHORTCUTS: {
   },
 ];
 
+/**
+ * WIP: Mentions (nothing can mention the visitor yet) and Starred (no way to star a
+ * conversation yet) only with the release WIP switch on; off, Shortcuts is Home alone and their
+ * routes are 404s (`routes/messages/mentions/`, `starred/`).
+ */
+export const MESSAGES_SHORTCUTS = WIP
+  ? ALL_SHORTCUTS
+  : ALL_SHORTCUTS.filter((s) => s.slug === "");
+
 export type MessagesShortcut = "mentions" | "starred";
 
 export const isShortcut = (slug: string): slug is MessagesShortcut =>
   slug === "mentions" || slug === "starred";
 
 // A thread id that is a shortcut's slug would be shadowed by the static route: fail the build.
-for (const t of THREADS) {
+for (const t of ALL_THREADS) {
   if (isShortcut(t.id)) throw new Error(`Reserved Messages id: ${t.id}`);
 }
 

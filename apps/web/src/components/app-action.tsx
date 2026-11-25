@@ -3,6 +3,7 @@ import { FAB, useSnackbar } from "@seanperez/ui";
 import type { IconName } from "@seanperez/ui";
 import { MESSAGES_NEW_CHAT_NOTICE } from "../content/conversations";
 import { DEMO } from "../demo/demo";
+import { WIP } from "../demo/wip";
 
 /**
  * Each app's KEY ACTION (owner, 2026-11-24: "we have a create button in the estore and we have
@@ -60,7 +61,8 @@ const APP_ACTIONS: { href: string; action: AppAction }[] = [
 export const appActionFor = (pathname: string): AppAction | null => {
   const action =
     APP_ACTIONS.find(({ href }) => pathname.startsWith(href))?.action ?? null;
-  return action && (!action.demo || DEMO) ? action : null;
+  // WIP: New chat starts nothing yet (release switch, `demo/wip.ts`): off in production builds.
+  return action && (!action.demo || (DEMO && WIP)) ? action : null;
 };
 
 /**

@@ -21,6 +21,7 @@ import {
   messagesHref,
 } from "../content/conversations";
 import { DEMO } from "../demo/demo";
+import { WIP } from "../demo/wip";
 import { usePresence } from "../presence/use-presence";
 import {
   ownThreadTitle,
@@ -170,9 +171,10 @@ const ThreadWindow = component$<{ id: string }>(({ id }) => {
         state.threadId.value = null;
       })}
       openFullHref={messagesHref(id)}
-      // DEMO: the video call is a notice (`MESSAGES_VIDEO_NOTICE`); off, no button.
+      // DEMO: the video call is a notice (`MESSAGES_VIDEO_NOTICE`); off, no button. WIP: and
+      // only with the release switch on (`demo/wip.ts`): no button in production builds.
       onVideoCall$={
-        DEMO
+        DEMO && WIP
           ? $(() => showSnackbar$({ message: MESSAGES_VIDEO_NOTICE }))
           : undefined
       }

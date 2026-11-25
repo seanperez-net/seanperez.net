@@ -61,7 +61,7 @@ export const useMessage = routeLoader$(async (ev) => {
       : null;
     replies = await listReplies(db, id);
   } catch (error) {
-    // Migration 0004 not applied yet: the message alone.
+    // The account could not be read: the message alone.
     console.error("admin: account read failed", error);
   }
   return { message, account, replies };
@@ -193,7 +193,7 @@ export default component$(() => {
             {data.value.message.email}
           </a>
         </p>
-        {/* A mail to sean@ (migration 0006, `mail/inbound.server.ts`): its subject, and what
+        {/* A mail to sean@ (`mail/inbound.server.ts`): its subject, and what
           Cloudflare's own Authentication-Results said (no dmarc=pass: the From may be forged). */}
         {data.value.message.source === "email" && (
           <div class="grid gap-1">

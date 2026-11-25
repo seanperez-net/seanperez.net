@@ -26,10 +26,15 @@ import type { KnobDefs, KnobsState } from "./knob";
  * overflow what should overflow is the knobs pane"): the frame fills the pane's body and the
  * knobs panel scrolls inside it, so a long list of knobs no longer makes the whole pane (and the
  * preview) scroll. How: the card's one row is `minmax(0,1fr)` (it fills the card, which the pane
- * stretches to its body row), the frame and grid are `h-full`, and the panel is `h-0 min-h-full`
- * so its content adds nothing to the frame's height and it scrolls in the row it is given
+ * stretches to its body row), the frame and grid are `h-full`, and the panel scrolls in its row
  * (`overflow-y-auto`, `overscroll-contain` so the end of the knobs does not scroll the page).
  * Stacked (below `@2xl`) nothing changes: the frame is as tall as its content and the pane scrolls.
+ *
+ * How tall (owner, 2026-11-25: "so it isnt so cramped"): the panel grows with its knobs up to
+ * `max-h-104` (26rem = header + 4 fields of 76px: the average page's 3 selects and one more;
+ * measured over the 48 playground pages: mean 7.25 knobs, median 6, of them 3 selects), then
+ * scrolls. Was `h-0 min-h-full`, which held the panel to the demo's own height (192px on short
+ * demos: one and a half fields). `min-h-full` keeps it filling a taller row (min wins over max).
  */
 const knobsVariants = tv({
   slots: {
@@ -37,7 +42,7 @@ const knobsVariants = tv({
     grid: "grid h-full grid-cols-1 @2xl:grid-cols-[minmax(0,1fr)_auto_minmax(14rem,18rem)]",
     preview: "grid min-h-48 place-items-center p-8",
     panel:
-      "flex flex-col gap-3 p-4 @2xl:h-0 @2xl:min-h-full @2xl:overflow-y-auto @2xl:overscroll-contain",
+      "flex flex-col gap-3 p-4 @2xl:max-h-104 @2xl:min-h-full @2xl:overflow-y-auto @2xl:overscroll-contain",
     header: "flex items-baseline justify-between gap-2",
     title: "text-title-small text-on-surface-variant",
     colorKnob: "flex flex-col gap-1 text-body-medium",

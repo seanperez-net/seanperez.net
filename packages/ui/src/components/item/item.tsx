@@ -15,8 +15,9 @@ import type { IconName } from "../icon";
  * `end`). The line count is computed from the text props given, or set with `lines`.
  *
  * Changed from e-store (see item.md "Where it differs from e-store"):
- * - `py-3` (12dp) instead of `py-4`: with 16dp a two-line row measured 76px and a three-line one
- *   96px, past M3's 72 / 88 (material-web `md-list-item`: top / bottom space 12px).
+ * - `py-2` (8dp) on one- and two-line rows, `py-3` (12dp) on three-line, instead of `py-4`:
+ *   with 16dp a two-line row measured 76px and a three-line one 96px, past M3's 72 / 88; the 8dp
+ *   is the M3 lists specs' baseline diagrams (2026-11-25).
  * - `startIcon` / `endIcon` (`IconName`, our `Icon` at 24dp) beside the `start` / `end` JSX props.
  * - `rounded-[inherit]` (e-store's `rounded-inherit` is not a Tailwind 4.3.5 utility and is
  *   defined nowhere in e-store: it generated no CSS).
@@ -138,9 +139,10 @@ export const itemVariants = tv({
       ],
     },
     // The gap reads `--layout-item-gap` so `List.Root inset="drawer"` can narrow it.
+    // Top / bottom padding: the `lines` x `density` compounds below.
     density: {
-      default: "gap-[var(--layout-item-gap,1rem)] py-3",
-      compact: "gap-[var(--layout-item-gap,0.5rem)] py-1",
+      default: "gap-(--layout-item-gap,1rem)",
+      compact: "gap-(--layout-item-gap,0.5rem) py-1",
     },
     /** Side padding. `default`: M3's 16dp start, 24dp end. `none`: none. */
     inset: {
@@ -174,7 +176,16 @@ export const itemVariants = tv({
         "focus-visible:bg-linear-to-r focus-visible:from-on-surface/12 focus-visible:to-on-surface/12",
         "active:bg-linear-to-r active:from-on-surface/12 active:to-on-surface/12",
         "focus-ring-inward",
-        "disabled:cursor-default disabled:opacity-38",
+        "disabled:cursor-default",
+        // M3 disabled list item, per part (as `List.Item`'s `data-disabled`, see list.tsx).
+        "disabled:**:[.item-headline]:text-on-surface/30",
+        "disabled:**:[.item-supporting-text]:text-on-surface/38",
+        "disabled:**:[.item-overline]:text-on-surface/38",
+        "disabled:**:[.item-trailing-supporting-text]:text-on-surface/38",
+        "disabled:*:[.item-start]:text-on-surface/38",
+        "disabled:*:[.item-end]:text-on-surface/38",
+        "disabled:*:[.item-start]:*:not-data-qds-icon:opacity-38",
+        "disabled:*:[.item-end]:*:not-data-qds-icon:opacity-38",
       ],
     },
   },
@@ -192,11 +203,15 @@ export const itemVariants = tv({
     // Side padding only while `inset` is `default` (lite tv does not merge classes).
     { inset: "default", density: "default", class: "ps-4 pe-6" },
     { inset: "default", density: "compact", class: "ps-4 pe-2" },
-    // M3 heights: 56 / 72 / 88dp.
-    { lines: "one-line", density: "default", class: "min-h-14" },
-    { lines: "two-line", density: "default", class: "min-h-18" },
+    // M3 heights: 56 / 72 / 88dp. Padding (m3.material.io lists specs, baseline measurement
+    // diagrams, read 2026-11-25): 8dp top / bottom on one- and two-line rows, 12dp on three-line.
+    // With 12dp everywhere a 40dp checkbox made a one-line row 64 and a 56dp image a two-line
+    // row 80; now 8 + 40 + 8 = 56 and 8 + 56 + 8 = 72, as M3. Text-only rows keep their heights
+    // (the minimums win).
+    { lines: "one-line", density: "default", class: "min-h-14 py-2" },
+    { lines: "two-line", density: "default", class: "min-h-18 py-2" },
     // A literal, never a token that happens to be 88px too (e-store's nav-rail width trap).
-    { lines: "three-line", density: "default", class: "min-h-22" },
+    { lines: "three-line", density: "default", class: "min-h-22 py-3" },
     // Compact (e-store's Gmail / Calendar density, not an M3 value): 40 / 56 / 72.
     { lines: "one-line", density: "compact", class: "min-h-10" },
     { lines: "two-line", density: "compact", class: "min-h-14" },

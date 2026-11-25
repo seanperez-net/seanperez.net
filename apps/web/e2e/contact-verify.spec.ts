@@ -326,9 +326,19 @@ test("Delete my account on /profile/: confirm, signed out, its messages gone fro
   await expect(dialog).toBeHidden();
   expect((await me(page))?.verified).toBe(true);
 
+  // The dialog says this browser's data goes too, and the answer clears it (Clear-Site-Data, M4).
+  await page.evaluate(() => localStorage.setItem("spn.v1.e2e-clear", "1"));
+  const deleted = page.waitForResponse(
+    (r) => r.request().method() === "POST" && r.url().includes("qaction="),
+  );
   await main.getByRole("button", { name: "Delete my account" }).click();
+  await expect(dialog).toContainText("cleared too");
   await dialog.getByRole("button", { name: "Delete" }).click();
+  expect((await deleted).headers()["clear-site-data"]).toBe('"cache", "storage"');
   await expect(page.getByText("Account deleted").first()).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("spn.v1.e2e-clear")))
+    .toBeNull();
   await expect(main.getByRole("heading", { name: "Your account" })).toHaveCount(0);
   expect(await me(page)).toBeNull();
   const cookies = await page.context().cookies();

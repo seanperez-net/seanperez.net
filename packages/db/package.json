@@ -17,7 +17,8 @@
     "./profile/profile-seed": "./src/profile/profile-seed.ts",
     "./profile/limits": "./src/profile/limits.ts",
     "./messages/messages.server": "./src/messages/messages.server.ts",
-    "./messages/inbound.server": "./src/messages/inbound.server.ts"
+    "./messages/inbound.server": "./src/messages/inbound.server.ts",
+    "./search/fold": "./src/search/fold.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

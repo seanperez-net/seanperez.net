@@ -59,7 +59,7 @@ export const tooltipTipVariants = tv({
     "max-w-[min(20rem,calc(100vw-1rem))]",
     "w-max",
     "text-center",
-    "break-words",
+    "wrap-break-word",
     "opacity-0",
     "transition-[opacity,display,overlay]",
     "transition-discrete",

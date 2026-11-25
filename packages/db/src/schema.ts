@@ -1,19 +1,18 @@
 /**
- * The D1 schema (`seanperez-net`, binding `DB`) in Drizzle ORM 0.45.4 (`drizzle-orm/sqlite-core`).
- * It describes EXACTLY what `migrations/0001`-`0006` create (2026-11-25 port; plan
- * `.claude/notes/drizzle-port-plan-2026-11-25.md`). Those six files stay as they are: the baseline
- * snapshot `migrations/meta/0006_snapshot.json` was generated from this file, and
- * `scripts/schema-test.ts` checks that drizzle-kit's SQL for this file builds the same tables as the
- * six migrations (columns, defaults, keys, indexes, foreign keys, CHECKs).
+ * The D1 schema (`seanperez-net`, binding `DB`) in Drizzle ORM 0.45.4 (`drizzle-orm/sqlite-core`),
+ * and the ONE source of the database: `migrations/0000_init.sql` is drizzle-kit's SQL for this file
+ * (squashed before launch, 2026-11-25: the hand-written 0001-0007 history is gone;
+ * `.claude/notes/prelaunch-cleanup-2026-11-25.md`). `scripts/schema-test.ts` checks that the
+ * migrations build exactly what drizzle-kit makes from this file (columns, defaults, keys, indexes,
+ * foreign keys, CHECKs).
  *
  * Change it ONLY together with a migration: edit here, then `pnpm --filter @seanperez/db db:generate
  * --name <what>` (never a hand-written migration; rules in `.claude/rules/db.md`).
  *
  * - JS keys ARE the SQL column names (snake_case): a `select()` row is the row type the apps
  *   already use (`Post`, `Message`, ...). Leave `casing` unset everywhere.
- * - Column order = the order SQLite has after 0001-0006 (ALTER-added `message` columns last).
- * - UNIQUE is a table constraint (`unique().on()`): drizzle-kit renders it inside CREATE TABLE,
- *   like the migrations' inline UNIQUE (a column `.unique()` would be a separate index).
+ * - UNIQUE is a table constraint (`unique().on()`); drizzle-kit 0.31.11 writes it as a
+ *   `CREATE UNIQUE INDEX <name>`.
  * - Every database DEFAULT is declared here: `insert().values()` sends NULL for an unset column
  *   without one.
  * - Times are ISO 8601 UTC text (`new Date().toISOString()`), which sorts as text.
@@ -32,7 +31,7 @@ import {
 export const SEND_STATUSES = ["pending", "sent", "failed", "logged"] as const;
 export type SendStatus = (typeof SEND_STATUSES)[number];
 
-/** 0001: the feed's posts. Public pages show `draft = 0` rows with a `published_at`. */
+/** The feed's posts. Public pages show `draft = 0` rows with a `published_at`. */
 export const post = sqliteTable(
   "post",
   {
@@ -43,6 +42,11 @@ export const post = sqliteTable(
     draft: integer().$type<0 | 1>().notNull().default(1),
     published_at: text(),
     updated_at: text().notNull(),
+    // The folded title and folded plain body (`search/fold.ts` `postSearchColumns`), always
+    // written by `savePost`; the site search matches them. A row inserted by raw SQL without them
+    // gets '' (not found by the search).
+    search_title: text().notNull().default(""),
+    search_text: text().notNull().default(""),
   },
   (t) => [
     unique("post_slug_unique").on(t.slug),
@@ -51,7 +55,7 @@ export const post = sqliteTable(
   ],
 );
 
-/** 0002: the owner's profile, ONE row (id = 1). NULL / empty = "use the default". */
+/** The owner's profile, ONE row (id = 1). NULL / empty = "use the default". */
 export const profile = sqliteTable(
   "profile",
   {
@@ -67,7 +71,7 @@ export const profile = sqliteTable(
   () => [check("profile_id_check", sql`id = 1`)],
 );
 
-/** 0003 (+ 0004, 0005, 0006): the inbox. Contact form rows and mail to sean@. */
+/** The inbox. Contact form rows and mail to sean@. */
 export const message = sqliteTable(
   "message",
   {
@@ -77,14 +81,11 @@ export const message = sqliteTable(
     body: text().notNull(),
     created_at: text().notNull(),
     read_at: text(),
-    // 0004
     account_id: text().references((): AnySQLiteColumn => contactAccount.id, {
       onDelete: "set null",
     }),
     confirmed_at: text(),
-    // 0005
     session_hash: text(),
-    // 0006
     source: text({ enum: ["form", "email"] })
       .notNull()
       .default("form"),
@@ -101,7 +102,7 @@ export const message = sqliteTable(
   ],
 );
 
-/** 0004: contact accounts (one per normalized address). */
+/** Contact accounts (one per normalized address). */
 export const contactAccount = sqliteTable(
   "contact_account",
   {
@@ -116,7 +117,7 @@ export const contactAccount = sqliteTable(
   (t) => [unique("contact_account_email_unique").on(t.email)],
 );
 
-/** 0004: browser sessions (the cookie's SHA-256). */
+/** Browser sessions (the cookie's SHA-256). */
 export const contactSession = sqliteTable(
   "contact_session",
   {
@@ -131,7 +132,7 @@ export const contactSession = sqliteTable(
   (t) => [index("contact_session_account").on(t.account_id)],
 );
 
-/** 0004: verification emails (link + 6-digit code). */
+/** Verification emails (link + 6-digit code). */
 export const verifyToken = sqliteTable(
   "verify_token",
   {
@@ -159,7 +160,7 @@ export const verifyToken = sqliteTable(
   ],
 );
 
-/** 0004: the owner's email replies from the admin. */
+/** The owner's email replies from the admin. */
 export const messageReply = sqliteTable(
   "message_reply",
   {

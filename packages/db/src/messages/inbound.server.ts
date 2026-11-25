@@ -1,5 +1,5 @@
 /**
- * Inbound mail STORAGE (migration 0006, `message.source = 'email'`). The handler (forward to the
+ * Inbound mail STORAGE (`message.source = 'email'`). The handler (forward to the
  * owner's Gmail, parse with postal-mime) is `@seanperez/server/mail/inbound.server`; it calls
  * `saveInbound` here. Split out 2026-11-25 (packages/data -> db + server).
  */

@@ -1,5 +1,5 @@
 /**
- * Contact form messages in D1 (binding `DB`, table `message`, `migrations/0003_create_message.sql`),
+ * Contact form messages in D1 (binding `DB`, table `message`, `migrations/0000_init.sql`),
  * through Drizzle (port 2026-11-25). The contact action writes through `saveMessage`; everything
  * else is the admin app's (behind `requireAdmin`). Every value is a bound parameter, never SQL text.
  */
@@ -14,11 +14,11 @@ export interface Message {
   body: string;
   created_at: string;
   read_at: string | null;
-  /** The sender's contact account (migration 0004); null for older rows or a deleted account. */
+  /** The sender's contact account; null when there is none (an unlinked mail, a deleted account). */
   account_id: string | null;
   /** NULL: sent before the address was verified ("Unverified" in /admin). */
   confirmed_at: string | null;
-  /** Migration 0006: the contact form, or a mail to sean@ (`mail/inbound.server.ts`). */
+  /** The contact form, or a mail to sean@ (`mail/inbound.server.ts`). */
   source: MessageSource;
   /** Email rows: the subject, the Message-ID and the mx.cloudflare.net auth summary. */
   subject: string | null;
@@ -151,7 +151,7 @@ export async function deleteMessage(db: D1Database, id: number): Promise<void> {
   await getDb(db).delete(message).where(eq(message.id, id));
 }
 
-// --- owner replies (migration 0004, table `message_reply`) ----------------------------------
+// --- owner replies (table `message_reply`) ----------------------------------
 
 export interface MessageReply {
   id: number;

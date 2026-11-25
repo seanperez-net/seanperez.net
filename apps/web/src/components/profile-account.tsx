@@ -36,7 +36,7 @@ export const ACCOUNT_DELETED_NOTICE = "Account deleted";
 // Re-exported from routes/profile/index.tsx (see the file comment).
 // eslint-disable-next-line qwik/loader-location
 export const useDeleteMyAccount = routeAction$(
-  async (_data, { platform, cookie, url, cacheControl, fail }) => {
+  async (_data, { platform, cookie, url, cacheControl, fail, headers }) => {
     cacheControl({ noStore: true });
     const env = platform.env;
     // Not gated on `accountsOpen`: a session made while accounts were on can always be deleted.
@@ -62,6 +62,13 @@ export const useDeleteMyAccount = routeAction$(
     }
     // Deleted, or already gone: either way this browser is signed out.
     clearSessionCookie(cookie, url);
+    // And this browser's data for the site goes too (audit M4, 2026-11-25): a shared device keeps
+    // nothing of the deleted account. MDN Clear-Site-Data (read 2026-11-25): "cache" = the HTTP
+    // cache; "storage" = localStorage, sessionStorage, IndexedDB, file system data and the service
+    // worker registrations (with it the SW's caches and offline pages). Chrome 61+, Firefox 63+,
+    // Safari 17+ (MDN compat data); secure contexts only; an older browser just keeps its data.
+    // The confirm dialog says so. Cookies are not cleared: the session cookie is already gone.
+    headers.set("Clear-Site-Data", '"cache", "storage"');
     return { deleted: true };
   },
   { invalidate: [] },
@@ -136,7 +143,8 @@ export const ProfileAccount = component$(() => {
       <ConfirmDialog
         open={confirmOpen}
         title="Delete your account?"
-        description="Your account, your messages to Sean and its sign-in on every browser are deleted from the site's server. This can't be undone."
+        // Says the browser part plainly (audit M4): the action sends Clear-Site-Data.
+        description="Your account, your messages to Sean and its sign-in on every browser are deleted from the site's server. Everything this site saved in this browser is cleared too: your contacts, messages, profile edits, settings and offline pages. This can't be undone."
         confirmLabel="Delete"
         onConfirm$={confirm$}
       />

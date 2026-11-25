@@ -133,7 +133,10 @@ export default component$(() => {
   );
   const list = useComputed$(() => listOf(loc.url.pathname));
   const shortcut = useComputed$(
-    () => MESSAGES_SHORTCUTS.find((s) => s.slug === list.value)!,
+    // WIP: a hidden shortcut's route is a 404 before this renders; Home as the fallback anyway.
+    () =>
+      MESSAGES_SHORTCUTS.find((s) => s.slug === list.value) ??
+      MESSAGES_SHORTCUTS[0],
   );
   const selected = useComputed$(() => threadId(loc.url.pathname) ?? "");
   const rows = useComputed$(() =>

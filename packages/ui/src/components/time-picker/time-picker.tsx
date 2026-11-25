@@ -668,11 +668,15 @@ export type TimePickerModalProps = TimePickerBaseProps & {
 const ModalPicker = component$<TimePickerModalProps>((props) => {
   const { valueSig: value } = useBindings(props, { value: "" });
   const open = useBoundSignal(props["bind:open"], false);
-  const ownOpener = !props["bind:open"];
+  // Props are read in `useComputed$` / tasks, never in this body (rule Q12, 2026-11-25).
+  const ownOpener = useComputed$(() => !props["bind:open"]);
+  // The view the picker opens with (and returns to from input).
+  const startView = useComputed$<View>(() => props.variant ?? "dial");
   const hour = useSignal(0);
   const minute = useSignal(0);
   const selecting = useSignal<"hour" | "minute">("hour");
-  const view = useSignal<View>(props.variant ?? "dial");
+  // Seeded by the task below (it runs on the server too), and reset on each open.
+  const view = useSignal<View>("dial");
   const invalid = useSignal({ hour: false, minute: false });
   // Counts the opens: the fields are keyed by it, so text typed in an earlier open (an invalid
   // "99" left by Cancel or Escape) does not come back with the next one.
@@ -690,7 +694,7 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
     emptyLabel: props.emptyLabel ?? "Select time",
     toPickerLabel:
       props.toPickerLabel ??
-      ((props.variant ?? "dial") === "scroll"
+      (startView.value === "scroll"
         ? "Switch to scroll fields"
         : "Switch to clock"),
   }));
@@ -705,6 +709,10 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
     cfg,
   });
 
+  useTask$(({ track }) => {
+    view.value = track(startView);
+  });
+
   // Each open starts from the committed time, in the first view, focus on the hour field (M3).
   useTask$(async ({ track }) => {
     if (!track(open) || !isBrowser) return;
@@ -712,7 +720,7 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
     hour.value = t.hour;
     minute.value = t.minute;
     selecting.value = "hour";
-    view.value = props.variant ?? "dial";
+    view.value = startView.value;
     invalid.value = { hour: false, minute: false };
     opens.value++;
     // Not awaited: a task blocks this component's render, and the dialog opens after it.
@@ -784,11 +792,10 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
   const horizontalDial = useComputed$(
     () => view.value === "dial" && cfg.value.horizontal,
   );
-  const startView = props.variant ?? "dial";
 
   return (
     <>
-      {ownOpener && (
+      {ownOpener.value && (
         <Button
           look="text"
           leadingIcon="schedule"
@@ -799,7 +806,13 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
         />
       )}
       {props.name && (
-        <input type="hidden" name={props.name} value={value.value} />
+        // `disabled`: a disabled control is not submitted (HTML "constructing the entry list").
+        <input
+          type="hidden"
+          name={props.name}
+          value={value.value}
+          disabled={props.disabled}
+        />
       )}
       <Modal.Root bind:open={open}>
         <Modal.Content
@@ -856,14 +869,16 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
               <IconButton
                 icon={
                   view.value === "input"
-                    ? startView === "scroll"
+                    ? startView.value === "scroll"
                       ? "keyboard"
                       : "schedule"
                     : "keyboard"
                 }
-                toggle={startView === "scroll"}
+                toggle={startView.value === "scroll"}
                 selected={
-                  startView === "scroll" ? view.value === "input" : undefined
+                  startView.value === "scroll"
+                    ? view.value === "input"
+                    : undefined
                 }
                 label={
                   view.value === "input"
@@ -873,7 +888,8 @@ const ModalPicker = component$<TimePickerModalProps>((props) => {
                 disabled={cfg.value.disabled}
                 onClick$={() => {
                   if (view.value === "input") {
-                    view.value = startView === "input" ? "dial" : startView;
+                    view.value =
+                      startView.value === "input" ? "dial" : startView.value;
                   } else {
                     view.value = "input";
                   }
@@ -980,7 +996,13 @@ const InlinePicker = component$<TimePickerInlineProps>((props) => {
         />
       </div>
       {props.name && (
-        <input type="hidden" name={props.name} value={value.value} />
+        // `disabled`: a disabled control is not submitted (HTML "constructing the entry list").
+        <input
+          type="hidden"
+          name={props.name}
+          value={value.value}
+          disabled={props.disabled}
+        />
       )}
     </div>
   );

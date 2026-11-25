@@ -417,8 +417,11 @@ const Content = component$<MenuContentProps>(
               positionAnchor: anchor,
               top: "auto",
               bottom: "calc(anchor(top) + 4px)",
-              left: end ? "auto" : "anchor(start)",
-              right: end ? "anchor(end)" : "auto",
+              // Logical (were `left` / `right`): `anchor(start)` resolves against the containing
+              // block's direction, so in right-to-left `left: anchor(start)` was the trigger's
+              // RIGHT edge and the menu opened beside it (measured 2026-11-25, L10).
+              insetInlineStart: end ? "auto" : "anchor(start)",
+              insetInlineEnd: end ? "anchor(end)" : "auto",
               position: "absolute",
               margin: "unset",
               positionTry: end
@@ -430,8 +433,9 @@ const Content = component$<MenuContentProps>(
               // 4px under the trigger.
               top: "calc(anchor(bottom) + 4px)",
               bottom: "auto",
-              left: end ? "auto" : "anchor(start)",
-              right: end ? "anchor(end)" : "auto",
+              // Logical, as `top` above.
+              insetInlineStart: end ? "auto" : "anchor(start)",
+              insetInlineEnd: end ? "anchor(end)" : "auto",
               position: "absolute",
               margin: "unset",
               // Flip below / above and start / end; last, a menu that fits neither side stays

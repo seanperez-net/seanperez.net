@@ -138,7 +138,18 @@ export const listItemVariants = tv({
     // Selected: `data-selected` (every selected row carries it; `aria-selected` only an option
     // may carry); its colors are the `indicator` variant. Disabled: `data-disabled` (every
     // disabled row; `aria-disabled` only on an option, the one row role that supports it).
-    "data-disabled:opacity-38",
+    // M3 disabled list item (material-web `md.comp.list` tokens, 2026-11-25): the label is
+    // on-surface at 30%, leading / trailing icons on-surface at 38%, per part, not the whole row
+    // at 38% (it was). The tokens say nothing on supporting text, avatars, images or controls:
+    // those take M3's general 38% (HOUSE). A disabled group header stays readable (below).
+    "data-disabled:not-data-qds-list-group-header:**:[.item-headline]:text-on-surface/30",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-supporting-text]:text-on-surface/38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-overline]:text-on-surface/38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-trailing-supporting-text]:text-on-surface/38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-start]:text-on-surface/38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-end]:text-on-surface/38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-start]:*:not-data-qds-icon:opacity-38",
+    "data-disabled:not-data-qds-list-group-header:**:[.item-end]:*:not-data-qds-icon:opacity-38",
     "data-disabled:pointer-events-none",
   ],
   variants: {
@@ -157,7 +168,7 @@ export const listItemVariants = tv({
     shape: {
       default: "",
       rounded: [
-        "mx-[var(--layout-item-mx,0.5rem)] rounded-full",
+        "mx-(--layout-item-mx,0.5rem) rounded-full",
         // The inner Item paints the same backgrounds: round it too, and an href row's `<a>` (its
         // focus ring).
         "**:[.item]:rounded-full",
@@ -187,7 +198,6 @@ export const listItemVariants = tv({
         // A disabled header stays visible (an add-only section)
         "data-qds-list-group-header:data-disabled:cursor-default",
         "data-qds-list-group-header:data-disabled:hover:bg-none",
-        "data-qds-list-group-header:data-disabled:opacity-100",
         "data-qds-list-group-header:data-disabled:pointer-events-auto",
       ],
       false: "",
