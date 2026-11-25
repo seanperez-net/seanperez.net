@@ -2,7 +2,7 @@ import { component$ } from "@qwik.dev/core";
 import { routeLoader$ } from "@qwik.dev/router";
 import { IconButton } from "@seanperez/ui";
 import { DEMO } from "../demo/demo";
-import { getProfile } from "@seanperez/data/profile/profile.server";
+import { getProfile } from "@seanperez/db/profile/profile.server";
 import { BrandMark } from "./brand-mark";
 
 /**

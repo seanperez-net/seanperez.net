@@ -1,0 +1,14 @@
+// The unit tests' D1 only (`src/testing/d1.ts`, `getPlatformProxy({ persist: false })`): an
+// in-memory local D1, never deployed, no account, no remote database. The id is a placeholder.
+{
+  "name": "seanperez-db-test",
+  "compatibility_date": "2025-12-28",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "seanperez-db-test",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

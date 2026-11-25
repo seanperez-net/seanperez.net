@@ -8,17 +8,17 @@ import {
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, Layout, Modal, TextField } from "@seanperez/ui";
-import { createToken, getAccount } from "@seanperez/data/account/account.server";
-import { sendVerification } from "@seanperez/data/account/contact.server";
-import { siteOrigin } from "@seanperez/data/hosts";
-import { requireAdmin } from "@seanperez/data/feed/access.server";
-import { formatDate } from "@seanperez/data/feed/format";
+import { createToken, getAccount } from "@seanperez/db/account/account.server";
+import { sendVerification } from "@seanperez/server/account/contact.server";
+import { siteOrigin } from "@seanperez/server/hosts";
+import { requireAdmin } from "@seanperez/server/feed/access.server";
+import { formatDate } from "@seanperez/server/feed/format";
 import {
   FROM_SEAN,
   SEAN_REPLY_TO,
   replyMail,
   sendMail,
-} from "@seanperez/data/mail/mail.server";
+} from "@seanperez/server/mail/mail.server";
 import {
   addReply,
   deleteMessage,
@@ -26,7 +26,7 @@ import {
   listReplies,
   markRead,
   recordReplySend,
-} from "@seanperez/data/messages/messages.server";
+} from "@seanperez/db/messages/messages.server";
 
 const messageId = (param: string): number | null =>
   /^[1-9]\d*$/.test(param) ? Number(param) : null;

@@ -88,7 +88,7 @@ import {
   IMPORTED_LABEL_ID,
   listForPath,
 } from "../../content/contacts";
-import { getProfile } from "@seanperez/data/profile/profile.server";
+import { getProfile } from "@seanperez/db/profile/profile.server";
 import { cleanQuery } from "../../search/types";
 
 /**

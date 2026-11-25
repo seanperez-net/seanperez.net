@@ -1,6 +1,6 @@
 import type { RequestHandler } from "@qwik.dev/router";
-import { renderMarkdown } from "@seanperez/data/feed/markdown.server";
-import { listPublishedFull } from "@seanperez/data/feed/posts.server";
+import { renderMarkdown } from "@seanperez/server/feed/markdown.server";
+import { listPublishedFull } from "@seanperez/db/feed/posts.server";
 import { SITE_NAME } from "../../pages";
 
 /** Text for XML: element content and attribute values. */

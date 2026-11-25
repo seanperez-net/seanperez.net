@@ -4,7 +4,7 @@ import type { AvatarPresence } from "@seanperez/ui";
 import type { LocalContact, SiteBase } from "../contacts/local-book";
 import { contactHref } from "../content/contacts";
 import { DEMO } from "../demo/demo";
-import type { Profile } from "@seanperez/data/profile/profile";
+import type { Profile } from "@seanperez/db/profile/profile";
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { useMessagesWindow } from "./messages-window-host";
 import { ContactPerson } from "./contact-person";

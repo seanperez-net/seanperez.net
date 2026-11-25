@@ -3,7 +3,7 @@ import type { NodeHub } from "./node-hub.server";
 import type { MapNode } from "../components/map-nodes";
 import { INGEST_MAX_BYTES, ingestReport, toMapNode } from "./node-schema";
 import type { NodesMessage } from "./node-schema";
-import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/server/limits/limit.server";
 
 /**
  * The live nodes' three routes, answered by the Worker BEFORE the Qwik router

@@ -31,7 +31,7 @@
   /**
    * The feed's posts (`migrations/`, table `post`), the profile (`profile`) and the contact
    * form's messages (`message`, the only table a visitor writes to). The database existed, empty, since
-   * 2026-11-21. The migrations live in `packages/data/migrations` (`@seanperez/data` owns them since
+   * 2026-11-21. The migrations live in `packages/db/migrations` (`@seanperez/db` owns them since
    * 2026-11-25; apps/admin points at the same folder). Applied by hand, never by the deploy, from
    * THIS folder (the admin's `pnpm dev:admin` shares this app's local state):
    * `pnpm wrangler d1 migrations apply seanperez-net --local` (dev) / `--remote` (the owner).
@@ -42,7 +42,7 @@
       "binding": "DB",
       "database_name": "seanperez-net",
       "database_id": "bd51b663-f4bf-4dab-96fc-42b4d1f8e3d4",
-      "migrations_dir": "../../packages/data/migrations",
+      "migrations_dir": "../../packages/db/migrations",
     },
   ],
   "observability": {
@@ -81,7 +81,7 @@
    * verified Email Routing destination; free on any plan, no Email Sending onboarding needed:
    * developers.cloudflare.com/email-service/configuration/destination-addresses/). No
    * `destination_address` here: it would publish that address in this public repo. Mail to
-   * visitors goes through Resend (`@seanperez/data` `src/mail/mail.server.ts`, secret `RESEND_API_KEY`). Other
+   * visitors goes through Resend (`@seanperez/server` `src/mail/mail.server.ts`, secret `RESEND_API_KEY`). Other
    * secrets: `AUTH_SECRET` (HMAC key for the 6-digit codes). All three: `wrangler secret put`.
    */
   "send_email": [
@@ -101,7 +101,7 @@
   /**
    * Rate limiting (2026-11-25, `.claude/notes/rate-limiting-research-2026-11-25.md`, approved by
    * the owner): a cheap, approximate, per-location gate in front of D1 / Turnstile Siteverify /
-   * Resend (`@seanperez/data` `src/limits/limit.server.ts` `allow`). The hard limits are the D1 caps. Keys are route
+   * Resend (`@seanperez/server` `src/limits/limit.server.ts` `allow`). The hard limits are the D1 caps. Keys are route
    * names or SHA-256 session hashes, never IPs. Periods can only be 10 or 60 s
    * (developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). ONE binding at 60 per
    * 60 s per key; each endpoint weights its calls with `delta` (`WEIGHT` in limit.server.ts), so

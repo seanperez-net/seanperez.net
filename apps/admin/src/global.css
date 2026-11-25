@@ -5,4 +5,4 @@
 @import "@seanperez/ui/global";
 @source "../../../packages/ui/src";
 /* A post's type classes (`ARTICLE_CLASS`, the editor's preview) live in the data package. */
-@source "../../../packages/data/src/feed/format.ts";
+@source "../../../packages/server/src/feed/format.ts";

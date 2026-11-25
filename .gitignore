@@ -4,6 +4,8 @@ node_modules/
 # Build output
 dist/
 server/
+# ...but `packages/server` (@seanperez/server) is source, not Qwik's build output (2026-11-25)
+!/packages/server/
 .wrangler/
 tsconfig.tsbuildinfo
 

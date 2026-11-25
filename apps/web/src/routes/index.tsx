@@ -1,8 +1,8 @@
 import { component$ } from "@qwik.dev/core";
 import { routeLoader$, type DocumentHead } from "@qwik.dev/router";
 import { Icon, Layout, List } from "@seanperez/ui";
-import { formatDate } from "@seanperez/data/feed/format";
-import { listPublished } from "@seanperez/data/feed/posts.server";
+import { formatDate } from "@seanperez/server/feed/format";
+import { listPublished } from "@seanperez/db/feed/posts.server";
 import { pageHead } from "../seo";
 
 /** Published posts, newest first (drafts never leave /admin). */

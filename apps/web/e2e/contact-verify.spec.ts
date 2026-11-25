@@ -103,7 +103,7 @@ async function sendContact(page: Page, email: string, text: string) {
   return aside;
 }
 
-/** `TOO_MANY` in `@seanperez/data` `src/limits/limit.server.ts`. */
+/** `TOO_MANY` in `@seanperez/server` `src/limits/limit.server.ts`. */
 const TOO_MANY_TEXT = "Too many tries. Try again in a minute.";
 
 /**

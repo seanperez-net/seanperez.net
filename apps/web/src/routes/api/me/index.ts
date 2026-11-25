@@ -1,10 +1,10 @@
 import type { RequestHandler } from "@qwik.dev/router";
-import { signOut, touchAccount } from "@seanperez/data/account/account.server";
+import { signOut, touchAccount } from "@seanperez/db/account/account.server";
 import {
   accountsOpen,
   clearSessionCookie,
   sessionOf,
-} from "@seanperez/data/account/contact.server";
+} from "@seanperez/server/account/contact.server";
 
 /**
  * `GET /api/me`: this browser's contact account, `{ name, verified }`, or `null` (accounts plan

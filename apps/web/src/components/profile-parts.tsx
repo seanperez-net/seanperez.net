@@ -13,7 +13,7 @@ import {
   useMyApps,
 } from "../apps/use-my-apps";
 import { usePresence } from "../presence/use-presence";
-import type { Profile, ProfileLink } from "@seanperez/data/profile/profile";
+import type { Profile, ProfileLink } from "@seanperez/db/profile/profile";
 import { BrandMark } from "./brand-mark";
 import { APPS_DOCS_HREF } from "./contact-me-menu";
 import { ResumeSection, type ResumeSectionVariant } from "./resume-section";

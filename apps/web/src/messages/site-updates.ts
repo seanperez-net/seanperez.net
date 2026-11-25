@@ -5,7 +5,7 @@
  * data"). Read-only, like a Discord announcement channel, with no reactions.
  *
  * - The messages are the site's PUBLISHED POSTS (D1 `post`, the same source as Home), read on the
- *   server by `useSiteUpdates` (`routes/messages/layout.tsx`, `listUpdates` in @seanperez/data).
+ *   server by `useSiteUpdates` (`routes/messages/layout.tsx`, `listUpdates` in @seanperez/db).
  *   Nothing about them is stored in the visitor's `messages.local` except a local Delete (hide).
  * - Fresh on every load: a page load and a client navigation both reach the server (the loader's
  *   JSON is `no-cache`; the service worker is network-first for pages and loader JSON and serves

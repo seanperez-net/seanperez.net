@@ -1,0 +1,46 @@
+{
+  "name": "@seanperez/db",
+  "version": "0.0.1",
+  "description": "@seanperez/db: the D1 schema (Drizzle ORM), the migrations and the queries shared by the site (apps/web) and the admin (apps/admin): posts, profile, contact messages, accounts and sessions. Source-only and server-only (*.server.ts), consumed through the apps' Vite builds.",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./schema": "./src/schema.ts",
+    "./client": "./src/client.ts",
+    "./testing/d1": "./src/testing/d1.ts",
+    "./feed/posts.server": "./src/feed/posts.server.ts",
+    "./feed/limits": "./src/feed/limits.ts",
+    "./account/account.server": "./src/account/account.server.ts",
+    "./profile/profile.server": "./src/profile/profile.server.ts",
+    "./profile/profile": "./src/profile/profile.ts",
+    "./profile/profile-seed": "./src/profile/profile-seed.ts",
+    "./profile/limits": "./src/profile/limits.ts",
+    "./messages/messages.server": "./src/messages/messages.server.ts",
+    "./messages/inbound.server": "./src/messages/inbound.server.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\"",
+    "test": "node --test scripts/*-test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:check": "drizzle-kit check",
+    "fmt": "prettier --write .",
+    "fmt.check": "prettier --check ."
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261119.1",
+    "@eslint/js": "10.0.1",
+    "@types/node": "25.6.0",
+    "drizzle-kit": "0.31.11",
+    "eslint": "10.0.3",
+    "globals": "17.0.0",
+    "prettier": "3.7.4",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.56.1",
+    "wrangler": "^4.0.0"
+  }
+}

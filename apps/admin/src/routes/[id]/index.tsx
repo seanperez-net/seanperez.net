@@ -8,16 +8,16 @@ import {
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, Layout, Modal, TextField } from "@seanperez/ui";
-import { requireAdmin } from "@seanperez/data/feed/access.server";
-import { ARTICLE_CLASS, formatDate } from "@seanperez/data/feed/format";
-import { renderMarkdown } from "@seanperez/data/feed/markdown.server";
-import { MAX_BODY, MAX_SLUG, MAX_TITLE, SLUG_PATTERN } from "@seanperez/data/feed/limits";
+import { requireAdmin } from "@seanperez/server/feed/access.server";
+import { ARTICLE_CLASS, formatDate } from "@seanperez/server/feed/format";
+import { renderMarkdown } from "@seanperez/server/feed/markdown.server";
+import { MAX_BODY, MAX_SLUG, MAX_TITLE, SLUG_PATTERN } from "@seanperez/db/feed/limits";
 import {
   deletePost,
   getById,
   savePost,
   slugify,
-} from "@seanperez/data/feed/posts.server";
+} from "@seanperez/db/feed/posts.server";
 
 type FieldErrors = { title?: string; slug?: string };
 

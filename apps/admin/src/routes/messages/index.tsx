@@ -6,13 +6,13 @@ import {
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Badge, Chip, ChipGroup, Icon, Layout, List } from "@seanperez/ui";
-import { formatDate } from "@seanperez/data/feed/format";
+import { formatDate } from "@seanperez/server/feed/format";
 import {
   listMessages,
   type MessageFilter,
   type MessageSource,
-} from "@seanperez/data/messages/messages.server";
-import { dmarcPassed } from "@seanperez/data/mail/inbound.server";
+} from "@seanperez/db/messages/messages.server";
+import { dmarcPassed } from "@seanperez/server/mail/inbound.server";
 
 /** `?show=verified` / `?show=unverified`; anything else is all. */
 const filterOf = (url: URL): MessageFilter => {

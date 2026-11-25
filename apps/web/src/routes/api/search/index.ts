@@ -1,7 +1,7 @@
 import type { RequestHandler } from "@qwik.dev/router";
 import { search } from "../../../search/search.server";
 import { parseScope } from "../../../search/types";
-import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/server/limits/limit.server";
 
 /**
  * `GET /api/search?q=&in=`: the app bar search's results as JSON (`SearchResults`). An endpoint

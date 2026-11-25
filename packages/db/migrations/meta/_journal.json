@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795600000000,
+      "tag": "0001_create_post",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795600000001,
+      "tag": "0002_create_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795600000002,
+      "tag": "0003_create_message",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795600000003,
+      "tag": "0004_contact_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795600000004,
+      "tag": "0005_message_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795600000005,
+      "tag": "0006_message_source",
+      "breakpoints": true
+    }
+  ]
+}

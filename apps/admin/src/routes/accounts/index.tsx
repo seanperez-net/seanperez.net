@@ -11,9 +11,9 @@ import {
   deleteAccount,
   listAccounts,
   purgeExpired,
-} from "@seanperez/data/account/account.server";
-import { requireAdmin } from "@seanperez/data/feed/access.server";
-import { formatDate } from "@seanperez/data/feed/format";
+} from "@seanperez/db/account/account.server";
+import { requireAdmin } from "@seanperez/server/feed/access.server";
+import { formatDate } from "@seanperez/server/feed/format";
 
 /**
  * Contact accounts (2026-11-25, plan 3.3): every account a first message made, verified or not,

@@ -6,7 +6,7 @@ import {
   MAX_PROFILE_HREF,
   type LinkedProfile,
 } from "../contacts/local-book";
-import { safeLinkHref } from "@seanperez/data/profile/profile";
+import { safeLinkHref } from "@seanperez/db/profile/profile";
 
 /**
  * The Contacts app's small dialogs (2026-11-24), all `Modal position="center"` (M3 basic dialog):

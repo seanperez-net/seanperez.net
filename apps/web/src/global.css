@@ -8,4 +8,4 @@
 @source "../../../packages/chat/src";
 
 /* A post's type classes (`ARTICLE_CLASS`) live in the data package (2026-11-25). */
-@source "../../../packages/data/src/feed/format.ts";
+@source "../../../packages/server/src/feed/format.ts";

@@ -5,11 +5,11 @@
  *
  * PLACEHOLDERS for the owner: `experience` / `education` are EMPTY on purpose (nothing is
  * invented). Fill them in here; an empty list shows `emptyNote`. `summary` and `links` are the
- * profile's defaults (`@seanperez/data` `profile/profile-seed.ts`, 2026-11-25, shared with the
+ * profile's defaults (`@seanperez/db` `profile/profile-seed.ts`, 2026-11-25, shared with the
  * admin app): edit them there.
  * Projects are not here: they are the public GitHub repos, `content/repos.json` (build time).
  */
-import { PROFILE_SEED, type SeedLink } from "@seanperez/data/profile/profile-seed";
+import { PROFILE_SEED, type SeedLink } from "@seanperez/db/profile/profile-seed";
 import type { Repo } from "./repos";
 import repoList from "./repos.json";
 

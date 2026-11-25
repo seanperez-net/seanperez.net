@@ -10,8 +10,8 @@ import {
   useTask$,
 } from "@qwik.dev/core";
 import { routeLoader$, useLocation, useNavigate } from "@qwik.dev/router";
-import { excerpt } from "@seanperez/data/feed/markdown.server";
-import { listUpdates } from "@seanperez/data/feed/posts.server";
+import { excerpt } from "@seanperez/server/feed/markdown.server";
+import { listUpdates } from "@seanperez/db/feed/posts.server";
 import {
   toChatMessage,
   useStoredMessages,

@@ -11,15 +11,15 @@ import {
 } from "@qwik.dev/router";
 import { Button, Layout } from "@seanperez/ui";
 import { ME_CHANGED_EVENT } from "../../account/me";
-import { peekLink, verifyLink } from "@seanperez/data/account/account.server";
+import { peekLink, verifyLink } from "@seanperez/db/account/account.server";
 import {
   accountsOpen,
   notifyOwnerLater,
   readSessionCookie,
   sessionOf,
   setSessionCookie,
-} from "@seanperez/data/account/contact.server";
-import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
+} from "@seanperez/server/account/contact.server";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/server/limits/limit.server";
 
 /**
  * `/verify/?t=<link token>`: the link in the verification email (plan 1.2). The GET only SHOWS a

@@ -8,8 +8,8 @@ import {
 } from "@qwik.dev/core";
 import { routeAction$ } from "@qwik.dev/router";
 import { Button, List, useSnackbar } from "@seanperez/ui";
-import { deleteOwnAccount } from "@seanperez/data/account/account.server";
-import { clearSessionCookie, sessionOf } from "@seanperez/data/account/contact.server";
+import { deleteOwnAccount } from "@seanperez/db/account/account.server";
+import { clearSessionCookie, sessionOf } from "@seanperez/server/account/contact.server";
 import { ME_CHANGED_EVENT, fetchMe, type Me } from "../account/me";
 import { ConfirmDialog } from "./contacts-dialogs";
 import { ResumeSection } from "./resume-section";

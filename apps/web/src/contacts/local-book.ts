@@ -46,7 +46,7 @@ import {
   type ImportedContact,
   type LabelledValue,
 } from "./imported";
-import { safeLinkHref } from "@seanperez/data/profile/profile";
+import { safeLinkHref } from "@seanperez/db/profile/profile";
 
 /** Trash retention, as Google's (30 days, its help article S1). */
 export const TRASH_DAYS = 30;

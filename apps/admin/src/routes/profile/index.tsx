@@ -8,15 +8,15 @@ import {
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, IconButton, Layout, TextField } from "@seanperez/ui";
-import { requireAdmin } from "@seanperez/data/feed/access.server";
-import { formatDate } from "@seanperez/data/feed/format";
-import { PROFILE_MAX } from "@seanperez/data/profile/limits";
-import { safeLinkHref } from "@seanperez/data/profile/profile";
+import { requireAdmin } from "@seanperez/server/feed/access.server";
+import { formatDate } from "@seanperez/server/feed/format";
+import { PROFILE_MAX } from "@seanperez/db/profile/limits";
+import { safeLinkHref } from "@seanperez/db/profile/profile";
 import {
   getProfileForm,
   resetProfile,
   saveProfile,
-} from "@seanperez/data/profile/profile.server";
+} from "@seanperez/db/profile/profile.server";
 
 /**
  * The profile editor (owner, 2026-11-24: the profile is "for the cms behind the zone"). Under

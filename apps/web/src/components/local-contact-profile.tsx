@@ -9,7 +9,7 @@ import {
   type Profile,
   type ProfileLink,
   type SocialBrand,
-} from "@seanperez/data/profile/profile";
+} from "@seanperez/db/profile/profile";
 import { ContactPerson } from "./contact-person";
 import {
   LinkedProfileRow,

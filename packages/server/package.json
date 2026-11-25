@@ -1,0 +1,50 @@
+{
+  "name": "@seanperez/server",
+  "version": "0.0.1",
+  "description": "@seanperez/server: the non-SQL server code both apps use: the Access check, rate limits, Turnstile, the contact orchestration (session cookie, verification and owner mail, the response floor), mail out (Resend / send_email) and in (sean@), hosts, feed date and markdown. Depends on @seanperez/db, never the reverse. Source-only and server-only (*.server.ts).",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./env": "./src/env.ts",
+    "./hosts": "./src/hosts.ts",
+    "./feed/access.server": "./src/feed/access.server.ts",
+    "./feed/markdown.server": "./src/feed/markdown.server.ts",
+    "./feed/format": "./src/feed/format.ts",
+    "./account/contact.server": "./src/account/contact.server.ts",
+    "./account/turnstile-actions": "./src/account/turnstile-actions.ts",
+    "./mail/mail.server": "./src/mail/mail.server.ts",
+    "./mail/inbound.server": "./src/mail/inbound.server.ts",
+    "./limits/limit.server": "./src/limits/limit.server.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\"",
+    "test": "node --test scripts/*-test.ts",
+    "fmt": "prettier --write .",
+    "fmt.check": "prettier --check ."
+  },
+  "peerDependencies": {
+    "@qwik.dev/router": "^2.0.0-rc.5"
+  },
+  "dependencies": {
+    "jose": "^6.2.18",
+    "micromark": "^4.0.3",
+    "postal-mime": "4.2.1",
+    "@seanperez/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261119.1",
+    "@eslint/js": "10.0.1",
+    "@qwik.dev/core": "2.0.0-rc.5",
+    "@qwik.dev/router": "2.0.0-rc.5",
+    "@types/node": "25.6.0",
+    "eslint": "10.0.3",
+    "globals": "17.0.0",
+    "prettier": "3.7.4",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.56.1",
+    "vite": "8.2.4",
+    "wrangler": "^4.0.0"
+  }
+}

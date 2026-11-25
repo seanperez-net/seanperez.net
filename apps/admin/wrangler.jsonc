@@ -28,7 +28,7 @@
   "preview_urls": false,
   /**
    * The SAME database as apps/web (posts, profile, contact messages, accounts). An identifier,
-   * not a credential. The migrations are `@seanperez/data`'s (`packages/data/migrations`, the
+   * not a credential. The migrations are `@seanperez/db`'s (`packages/db/migrations`, the
    * same folder as apps/web's `migrations_dir`). Apply `--local` from apps/web, whose local state
    * `pnpm dev:admin` shares (`vite.config.ts`); from here `--local` would fill this app's own,
    * unused `.wrangler/`. `--remote` is the owner's, from either app (one database).
@@ -38,7 +38,7 @@
       "binding": "DB",
       "database_name": "seanperez-net",
       "database_id": "bd51b663-f4bf-4dab-96fc-42b4d1f8e3d4",
-      "migrations_dir": "../../packages/data/migrations",
+      "migrations_dir": "../../packages/db/migrations",
     },
   ],
   "observability": {

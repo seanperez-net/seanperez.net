@@ -1,6 +1,6 @@
 import { component$, Slot, useComputed$ } from "@qwik.dev/core";
 import { useLocation, type RequestHandler } from "@qwik.dev/router";
-import { requireAdmin } from "@seanperez/data/feed/access.server";
+import { requireAdmin } from "@seanperez/server/feed/access.server";
 import { Layout, type LayoutRailItem } from "@seanperez/ui";
 
 /**
