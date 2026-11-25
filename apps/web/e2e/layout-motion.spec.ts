@@ -32,6 +32,10 @@ test.describe("wide (desktop WebKit)", () => {
   test.skip(({ isMobile }) => isMobile, "wide layout only");
 
   test("docking the Messages drawer slides with no scrollbar", async ({ page }) => {
+    // Wide enough that the drawer can dock beside Messages' two panes: below about 1016px of
+    // room the drawer auto-floats (layout.md "Drawer auto-float"), and the button opens the
+    // floating card instead of docking.
+    await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto("/messages/");
     const menu = page.locator("nav[aria-label=Main] button[aria-controls]").first();
     await expect(menu).toBeEnabled();
