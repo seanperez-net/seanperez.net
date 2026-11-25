@@ -8,8 +8,8 @@
  *   input), never thrown.
  * - `?from=` / `?to=`: a stop as `<lat>,<lng>` (the same order). `?mode=` `bike` / `foot`; car is
  *   the default and is left out (e-store leaves out `drive`).
- * - Ours, not e-store's: plain regexes instead of valibot (apps/web has no valibot, and these are
- *   three small patterns); no `/place/`, `/search/`, `/dir/` routes: one route, `/maps/`, whose
+ * - Ours, not e-store's: plain regexes instead of valibot (written before apps/web had valibot;
+ *   these are three small patterns); no `/place/`, `/search/`, `/dir/` routes: one route, `/maps/`, whose
  *   query says what it shows. e-store's foreign-link readers, `?base=`, `?layers=`, `?hl=`,
  *   `?via=` are not ported (no such features here).
  *
@@ -107,7 +107,9 @@ export type MapsUrlState = {
 };
 
 /** A node id (`this-device`, a real device's `gw-1`); anything else is ignored. */
-export function parseNodeParam(value: string | null | undefined): string | null {
+export function parseNodeParam(
+  value: string | null | undefined,
+): string | null {
   return value && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
 }
 

@@ -9,6 +9,10 @@ importers:
   .: {}
 
   apps/admin:
+    dependencies:
+      valibot:
+        specifier: ^1.5.0
+        version: 1.5.0(typescript@5.9.3)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20261119.1
@@ -85,9 +89,9 @@ importers:
       maplibre-gl:
         specifier: ^6.19.0
         version: 6.19.0
-      zod:
-        specifier: ^4.6.7
-        version: 4.6.7
+      valibot:
+        specifier: ^1.5.0
+        version: 1.5.0(typescript@5.9.3)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20261119.1

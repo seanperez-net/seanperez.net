@@ -37,7 +37,9 @@ export default defineConfig(({ command, mode }): UserConfig => {
     plugins: [
       qwikMcp(),
       qwikRouter({ platform }),
-      qwikVite(),
+      // Departure (QWIK-DEFAULTS.md 2026-11-25, "Valibot replaces zod"): router rc.5's `valibot$`
+      // throws at module load without the `valibot` experimental feature.
+      qwikVite({ experimental: ["valibot"] }),
       tsconfigPaths({ root: "." }),
       tailwindcss(),
       // After qwikVite(): the service worker's file list and version (offline, 2026-11-24).

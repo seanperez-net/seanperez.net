@@ -1,12 +1,12 @@
-import { z } from "zod";
+import * as v from "valibot";
 import { STALE_MS } from "../components/map-nodes";
 import type { MapNode, NodeKind } from "../components/map-nodes";
 import type { LngLat } from "../components/map-url";
 
 /**
  * The live nodes' wire formats (2026-11-24; design: PLAN.md "Maps NODES layer: live backend").
- * Server only for the zod part: the browser imports the TYPES below with `import type`, so zod
- * never reaches the client bundle.
+ * Server only for the valibot part: the browser imports the TYPES below with `import type`, so
+ * the schema never reaches the client bundle.
  *
  * INGEST (`POST /api/nodes/ingest`, a device or a bridge: an OctoPrint plugin, CNCjs, a The
  * Things Stack webhook relay, Node-RED): ONE report per request, JSON, at most `INGEST_MAX_BYTES`,
@@ -30,63 +30,67 @@ const KINDS = [
   "cnc",
 ] as const satisfies readonly NodeKind[];
 
-const percent = z.number().min(0).max(100);
-const pair = z.tuple([
-  z.number().min(-50).max(500),
-  z.number().min(0).max(500),
-]);
+/** A bounded number (every bound here also refuses ±Infinity, which `v.number()` lets through). */
+const num = (min: number, max: number) =>
+  v.pipe(v.number(), v.minValue(min), v.maxValue(max));
+/** zod 4's `z.int()` was a SAFE integer (2026-11-25 port). */
+const int = (min: number, max: number) =>
+  v.pipe(v.number(), v.safeInteger(), v.minValue(min), v.maxValue(max));
+const job = v.nullable(v.pipe(v.string(), v.maxLength(120)));
+const percent = num(0, 100);
+// zod 4's tuples refuse extra items; valibot's `tuple` would drop them: `strictTuple`.
+const pair = v.strictTuple([num(-50, 500), num(0, 500)]);
 
-const machineStatus = z.discriminatedUnion("type", [
-  z.strictObject({
-    type: z.literal("printer"),
-    state: z.enum(["idle", "processing", "stopped"]),
-    job: z.string().max(120).nullable(),
-    pages: z
-      .tuple([z.int().min(0).max(100_000), z.int().min(0).max(100_000)])
-      .nullable(),
+const machineStatus = v.variant("type", [
+  v.strictObject({
+    type: v.literal("printer"),
+    state: v.picklist(["idle", "processing", "stopped"]),
+    job,
+    pages: v.nullable(v.strictTuple([int(0, 100_000), int(0, 100_000)])),
     toner: percent,
   }),
-  z.strictObject({
-    type: z.literal("printer3d"),
-    state: z.enum(["idle", "heating", "printing", "finished"]),
-    job: z.string().max(120).nullable(),
+  v.strictObject({
+    type: v.literal("printer3d"),
+    state: v.picklist(["idle", "heating", "printing", "finished"]),
+    job,
     progress: percent,
     nozzle: pair,
     bed: pair,
-    secondsLeft: z.number().min(0).max(1e7).nullable(),
+    secondsLeft: v.nullable(num(0, 1e7)),
   }),
-  z.strictObject({
-    type: z.literal("cnc"),
-    state: z.enum(["Idle", "Run", "Hold"]),
-    job: z.string().max(120).nullable(),
+  v.strictObject({
+    type: v.literal("cnc"),
+    state: v.picklist(["Idle", "Run", "Hold"]),
+    job,
     progress: percent,
-    spindle: z.number().min(0).max(100_000),
-    secondsLeft: z.number().min(0).max(1e7).nullable(),
+    spindle: num(0, 100_000),
+    secondsLeft: v.nullable(num(0, 1e7)),
   }),
 ]);
 
-export const ingestReport = z.strictObject({
+export const ingestReport = v.strictObject({
   /** Lower-case letters, digits, `-` `_` `.`; it is also the `?node=` in Maps URLs. */
-  id: z
-    .string()
-    .min(1)
-    .max(64)
-    .regex(/^[a-z0-9][a-z0-9._-]*$/),
-  name: z.string().trim().min(1).max(80),
-  kind: z.enum(KINDS),
-  lngLat: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]),
-  heading: z.number().min(0).max(360).nullable().optional(),
-  speed: z.number().min(0).max(400).optional(),
-  altitude: z.number().min(-500).max(20_000).optional(),
-  battery: percent.nullable().optional(),
-  online: z.boolean().optional(),
-  rssi: z.number().min(-200).max(0).optional(),
-  snr: z.number().min(-50).max(50).optional(),
-  status: machineStatus.optional(),
-  ts: z.int().min(0).optional(),
+  id: v.pipe(
+    v.string(),
+    v.minLength(1),
+    v.maxLength(64),
+    v.regex(/^[a-z0-9][a-z0-9._-]*$/),
+  ),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(80)),
+  kind: v.picklist(KINDS),
+  lngLat: v.strictTuple([num(-180, 180), num(-90, 90)]),
+  heading: v.optional(v.nullable(num(0, 360))),
+  speed: v.optional(num(0, 400)),
+  altitude: v.optional(num(-500, 20_000)),
+  battery: v.optional(v.nullable(percent)),
+  online: v.optional(v.boolean()),
+  rssi: v.optional(num(-200, 0)),
+  snr: v.optional(num(-50, 50)),
+  status: v.optional(machineStatus),
+  ts: v.optional(int(0, Number.MAX_SAFE_INTEGER)),
 });
 
-export type IngestReport = z.infer<typeof ingestReport>;
+export type IngestReport = v.InferOutput<typeof ingestReport>;
 
 /** A valid ingest report as the map's `MapNode` (`now`: the hub's clock). */
 export function toMapNode(report: IngestReport, now: number): MapNode {

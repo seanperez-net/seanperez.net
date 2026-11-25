@@ -10,7 +10,8 @@ import {
   useTask$,
   useVisibleTask$,
 } from "@qwik.dev/core";
-import { Form, routeAction$, routeLoader$, z, zod$ } from "@qwik.dev/router";
+import { Form, routeAction$, routeLoader$, valibot$ } from "@qwik.dev/router";
+import * as v from "valibot";
 import {
   Button,
   TextField,
@@ -65,7 +66,7 @@ import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
  * `invalidate: []`: sending a message changes no loader, so the page's loaders (the feed, the
  * map) are not fetched again after a send.
  *
- * Server side, in order: the honeypot, the field limits (`zod$`), Turnstile Siteverify, then one
+ * Server side, in order: the honeypot, the field limits (`valibot$`), Turnstile Siteverify, then one
  * INSERT (bound parameters), refused once the day's cap is reached (`MESSAGES_PER_DAY`). Same-origin only: Qwik Router's `checkOrigin` (on by default, rc.5
  * `request-handler`) refuses a POST whose `Origin` is not the site's own.
  *
@@ -163,6 +164,14 @@ export function draftContactMessage(text: string) {
 
 /** One line, no control characters: the name is shown as one line in the admin inbox. */
 const oneLine = /^[^\p{Cc}]*$/u;
+
+/**
+ * The email rule the form had under zod 3's `.email()` (zod 3.25.76 `v3/types.js` `emailRegex`),
+ * kept as is when moving to valibot (2026-11-25): valibot's own `email()` regex refuses an
+ * apostrophe in the local part (`o'brien@...`) and accepts forms this one refuses.
+ */
+const EMAIL =
+  /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i;
 
 // Re-exported from routes/layout.tsx (see the file comment).
 // eslint-disable-next-line qwik/loader-location
@@ -285,28 +294,35 @@ export const useSendMessage = routeAction$(
   {
     invalidate: [],
     validation: [
-      zod$({
-        name: z
-          .string()
-          .trim()
-          .min(1, "Enter your name.")
-          .max(MAX.name, `At most ${MAX.name} characters.`)
-          .regex(oneLine, "Use one line."),
-        email: z
-          .string()
-          .trim()
-          .min(1, "Enter your email address.")
-          .max(MAX.email, `At most ${MAX.email} characters.`)
-          .email("Enter an email address like name@example.com."),
-        message: z
-          .string()
-          .trim()
-          .min(1, "Enter a message.")
-          .max(MAX.message, `At most ${MAX.message} characters.`),
-        // The honeypot and the token the widget adds (Turnstile tokens are at most 2048 chars).
-        [HONEYPOT]: z.string().max(200).optional(),
-        "cf-turnstile-response": z.string().max(2048).optional(),
-      }),
+      valibot$(
+        v.object({
+          name: v.pipe(
+            v.string(),
+            v.trim(),
+            v.minLength(1, "Enter your name."),
+            v.maxLength(MAX.name, `At most ${MAX.name} characters.`),
+            v.regex(oneLine, "Use one line."),
+          ),
+          email: v.pipe(
+            v.string(),
+            v.trim(),
+            v.minLength(1, "Enter your email address."),
+            v.maxLength(MAX.email, `At most ${MAX.email} characters.`),
+            v.regex(EMAIL, "Enter an email address like name@example.com."),
+          ),
+          message: v.pipe(
+            v.string(),
+            v.trim(),
+            v.minLength(1, "Enter a message."),
+            v.maxLength(MAX.message, `At most ${MAX.message} characters.`),
+          ),
+          // The honeypot and the token the widget adds (Turnstile tokens are at most 2048 chars).
+          [HONEYPOT]: v.optional(v.pipe(v.string(), v.maxLength(200))),
+          "cf-turnstile-response": v.optional(
+            v.pipe(v.string(), v.maxLength(2048)),
+          ),
+        }),
+      ),
     ],
   },
 );

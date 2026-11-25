@@ -1,4 +1,5 @@
-import { routeAction$, z, zod$ } from "@qwik.dev/router";
+import { routeAction$, valibot$ } from "@qwik.dev/router";
+import * as v from "valibot";
 import {
   createToken,
   sendAsSession,
@@ -16,7 +17,12 @@ import {
 import { DEMO } from "../demo/demo";
 import { MAX_BODY } from "../messages/messages-local";
 import { TURNSTILE_ACTIONS } from "@seanperez/server/account/turnstile-actions";
-import { TOO_MANY, WEIGHT, allow, sessionKey } from "@seanperez/server/limits/limit.server";
+import {
+  TOO_MANY,
+  WEIGHT,
+  allow,
+  sessionKey,
+} from "@seanperez/server/limits/limit.server";
 
 /**
  * The contact account's actions besides the first send (`useSendMessage` in `contact-panel.tsx`):
@@ -70,12 +76,15 @@ export const useVerifyCode = routeAction$(
   {
     invalidate: [],
     validation: [
-      zod$({
-        code: z
-          .string()
-          .trim()
-          .regex(/^\d{6}$/, "Enter the 6 digits from the email."),
-      }),
+      valibot$(
+        v.object({
+          code: v.pipe(
+            v.string(),
+            v.trim(),
+            v.regex(/^\d{6}$/, "Enter the 6 digits from the email."),
+          ),
+        }),
+      ),
     ],
   },
 );
@@ -126,10 +135,14 @@ export const useResendVerification = routeAction$(
   {
     invalidate: [],
     validation: [
-      zod$({
-        // The security check's token (Turnstile tokens are at most 2048 characters).
-        "cf-turnstile-response": z.string().max(2048).optional(),
-      }),
+      valibot$(
+        v.object({
+          // The security check's token (Turnstile tokens are at most 2048 characters).
+          "cf-turnstile-response": v.optional(
+            v.pipe(v.string(), v.maxLength(2048)),
+          ),
+        }),
+      ),
     ],
   },
 );
@@ -203,15 +216,20 @@ export const useSendToSean = routeAction$(
   {
     invalidate: [],
     validation: [
-      zod$({
-        message: z
-          .string()
-          .trim()
-          .min(1, "Enter a message.")
-          .max(MAX_BODY, `At most ${MAX_BODY} characters.`),
-        // The security check's token, for an unverified session (at most 2048 characters).
-        "cf-turnstile-response": z.string().max(2048).optional(),
-      }),
+      valibot$(
+        v.object({
+          message: v.pipe(
+            v.string(),
+            v.trim(),
+            v.minLength(1, "Enter a message."),
+            v.maxLength(MAX_BODY, `At most ${MAX_BODY} characters.`),
+          ),
+          // The security check's token, for an unverified session (at most 2048 characters).
+          "cf-turnstile-response": v.optional(
+            v.pipe(v.string(), v.maxLength(2048)),
+          ),
+        }),
+      ),
     ],
   },
 );

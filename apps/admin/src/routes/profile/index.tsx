@@ -3,11 +3,11 @@ import {
   Form,
   routeAction$,
   routeLoader$,
-  z,
-  zod$,
+  valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, IconButton, Layout, TextField } from "@seanperez/ui";
+import * as v from "valibot";
 import { requireAdmin } from "@seanperez/server/feed/access.server";
 import { formatDate } from "@seanperez/server/feed/format";
 import { PROFILE_MAX } from "@seanperez/db/profile/limits";
@@ -38,9 +38,9 @@ export const useProfileForm = routeLoader$(async ({ platform }) => {
   }
 });
 
-const linkRow = z.object({
-  label: z.string().max(PROFILE_MAX.linkLabel),
-  href: z.string().max(PROFILE_MAX.linkHref),
+const linkRow = v.object({
+  label: v.pipe(v.string(), v.maxLength(PROFILE_MAX.linkLabel)),
+  href: v.pipe(v.string(), v.maxLength(PROFILE_MAX.linkHref)),
 });
 
 export const useSaveProfile = routeAction$(
@@ -92,14 +92,18 @@ export const useSaveProfile = routeAction$(
       });
     }
   },
-  zod$({
-    name: z.string().max(PROFILE_MAX.name),
-    headline: z.string().max(PROFILE_MAX.headline),
-    location: z.string().max(PROFILE_MAX.location),
-    bio: z.string().max(PROFILE_MAX.bio),
-    links: z.array(linkRow).max(PROFILE_MAX.links).optional(),
-    intent: z.enum(["save", "reset"]),
-  }),
+  valibot$(
+    v.object({
+      name: v.pipe(v.string(), v.maxLength(PROFILE_MAX.name)),
+      headline: v.pipe(v.string(), v.maxLength(PROFILE_MAX.headline)),
+      location: v.pipe(v.string(), v.maxLength(PROFILE_MAX.location)),
+      bio: v.pipe(v.string(), v.maxLength(PROFILE_MAX.bio)),
+      links: v.optional(
+        v.pipe(v.array(linkRow), v.maxLength(PROFILE_MAX.links)),
+      ),
+      intent: v.picklist(["save", "reset"]),
+    }),
+  ),
 );
 
 export default component$(() => {
@@ -186,7 +190,7 @@ export default component$(() => {
                 error={err("bio")}
               />
               <fieldset class="grid gap-4">
-                <legend class="mb-2 text-title-medium text-on-surface">
+                <legend class="text-title-medium text-on-surface mb-2">
                   Links
                 </legend>
                 <p class="text-body-medium text-on-surface-variant">

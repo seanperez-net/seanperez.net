@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as v from "valibot";
 import type { NodeHub } from "./node-hub.server";
 import type { MapNode } from "../components/map-nodes";
 import { INGEST_MAX_BYTES, ingestReport, toMapNode } from "./node-schema";
@@ -134,11 +134,11 @@ async function ingest(request: Request, env: Env): Promise<Response> {
   } catch {
     return text(400, "Invalid JSON");
   }
-  const parsed = ingestReport.safeParse(json);
+  const parsed = v.safeParse(ingestReport, json);
   if (!parsed.success)
-    return text(400, `Invalid report\n${z.prettifyError(parsed.error)}`);
+    return text(400, `Invalid report\n${v.summarize(parsed.issues)}`);
 
-  const result = await hub(env).ingest(toMapNode(parsed.data, Date.now()));
+  const result = await hub(env).ingest(toMapNode(parsed.output, Date.now()));
   if (!result.ok) return text(result.status, result.error);
   return new Response(null, { status: 204 });
 }

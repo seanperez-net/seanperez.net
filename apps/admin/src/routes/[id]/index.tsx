@@ -3,15 +3,20 @@ import {
   Form,
   routeAction$,
   routeLoader$,
-  z,
-  zod$,
+  valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, Layout, Modal, TextField } from "@seanperez/ui";
+import * as v from "valibot";
 import { requireAdmin } from "@seanperez/server/feed/access.server";
 import { ARTICLE_CLASS, formatDate } from "@seanperez/server/feed/format";
 import { renderMarkdown } from "@seanperez/server/feed/markdown.server";
-import { MAX_BODY, MAX_SLUG, MAX_TITLE, SLUG_PATTERN } from "@seanperez/db/feed/limits";
+import {
+  MAX_BODY,
+  MAX_SLUG,
+  MAX_TITLE,
+  SLUG_PATTERN,
+} from "@seanperez/db/feed/limits";
 import {
   deletePost,
   getById,
@@ -82,12 +87,14 @@ export const useSavePost = routeAction$(
       preview: html,
     };
   },
-  zod$({
-    title: z.string().max(MAX_TITLE),
-    slug: z.string().max(MAX_SLUG),
-    body_md: z.string().max(MAX_BODY),
-    intent: z.enum(["draft", "publish", "preview"]),
-  }),
+  valibot$(
+    v.object({
+      title: v.pipe(v.string(), v.maxLength(MAX_TITLE)),
+      slug: v.pipe(v.string(), v.maxLength(MAX_SLUG)),
+      body_md: v.pipe(v.string(), v.maxLength(MAX_BODY)),
+      intent: v.picklist(["draft", "publish", "preview"]),
+    }),
+  ),
 );
 
 export const useDeletePost = routeAction$(async (_data, ev) => {
@@ -141,9 +148,7 @@ export default component$(() => {
             autocomplete="off"
             required
             maxLength={MAX_TITLE}
-            value={
-              fieldValue("title")
-            }
+            value={fieldValue("title")}
             error={save.value?.fieldErrors?.title}
           />
           <TextField
@@ -157,9 +162,7 @@ export default component$(() => {
             pattern={SLUG_PATTERN.source.slice(1, -1)}
             maxLength={MAX_SLUG}
             supportingText="The address: /feed/<slug>/. Left empty, it is made from the title."
-            value={
-              fieldValue("slug")
-            }
+            value={fieldValue("slug")}
             error={save.value?.fieldErrors?.slug}
           />
           <TextField
@@ -169,9 +172,7 @@ export default component$(() => {
             resize="vertical"
             label="Body (Markdown)"
             maxLength={MAX_BODY}
-            value={
-              fieldValue("body_md")
-            }
+            value={fieldValue("body_md")}
           />
           {save.value?.failed && save.value.message && (
             <p role="alert" class="text-body-medium text-error">

@@ -10,11 +10,11 @@
  * ACCOUNT (Google Workspace's app list follows the account to every device), not a fact about
  * this screen like the map's camera or the theme. So it is in `SYNC_DOCS` for admin.
  *
- * Plain TS + zod, no Qwik, no storage, no clock. Stored data is untrusted: an id that is not a
+ * Plain TS + valibot, no Qwik, no storage, no clock. Stored data is untrusted: an id that is not a
  * known removable app is dropped on read; a damaged doc reads as "nothing removed" (every app
  * back), never as "everything removed".
  */
-import { z } from "zod";
+import * as v from "valibot";
 
 export const APPS_DOC = "apps.local";
 
@@ -29,15 +29,17 @@ export interface AppsLocalDoc {
   syncedAt?: number;
 }
 
-const time = z.number().int().nonnegative();
-const docSchema = z
-  .object({
-    v: z.literal(1),
-    removed: z.array(z.string().max(40)).max(20),
-    updatedAt: time,
-    syncedAt: time.optional(),
-  })
-  .strict();
+// zod 4's `.int()` was a SAFE integer (2026-11-25 port): `safeInteger`, not `integer`.
+const time = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const docSchema = v.strictObject({
+  v: v.literal(1),
+  removed: v.pipe(
+    v.array(v.pipe(v.string(), v.maxLength(40))),
+    v.maxLength(20),
+  ),
+  updatedAt: time,
+  syncedAt: v.optional(time),
+});
 
 const isRemovable = (id: string): id is RemovableApp =>
   (REMOVABLE_APPS as readonly string[]).includes(id);
@@ -50,12 +52,12 @@ export const emptyAppsDoc = (): AppsLocalDoc => ({
 
 /** The stored doc, or the empty one (every app present) when missing or not valid. */
 export function parseAppsDoc(raw: unknown): AppsLocalDoc {
-  const parsed = docSchema.safeParse(raw);
+  const parsed = v.safeParse(docSchema, raw);
   if (!parsed.success) return emptyAppsDoc();
   return {
-    ...parsed.data,
+    ...parsed.output,
     v: 1,
-    removed: [...new Set(parsed.data.removed.filter(isRemovable))],
+    removed: [...new Set(parsed.output.removed.filter(isRemovable))],
   };
 }
 

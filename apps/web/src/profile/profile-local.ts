@@ -13,7 +13,7 @@
  * (`profile.server.ts` `getProfile`): a field they never touched keeps following the server.
  * Reset writes an empty override with a new stamp (not a delete), so the outbox carries the reset.
  *
- * Plain TS + zod, no Qwik, no storage, no clock: the page, a test or admin's service worker can
+ * Plain TS + valibot, no Qwik, no storage, no clock: the page, a test or admin's service worker can
  * run it. Stored data is untrusted: a doc that fails the schema is NO override (the server
  * profile shows), and links are re-checked (`safeLinkHref`) and re-described (`describeLink`) on
  * every read. NO email field (no-email rule): `.strict()` rejects unknown keys.
@@ -21,9 +21,13 @@
  * NOT used by the Contact me companion or its social links (`social-links.tsx`), the page head,
  * OG images or JSON-LD: those always show the real owner (memory `contact-me-pitch-idea`).
  */
-import { z } from "zod";
+import * as v from "valibot";
 import { PROFILE_MAX } from "@seanperez/db/profile/limits";
-import { describeLink, safeLinkHref, type Profile } from "@seanperez/db/profile/profile";
+import {
+  describeLink,
+  safeLinkHref,
+  type Profile,
+} from "@seanperez/db/profile/profile";
 
 export const PROFILE_DOC = "profile.local";
 
@@ -50,32 +54,32 @@ export interface ProfileLocalDoc {
   syncedAt?: number;
 }
 
-const linkSchema = z
-  .object({
-    label: z.string().min(1).max(PROFILE_MAX.linkLabel),
-    href: z.string().max(PROFILE_MAX.linkHref),
-  })
-  .strict();
+const linkSchema = v.strictObject({
+  label: v.pipe(v.string(), v.minLength(1), v.maxLength(PROFILE_MAX.linkLabel)),
+  href: v.pipe(v.string(), v.maxLength(PROFILE_MAX.linkHref)),
+});
 
-const fieldsSchema = z
-  .object({
-    name: z.string().trim().min(1).max(PROFILE_MAX.name).optional(),
-    headline: z.string().max(PROFILE_MAX.headline).optional(),
-    location: z.string().max(PROFILE_MAX.location).optional(),
-    bio: z.string().max(PROFILE_MAX.bio).optional(),
-    links: z.array(linkSchema).max(PROFILE_MAX.links).optional(),
-  })
-  .strict();
+const max = (n: number) => v.optional(v.pipe(v.string(), v.maxLength(n)));
+const fieldsSchema = v.strictObject({
+  name: v.optional(
+    v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(PROFILE_MAX.name)),
+  ),
+  headline: max(PROFILE_MAX.headline),
+  location: max(PROFILE_MAX.location),
+  bio: max(PROFILE_MAX.bio),
+  links: v.optional(
+    v.pipe(v.array(linkSchema), v.maxLength(PROFILE_MAX.links)),
+  ),
+});
 
-const time = z.number().int().nonnegative();
-const docSchema = z
-  .object({
-    v: z.literal(1),
-    fields: fieldsSchema,
-    updatedAt: time,
-    syncedAt: time.optional(),
-  })
-  .strict();
+// zod 4's `.int()` was a SAFE integer (2026-11-25 port): `safeInteger`, not `integer`.
+const time = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const docSchema = v.strictObject({
+  v: v.literal(1),
+  fields: fieldsSchema,
+  updatedAt: time,
+  syncedAt: v.optional(time),
+});
 
 export const emptyProfileDoc = (): ProfileLocalDoc => ({
   v: 1,
@@ -85,8 +89,10 @@ export const emptyProfileDoc = (): ProfileLocalDoc => ({
 
 /** The stored doc, or the empty one when missing or not valid (never rewritten on read). */
 export function parseProfileDoc(raw: unknown): ProfileLocalDoc {
-  const parsed = docSchema.safeParse(raw);
-  return parsed.success ? (parsed.data as ProfileLocalDoc) : emptyProfileDoc();
+  const parsed = v.safeParse(docSchema, raw);
+  return parsed.success
+    ? (parsed.output as ProfileLocalDoc)
+    : emptyProfileDoc();
 }
 
 /** Stored links, checked again: `https:` only, described from their host. */

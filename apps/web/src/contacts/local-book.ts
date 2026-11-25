@@ -31,7 +31,7 @@
  * Trash is a field (`deletedAt`), not a second list; Google's 30 days (`TRASH_DAYS`) are applied
  * whenever the book is read (`expireTrash`).
  */
-import { z } from "zod";
+import * as v from "valibot";
 import {
   MAX_FIELD,
   MAX_IMPORTED,
@@ -155,66 +155,71 @@ export const emptyBook = (): LocalBook => ({
 
 // ─── Reading stored data (untrusted: another version of the site, or the visitor, wrote it) ──
 
-const valueSchema = z.object({
-  label: z.string().max(40),
-  value: z.string().max(200),
+const str = (max: number) => v.pipe(v.string(), v.maxLength(max));
+const ID_RE = /^[\w-]{1,64}$/;
+const valueSchema = v.object({
+  label: str(40),
+  value: str(200),
 });
-const time = z.number().int().nonnegative();
-const contactSchema = z.object({
-  id: z.string().regex(/^[\w-]{1,64}$/),
-  name: z.string().min(1).max(MAX_FIELD),
-  organization: z.string().max(MAX_FIELD),
-  title: z.string().max(MAX_FIELD),
-  phones: z.array(valueSchema).max(MAX_VALUES),
-  emails: z.array(valueSchema).max(MAX_VALUES),
-  labels: z.array(z.string().max(70)).max(MAX_LABELS),
-  notes: z.string().max(MAX_NOTES),
-  source: z.enum(["import", "created", "site"]),
-  siteId: z
-    .string()
-    .regex(/^[\w-]{1,64}$/)
-    .optional(),
-  starred: z.boolean().optional(),
-  photo: z.string().max(MAX_PHOTO).regex(PHOTO_RE).optional(),
-  profile: z
-    .union([
-      z.object({ account: z.string().regex(/^[\w-]{1,64}$/) }).strict(),
-      z
-        .object({
-          href: z
-            .string()
-            .max(MAX_PROFILE_HREF)
-            .refine((h) => safeLinkHref(h) === h),
-        })
-        .strict(),
-    ])
-    .optional(),
+// zod 4's `.int()` was a SAFE integer (2026-11-25 port): `safeInteger`, not `integer`.
+const time = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const contactSchema = v.object({
+  id: v.pipe(v.string(), v.regex(ID_RE)),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(MAX_FIELD)),
+  organization: str(MAX_FIELD),
+  title: str(MAX_FIELD),
+  phones: v.pipe(v.array(valueSchema), v.maxLength(MAX_VALUES)),
+  emails: v.pipe(v.array(valueSchema), v.maxLength(MAX_VALUES)),
+  labels: v.pipe(v.array(str(70)), v.maxLength(MAX_LABELS)),
+  notes: str(MAX_NOTES),
+  source: v.picklist(["import", "created", "site"]),
+  siteId: v.optional(v.pipe(v.string(), v.regex(ID_RE))),
+  starred: v.optional(v.boolean()),
+  photo: v.optional(
+    v.pipe(v.string(), v.maxLength(MAX_PHOTO), v.regex(PHOTO_RE)),
+  ),
+  profile: v.optional(
+    v.union([
+      v.strictObject({ account: v.pipe(v.string(), v.regex(ID_RE)) }),
+      v.strictObject({
+        href: v.pipe(
+          v.string(),
+          v.maxLength(MAX_PROFILE_HREF),
+          v.check((h) => safeLinkHref(h) === h),
+        ),
+      }),
+    ]),
+  ),
   createdAt: time,
   updatedAt: time,
-  editedAt: time.optional(),
-  deletedAt: time.optional(),
-  syncedAt: time.optional(),
+  editedAt: v.optional(time),
+  deletedAt: v.optional(time),
+  syncedAt: v.optional(time),
 });
-const labelSchema = z.object({
-  id: z.string().regex(/^l-[\w-]{1,64}$/),
-  name: z.string().min(1).max(MAX_LABEL_NAME),
+const labelSchema = v.object({
+  id: v.pipe(v.string(), v.regex(/^l-[\w-]{1,64}$/)),
+  name: v.pipe(v.string(), v.minLength(1), v.maxLength(MAX_LABEL_NAME)),
   createdAt: time,
   updatedAt: time,
-  syncedAt: time.optional(),
+  syncedAt: v.optional(time),
 });
-const tombstoneSchema = z.object({
-  kind: z.enum(["contact", "label"]),
-  id: z.string().max(70),
+const tombstoneSchema = v.object({
+  kind: v.picklist(["contact", "label"]),
+  id: str(70),
   at: time,
 });
 
 /** Each entry checked on its own: one bad record never loses the others. */
-function each<T>(raw: unknown, schema: z.ZodType<T>, max: number): T[] {
+function each<T>(
+  raw: unknown,
+  schema: v.GenericSchema<unknown, T>,
+  max: number,
+): T[] {
   if (!Array.isArray(raw)) return [];
   const out: T[] = [];
   for (const entry of raw) {
-    const parsed = schema.safeParse(entry);
-    if (parsed.success) out.push(parsed.data);
+    const parsed = v.safeParse(schema, entry);
+    if (parsed.success) out.push(parsed.output);
     if (out.length === max) break;
   }
   return out;
@@ -230,7 +235,7 @@ export function parseBook(raw: unknown): LocalBook {
     contacts: each(r.contacts, contactSchema, MAX_IMPORTED),
     labels,
     tombstones: each(r.tombstones, tombstoneSchema, MAX_TOMBSTONES),
-    hiddenSite: each(r.hiddenSite, z.string().regex(/^[\w-]{1,64}$/), 50),
+    hiddenSite: each(r.hiddenSite, v.pipe(v.string(), v.regex(ID_RE)), 50),
   };
 }
 

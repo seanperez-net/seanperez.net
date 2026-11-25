@@ -2,11 +2,11 @@ import { component$ } from "@qwik.dev/core";
 import {
   routeAction$,
   routeLoader$,
-  z,
-  zod$,
+  valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, Layout, List } from "@seanperez/ui";
+import * as v from "valibot";
 import {
   deleteAccount,
   listAccounts,
@@ -41,7 +41,7 @@ export const useDeleteAccount = routeAction$(
   },
   {
     invalidate: [useAccounts],
-    validation: [zod$({ id: z.string().uuid() })],
+    validation: [valibot$(v.object({ id: v.pipe(v.string(), v.uuid()) }))],
   },
 );
 

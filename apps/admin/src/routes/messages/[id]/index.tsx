@@ -3,11 +3,11 @@ import {
   Form,
   routeAction$,
   routeLoader$,
-  z,
-  zod$,
+  valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
 import { Button, Layout, Modal, TextField } from "@seanperez/ui";
+import * as v from "valibot";
 import { createToken, getAccount } from "@seanperez/db/account/account.server";
 import { sendVerification } from "@seanperez/server/account/contact.server";
 import { siteOrigin } from "@seanperez/server/hosts";
@@ -142,13 +142,16 @@ export const useReply = routeAction$(
     // The new reply shows in the list (the loader runs again; marking read is idempotent).
     invalidate: [useMessage],
     validation: [
-      zod$({
-        body: z
-          .string()
-          .trim()
-          .min(1, "Write a reply.")
-          .max(MAX_REPLY, `At most ${MAX_REPLY} characters.`),
-      }),
+      valibot$(
+        v.object({
+          body: v.pipe(
+            v.string(),
+            v.trim(),
+            v.minLength(1, "Write a reply."),
+            v.maxLength(MAX_REPLY, `At most ${MAX_REPLY} characters.`),
+          ),
+        }),
+      ),
     ],
   },
 );
@@ -194,7 +197,7 @@ export default component$(() => {
           Cloudflare's own Authentication-Results said (no dmarc=pass: the From may be forged). */}
         {data.value.message.source === "email" && (
           <div class="grid gap-1">
-            <p class="text-title-medium wrap-break-word text-on-surface">
+            <p class="text-title-medium text-on-surface wrap-break-word">
               {data.value.message.subject || "(no subject)"}
             </p>
             <p class="text-body-medium text-on-surface-variant">
@@ -206,7 +209,7 @@ export default component$(() => {
             </p>
           </div>
         )}
-        <p class="text-body-large wrap-break-word whitespace-pre-wrap text-on-surface">
+        <p class="text-body-large text-on-surface wrap-break-word whitespace-pre-wrap">
           {data.value.message.body}
         </p>
 
@@ -266,7 +269,7 @@ export default component$(() => {
                   {formatDate(r.created_at)} · {SEND_TEXT[r.send_status]}
                   {r.send_error ? ` (${r.send_error})` : ""}
                 </p>
-                <p class="text-body-medium wrap-break-word whitespace-pre-wrap text-on-surface">
+                <p class="text-body-medium text-on-surface wrap-break-word whitespace-pre-wrap">
                   {r.body}
                 </p>
               </div>

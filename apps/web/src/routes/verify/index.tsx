@@ -3,13 +3,13 @@ import {
   Form,
   routeAction$,
   routeLoader$,
-  z,
-  zod$,
+  valibot$,
   type DocumentHead,
   type RequestHandler,
   useLocation,
 } from "@qwik.dev/router";
 import { Button, Layout } from "@seanperez/ui";
+import * as v from "valibot";
 import { ME_CHANGED_EVENT } from "../../account/me";
 import { peekLink, verifyLink } from "@seanperez/db/account/account.server";
 import {
@@ -89,7 +89,11 @@ export const useConfirmLink = routeAction$(
   },
   {
     invalidate: [],
-    validation: [zod$({ t: z.string().min(1).max(100) })],
+    validation: [
+      valibot$(
+        v.object({ t: v.pipe(v.string(), v.minLength(1), v.maxLength(100)) }),
+      ),
+    ],
   },
 );
 

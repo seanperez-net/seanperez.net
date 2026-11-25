@@ -7,7 +7,7 @@
  * in the window was missing from the thread's page (each kept its own component state).
  *
  * Only what the visitor wrote and the assistant's canned replies are stored; the site's own
- * messages come from `content/conversations.ts`. Text only, checked on read (zod, `.strict()`):
+ * messages come from `content/conversations.ts`. Text only, checked on read (valibot, `strictObject`):
  * a damaged doc reads as empty and is never rewritten on read. The newest `MAX_PER_THREAD` per
  * thread are kept.
  *
@@ -17,7 +17,7 @@
  * site's data never changes (as Contacts' `hiddenSite`). Undo puts either back (`restoreMessage`).
  * `hiddenAt` / `hiddenSyncedAt` are the hidden list's outbox stamps for admin's sync.
  */
-import { z } from "zod";
+import * as v from "valibot";
 
 export const MESSAGES_DOC = "messages.local";
 
@@ -54,36 +54,35 @@ export interface MessagesLocalDoc {
 /** Hidden ids kept per thread (a thread's site messages are far fewer). */
 export const MAX_HIDDEN_PER_THREAD = 500;
 
-const messageSchema = z
-  .object({
-    id: z.string().min(1).max(80),
-    body: z.string().max(MAX_BODY),
-    createdAt: z.string().max(40),
-    mine: z.boolean(),
-    status: z.enum(["sent", "failed"]).optional(),
-    synced: z.literal(true).optional(),
-  })
-  .strict();
+const messageId = v.pipe(v.string(), v.minLength(1), v.maxLength(80));
+const messageSchema = v.strictObject({
+  id: messageId,
+  body: v.pipe(v.string(), v.maxLength(MAX_BODY)),
+  createdAt: v.pipe(v.string(), v.maxLength(40)),
+  mine: v.boolean(),
+  status: v.optional(v.picklist(["sent", "failed"])),
+  synced: v.optional(v.literal(true)),
+});
 
-const time = z.number().int().nonnegative();
-const docSchema = z
-  .object({
-    v: z.literal(1),
-    threads: z.record(
-      z.string().max(80),
-      z.array(messageSchema).max(MAX_PER_THREAD),
+// zod 4's `.int()` was a SAFE integer (2026-11-25 port): `safeInteger`, not `integer`.
+const time = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const threadKey = v.pipe(v.string(), v.maxLength(80));
+const docSchema = v.strictObject({
+  v: v.literal(1),
+  threads: v.record(
+    threadKey,
+    v.pipe(v.array(messageSchema), v.maxLength(MAX_PER_THREAD)),
+  ),
+  hidden: v.optional(
+    v.record(
+      threadKey,
+      v.pipe(v.array(messageId), v.maxLength(MAX_HIDDEN_PER_THREAD)),
     ),
-    hidden: z
-      .record(
-        z.string().max(80),
-        z.array(z.string().min(1).max(80)).max(MAX_HIDDEN_PER_THREAD),
-      )
-      .optional(),
-    hiddenAt: time.optional(),
-    hiddenSyncedAt: time.optional(),
-    updatedAt: time,
-  })
-  .strict();
+  ),
+  hiddenAt: v.optional(time),
+  hiddenSyncedAt: v.optional(time),
+  updatedAt: time,
+});
 
 export const emptyMessagesDoc = (): MessagesLocalDoc => ({
   v: 1,
@@ -93,9 +92,9 @@ export const emptyMessagesDoc = (): MessagesLocalDoc => ({
 
 /** The stored doc, or the empty one when missing or not valid. */
 export function parseMessagesDoc(raw: unknown): MessagesLocalDoc {
-  const parsed = docSchema.safeParse(raw);
+  const parsed = v.safeParse(docSchema, raw);
   return parsed.success
-    ? (parsed.data as MessagesLocalDoc)
+    ? (parsed.output as MessagesLocalDoc)
     : emptyMessagesDoc();
 }
 
