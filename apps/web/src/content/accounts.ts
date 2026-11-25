@@ -20,10 +20,11 @@ import { SERVER_PRESENCE } from "../presence/presence";
 export type AccountKind = "person" | "assistant" | "device";
 
 /**
- * The account's role (placeholder). A person is an `owner` (the site's owner) or a `member`; an
- * app or a device gets the narrower roles, never `owner`.
+ * The account's role (placeholder). `admin` is the site's ADMIN account (Sean Perez, 2026-11-25:
+ * it only SENDS, a message to everyone); a visitor is a `member` (the guest); an app or a device
+ * gets the narrower roles, never `admin`.
  */
-export type AccountRole = "owner" | "member" | "app" | "device";
+export type AccountRole = "admin" | "member" | "app" | "device";
 
 /**
  * What an account may do (placeholder scopes, named `resource:action`). The future rule: an app
@@ -64,8 +65,13 @@ export interface Account {
 }
 
 /**
- * The site's owner, Sean Perez: a PERSON in the visitor's Contacts and Messages, never the
- * visitor (owner decision 2026-11-25, memory `visitor-is-guest-you`: the site no longer looks
+ * The site's ADMIN account, Sean Perez (owner, 2026-11-25: "make sure that all of the sean perez as
+ * a user on the client side is disconnected its only a message thats sent to everyone from the sean
+ * perez admin account"). On the client he is NEVER a user: not the visitor, not a presence, not a
+ * profile, not a member who talks in spaces. He appears as the SENDER of messages to everyone (his
+ * welcome, the Site updates announcements) and as a contact (the résumé). The real admin account
+ * (server side, signed in to /admin) is still to be made: PLAN.md. A PERSON in the visitor's
+ * Contacts and Messages, never the visitor (owner decision 2026-11-25, memory `visitor-is-guest-you`: the site no longer looks
  * signed in as him). His contact page is the résumé (`/contacts/sean-perez/`), his direct thread
  * holds his welcome message (`/messages/sean-perez/`); "Contact me" is how a visitor really
  * reaches him.
@@ -81,7 +87,7 @@ export const OWNER_ACCOUNT: Account = {
   presence: "offline",
   headline: "",
   isApp: false,
-  role: "owner",
+  role: "admin",
   scopes: [
     "messages:read",
     "messages:write",

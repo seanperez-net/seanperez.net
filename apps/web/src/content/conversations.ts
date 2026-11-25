@@ -146,8 +146,9 @@ export const THREADS: DemoThread[] = [
     kind: "space",
     person: { id: "devices", name: "Devices", icon: "groups" },
     title: "Devices",
-    subtitle: "Space · 4 members",
-    members: [ME, SEAN, TRUCK, SENSOR],
+    subtitle: "Space · 3 members",
+    // No Sean (2026-11-25): the admin account only sends messages to everyone, it does not chat.
+    members: [ME, TRUCK, SENSOR],
     unread: 2,
     mentionsMe: true,
     messages: [
@@ -164,12 +165,6 @@ export const THREADS: DemoThread[] = [
         "Route started: 4 stops, <#parque-central> first.",
         undefined,
         { refs: [PARQUE_CENTRAL] },
-      ),
-      said(
-        SEAN,
-        "d3",
-        "2026-11-23T13:12:00Z",
-        "Thanks. Report at each stop, please.",
       ),
       said(
         TRUCK,
@@ -240,10 +235,10 @@ export const THREADS: DemoThread[] = [
         ASSISTANT,
         "u3",
         "2026-11-24T16:21:00Z",
-        "Noted. Spaces, apps and shortcuts are demo data for now: no backend yet. Ask <@assistant> or <@seanperez-net> for more. The plain page: https://seanperez-net.github.io",
+        "Noted. Spaces, apps and shortcuts are demo data for now: no backend yet. Ask <@assistant> for more, or use Contact me to reach Sean. The plain page: https://seanperez-net.github.io",
         undefined,
         {
-          refs: [personRef(ASSISTANT), personRef(SEAN)],
+          refs: [personRef(ASSISTANT)],
           embeds: [
             {
               kind: "link",
@@ -260,15 +255,17 @@ export const THREADS: DemoThread[] = [
     ],
   },
   {
-    // The owner's direct thread (2026-11-25, owner: "have one message there as an example ... a
-    // general message to the user ... it can be deleted"): his welcome, FROM him TO the visitor.
+    // The ADMIN account's message to everyone (2026-11-25, owner: "have one message there as an
+    // example ... a general message to the user ... it can be deleted"; later: "its only a message
+    // thats sent to everyone from the sean perez admin account"): the same welcome reaches every
+    // visitor, FROM the admin TO them; it is not a chat with a signed-in Sean.
     // Deleting it hides it in the visitor's browser (`messages.local` `hidden`); a reply stays
     // there too, "Not sent" (`use-demo-thread.ts`). NO address in it: Contact me is the way.
     id: OWNER_ACCOUNT.chatId!,
     kind: "direct",
     person: SEAN,
     title: OWNER_ACCOUNT.name,
-    subtitle: "Built this site",
+    subtitle: "Admin · message to everyone",
     members: [ME, SEAN],
     unread: 1,
     messages: [
