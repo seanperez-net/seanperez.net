@@ -36,7 +36,11 @@ export const onGet: RequestHandler = async ({
   } catch (error) {
     console.error("account: touch failed", error);
   }
-  json(200, { name: session.name, verified: session.verified });
+  // The account's name only to a VERIFIED browser (second agent, RULE 2, 2026-11-25): an
+  // unverified session may belong to a stranger who typed a known address, and the account keeps
+  // its first name, so it would read the real person's name. Unverified: "" (the page shows the
+  // name the visitor typed, kept in their profile).
+  json(200, { name: session.verified ? session.name : "", verified: session.verified });
 };
 
 export const onPost: RequestHandler = async ({

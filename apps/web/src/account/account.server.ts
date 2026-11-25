@@ -746,3 +746,63 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare("DELETE FROM contact_account WHERE id = ?").bind(id),
   ]);
 }
+
+// --- the visitor's own account (/profile/ "Delete my account") --------------------------------
+
+export type DeleteOwnResult =
+  | { kind: "deleted" }
+  /** This browser has not confirmed the address: it may not delete (see below). */
+  | { kind: "verify-first" }
+  /** The account is already gone (deleted in another tab, purged), or the session is. */
+  | { kind: "gone" };
+
+/**
+ * The visitor deletes their own account (owner, 2026-11-25, "DECIDED" (3)): the account row, ALL
+ * its sessions (every browser signed in to it), its verify tokens, ALL its messages (confirmed
+ * too, unlike the owner's `deleteAccount`, which keeps what was delivered) and the owner's
+ * replies to them. Identified ONLY by the session (the cookie), never by anything the browser
+ * sends.
+ *
+ * Only a VERIFIED session (this browser confirmed the address by link or code) may delete.
+ * `startContact` gives an unverified session to anyone who types an address, so an unverified
+ * session proves nothing: allowing it would let a stranger delete a real person's account (or,
+ * before they confirm, their waiting messages), and a refusal that differed by account would tell
+ * whether an address is verified (second agent, RULE 2, 2026-11-25). An unverified visitor
+ * confirms first, or signs out and the 7-day purge removes the rest. The condition is repeated in
+ * every statement of the batch (one transaction): all or nothing.
+ */
+export async function deleteOwnAccount(
+  db: D1Database,
+  session: Session,
+): Promise<DeleteOwnResult> {
+  if (!session.verified) return { kind: "verify-first" };
+  const allowed = `EXISTS (SELECT 1 FROM contact_session
+    WHERE token_hash = ? AND account_id = ? AND verified_at IS NOT NULL)`;
+  const id = session.accountId;
+  const hash = session.tokenHash;
+  const [, , , removed] = await db.batch([
+    db
+      .prepare(
+        `DELETE FROM message_reply WHERE message_id IN (SELECT id FROM message WHERE account_id = ?) AND ${allowed}`,
+      )
+      .bind(id, hash, id),
+    db
+      .prepare(`DELETE FROM message WHERE account_id = ? AND ${allowed}`)
+      .bind(id, hash, id),
+    db
+      .prepare(`DELETE FROM verify_token WHERE account_id = ? AND ${allowed}`)
+      .bind(id, hash, id),
+    // The account row before its sessions (`allowed` reads this browser's session); D1
+    // enforces foreign keys, so the sessions go with it (ON DELETE CASCADE)...
+    db
+      .prepare(`DELETE FROM contact_account WHERE id = ? AND ${allowed}`)
+      .bind(id, hash, id),
+    // ...and explicitly, once the account is gone (nothing here depends on the cascade).
+    db
+      .prepare(
+        "DELETE FROM contact_session WHERE account_id = ? AND NOT EXISTS (SELECT 1 FROM contact_account WHERE id = ?)",
+      )
+      .bind(id, id),
+  ]);
+  return removed.meta.changes > 0 ? { kind: "deleted" } : { kind: "gone" };
+}

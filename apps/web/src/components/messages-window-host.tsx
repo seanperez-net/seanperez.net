@@ -28,6 +28,7 @@ import {
   withOwnAccount,
 } from "../profile/use-profile";
 import { COMPOSER_ID, DeleteMessageDialog } from "./messages-thread";
+import { SendCheck } from "./send-check";
 import { useDemoThread } from "./use-demo-thread";
 
 /**
@@ -141,8 +142,18 @@ const ThreadWindow = component$<{ id: string }>(({ id }) => {
   const presence = usePresence();
   const own = useProfileOverride();
   // The same messages and demo send as the Messages app's pane (`use-demo-thread.ts`).
-  const { thread, messages, streaming, send$, askDelete$, confirmDelete$, confirmOpen } =
-    useDemoThread(id);
+  const {
+    thread,
+    messages,
+    streaming,
+    send$,
+    askDelete$,
+    confirmDelete$,
+    confirmOpen,
+    needsCheck,
+    checkForm,
+    checking,
+  } = useDemoThread(id);
 
   return (
     <>
@@ -170,6 +181,11 @@ const ThreadWindow = component$<{ id: string }>(({ id }) => {
         thread.kind === "assistant" ? "Ask the assistant" : `Message ${ownThreadTitle(thread, own.fields)}`
       }
     />
+    {/* Sean's thread with an unverified session: the security check, at the bottom start,
+      clear of the window (`send-check.tsx`). */}
+    {needsCheck.value && (
+      <SendCheck form={checkForm} pending={checking.value} floating />
+    )}
     {/* Outside the window's popover: Escape in the dialog closes the dialog only. */}
     <DeleteMessageDialog open={confirmOpen} onConfirm$={confirmDelete$} />
     </>

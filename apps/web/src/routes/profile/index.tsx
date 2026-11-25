@@ -2,6 +2,9 @@ import { component$, useComputed$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import { Layout } from "@seanperez/ui";
 import { ProfileEdit, ProfileReset } from "../../components/profile-edit";
+import { ProfileAccount } from "../../components/profile-account";
+// The account's delete action must be exported from a route boundary file (Qwik rc.5 "Action").
+export { useDeleteMyAccount } from "../../components/profile-account";
 import {
   ProfileHeader,
   ProfileLinks,
@@ -29,6 +32,9 @@ import { pageHead } from "../../seo";
  *
  * "Your apps" (2026-11-25): the site's removable apps (Contact me) with Remove / Add back, the
  * way back after removing one (`apps/my-apps.ts`). DEMO: Contact me is the layer's only app.
+ *
+ * "Your account" (2026-11-25, `profile-account.tsx`): the contact account Contact me made in this
+ * browser, with "Delete my account" (POST, session cookie only).
  */
 export default component$(() => {
   const override = useProfileOverride();
@@ -55,6 +61,8 @@ export default component$(() => {
           <ProfileLinks id="profile-links" links={profile.value.links} />
         )}
         {DEMO && <YourApps />}
+        {/* The contact account in this browser, if any, with "Delete my account". */}
+        <ProfileAccount />
       </div>
     </Layout.Pane>
   );

@@ -31,9 +31,10 @@ import {
 } from "../account/account.server";
 import {
   accountsOpen,
+  checkTurnstile,
   floor,
   notifyOwnerLater,
-  sendVerification,
+  sendVerificationLater,
   sessionOf,
   setSessionCookie,
 } from "../account/contact.server";
@@ -81,8 +82,7 @@ import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
 export const CONTACT_COMPANION_ID = "contact";
 
 /** Echoed back by Siteverify for a real token; checked below. */
-const TURNSTILE_ACTION = "contact";
-const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+export const TURNSTILE_ACTION = "contact";
 /**
  * The honeypot's name. Not `website` (forms audit 2026-11-24, owner): browsers and password
  * managers guess a field's purpose from its name, and "website" reads as a URL field (the `url`
@@ -175,67 +175,17 @@ export const useSendMessage = routeAction$(
     if (!DEMO) return fail(404, { message: "Not found." });
     // Honeypot: people never see this field (`hidden`); a bot that fills it is told "sent"
     // and nothing is sent, so it learns nothing.
-    if (data[HONEYPOT]) return { sent: true, needsCode: false, mailFailed: false };
+    if (data[HONEYPOT]) return { sent: true, needsCode: false };
 
     const env = platform.env;
-    if (!env.TURNSTILE_SECRET_KEY) {
-      return fail(503, { message: "The contact form is not open yet." });
-    }
-
-    // Turnstile Siteverify (developers.cloudflare.com/turnstile/get-started/server-side-
-    // validation/): POST the secret, the token and the visitor's IP; fail closed.
-    const token = data["cf-turnstile-response"] ?? "";
-    if (!token) {
-      return fail(400, {
-        message: "Please complete the security check, then send again.",
-      });
-    }
-    let outcome: {
-      success?: boolean;
-      hostname?: string;
-      action?: string;
-      "error-codes"?: string[];
-    };
-    try {
-      const res = await fetch(SITEVERIFY, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          secret: env.TURNSTILE_SECRET_KEY,
-          response: token,
-          remoteip: request.headers.get("CF-Connecting-IP") ?? "",
-        }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) throw new Error(`siteverify ${res.status}`);
-      outcome = await res.json();
-    } catch (error) {
-      console.error("contact: siteverify failed", error);
-      return fail(502, {
-        message: "The security check could not be confirmed. Please try again.",
-      });
-    }
-    const hostnames = (env.TURNSTILE_HOSTNAMES ?? "")
-      .split(",")
-      .map((h) => h.trim())
-      .filter(Boolean);
-    // A real token carries the widget's action. Cloudflare's TEST secret answers
-    // `hostname: "example.com"` and no action (Turnstile "Testing"); that is accepted only
-    // where `TURNSTILE_HOSTNAMES` lists example.com, which is `.dev.vars` alone.
-    const actionOk =
-      outcome.action === TURNSTILE_ACTION ||
-      (outcome.action === undefined && outcome.hostname === "example.com");
-    if (
-      !outcome.success ||
-      !outcome.hostname ||
-      !hostnames.includes(outcome.hostname) ||
-      !actionOk
-    ) {
-      console.warn("contact: turnstile refused", outcome["error-codes"]);
-      return fail(403, {
-        message: "The security check failed. Please try again.",
-      });
-    }
+    // Turnstile Siteverify, fail closed (`checkTurnstile`, shared with Sean's thread).
+    const check = await checkTurnstile(
+      env,
+      data["cf-turnstile-response"],
+      request.headers.get("CF-Connecting-IP") ?? "",
+      TURNSTILE_ACTION,
+    );
+    if (!check.ok) return fail(check.status, { message: check.message });
 
     const started = Date.now();
     // Before accounts are set up here (no AUTH_SECRET, or no RESEND_API_KEY in production): as
@@ -258,7 +208,7 @@ export const useSendMessage = routeAction$(
           message: "Your message could not be sent. Please try again later.",
         });
       }
-      return { sent: true, needsCode: false, mailFailed: false };
+      return { sent: true, needsCode: false };
     }
 
     // Accounts (owner, 2026-11-25; plan 1.1 to 1.3). A database error (migration 0004 not
@@ -283,7 +233,7 @@ export const useSendMessage = routeAction$(
         if (result.confirmed) {
           notifyOwnerLater(env, platform.ctx, url.origin, session.accountId, result.messageId);
         }
-        return { sent: true, needsCode: !session.verified, mailFailed: false };
+        return { sent: true, needsCode: !session.verified };
       }
       // A first message from this address in this browser: an unverified account (or the
       // existing one), the message waiting, a new session, one email. The SAME answer whether the
@@ -302,16 +252,20 @@ export const useSendMessage = routeAction$(
       // Another account's session in this browser gives way to this one.
       if (session) await signOut(env.DB, session.tokenHash);
       setSessionCookie(cookie, url, result.sessionToken, false);
-      const outcome = result.token
-        ? await sendVerification(env, url.origin, normalizeEmail(data.email), result.token)
-        : null;
+      // The email goes out AFTER the response (owner, 2026-11-25): new, known and capped
+      // addresses all answer after the same D1 work and the floor. A failed send shows in
+      // /admin, not here.
+      if (result.token) {
+        void sendVerificationLater(
+          env,
+          platform.ctx,
+          url.origin,
+          normalizeEmail(data.email),
+          result.token,
+        );
+      }
       await floor(started);
-      // Only a send that really failed is told apart (it says nothing about the address).
-      return {
-        sent: true,
-        needsCode: true,
-        mailFailed: outcome?.status === "failed",
-      };
+      return { sent: true, needsCode: true };
     } catch (error) {
       console.error("contact: save failed", error);
       return fail(500, {
@@ -495,7 +449,9 @@ export const ContactPanel = component$(() => {
     // A first message: the account waits for the link or code; the code field is next.
     if (result.needsCode) {
       me.value = { name: name.trim() || me.value?.name || "", verified: false };
-      void readMe();
+      // This panel (`readMe` listens) and Sean's thread, which needs the security check for an
+      // unverified session's send (`use-demo-thread.ts`), read the new session.
+      document.dispatchEvent(new CustomEvent(ME_CHANGED_EVENT));
     }
     showSnackbar$({
       message: result.needsCode
@@ -546,9 +502,8 @@ export const ContactPanel = component$(() => {
           {me.value && !me.value.verified && (
             <div class="grid grid-cols-1 gap-3">
               <p role="status" class="text-body-medium text-on-surface">
-                {send.value?.mailFailed
-                  ? "Your message is saved, but the email could not be sent. Try “Send the email again”."
-                  : "To confirm it's you, enter the 6-digit code from the email we sent, or open its link. It works for 30 minutes."}
+                To confirm it's you, enter the 6-digit code from the email we
+                sent, or open its link. It works for 30 minutes.
               </p>
               <Form action={verify} class="grid grid-cols-1 gap-3">
                 <TextField
@@ -717,9 +672,9 @@ export const ContactPanel = component$(() => {
       {me.value && (
         <div class="flex flex-wrap items-center gap-2">
           <p class="text-body-medium text-on-surface-variant">
-            {me.value.verified
-              ? `Sending as ${me.value.name}.`
-              : `Sending as ${me.value.name} (unverified).`}
+            {/* An unverified session gets no name from `/api/me` (it may be someone else's
+              account): the name this visitor set in their profile, else "you". */}
+            {`Sending as ${me.value.name || profile.fields?.name || "you"}${me.value.verified ? "." : " (unverified)."}`}
           </p>
           <Button
             look="text"

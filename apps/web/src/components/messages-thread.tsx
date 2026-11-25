@@ -36,6 +36,7 @@ import {
 import { CONTACT_COMPANION_ID } from "./contact-panel";
 import { ConfirmDialog } from "./contacts-dialogs";
 import { MESSAGES_DETAILS_COMPANION } from "./messages-details";
+import { SendCheck } from "./send-check";
 import { useDemoThread } from "./use-demo-thread";
 
 /** The composer's textarea id: the focus target when a conversation is opened. */
@@ -94,8 +95,17 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
   // Static content; the id was checked by the route's loader.
   const thread = findThread(id)!;
   // The messages and the demo send, shared with the floating Messages window.
-  const { messages, streaming, send$, askDelete$, confirmDelete$, confirmOpen } =
-    useDemoThread(id);
+  const {
+    messages,
+    streaming,
+    send$,
+    askDelete$,
+    confirmDelete$,
+    confirmOpen,
+    needsCheck,
+    checkForm,
+    checking,
+  } = useDemoThread(id);
   const apps = useMyApps();
 
   const contact$ = $((_: Event, el: HTMLElement) =>
@@ -199,6 +209,11 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
           name={streaming.value ? thread.person.name : null}
           kind="replying"
         />
+
+        {/* Sean's thread with an unverified session: the security check (`send-check.tsx`). */}
+        {needsCheck.value && (
+          <SendCheck form={checkForm} pending={checking.value} />
+        )}
 
         <MessageComposer
           id={COMPOSER_ID}

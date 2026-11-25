@@ -6,14 +6,17 @@ import {
 } from "../account/account.server";
 import {
   accountsOpen,
+  checkTurnstile,
   notifyOwnerLater,
   readSessionCookie,
-  sendVerification,
+  sendVerificationLater,
   sessionOf,
   setSessionCookie,
 } from "../account/contact.server";
 import { DEMO } from "../demo/demo";
 import { MAX_BODY } from "../messages/messages-local";
+/** The same Turnstile action as Contact me: one widget configuration, one Siteverify check. */
+const TURNSTILE_ACTION = "contact";
 
 /**
  * The contact account's actions besides the first send (`useSendMessage` in `contact-panel.tsx`):
@@ -95,17 +98,8 @@ export const useResendVerification = routeAction$(
           "A new email can be sent once a minute, three times a day. Please wait, or use the last code.",
       });
     }
-    const outcome = await sendVerification(
-      env,
-      url.origin,
-      session.email,
-      token,
-    );
-    if (outcome.status === "failed") {
-      return fail(502, {
-        message: "The email could not be sent. Please try again later.",
-      });
-    }
+    // After the response, as the first email (owner, 2026-11-25): a failure shows in /admin.
+    void sendVerificationLater(env, platform.ctx, url.origin, session.email, token);
     return { resent: true, verified: false };
   },
   { invalidate: [] },
@@ -114,7 +108,7 @@ export const useResendVerification = routeAction$(
 // Re-exported from routes/layout.tsx (see the file comment).
 // eslint-disable-next-line qwik/loader-location
 export const useSendToSean = routeAction$(
-  async (data, { platform, cookie, url, fail }) => {
+  async (data, { platform, request, cookie, url, fail }) => {
     if (!DEMO) return fail(404, { message: "Not found.", noSession: false });
     const env = platform.env;
     const session = accountsOpen(env)
@@ -122,6 +116,20 @@ export const useSendToSean = routeAction$(
       : null;
     // No session: the browser goes the Contact me way (`use-demo-thread.ts`).
     if (!session) return fail(401, { message: "", noSession: true });
+    // An UNVERIFIED session passes Turnstile again on every send (owner, 2026-11-25, "DECIDED"
+    // (2)): anyone can get one by typing any address. A verified session: none. No secret here:
+    // refused as Contact me refuses ("not open yet").
+    if (!session.verified) {
+      const check = await checkTurnstile(
+        env,
+        data["cf-turnstile-response"],
+        request.headers.get("CF-Connecting-IP") ?? "",
+        TURNSTILE_ACTION,
+      );
+      if (!check.ok) {
+        return fail(check.status, { message: check.message, noSession: false });
+      }
+    }
     let result;
     try {
       result = await sendAsSession(env.DB, session, data.message);
@@ -166,6 +174,8 @@ export const useSendToSean = routeAction$(
           .trim()
           .min(1, "Enter a message.")
           .max(MAX_BODY, `At most ${MAX_BODY} characters.`),
+        // The security check's token, for an unverified session (at most 2048 characters).
+        "cf-turnstile-response": z.string().max(2048).optional(),
       }),
     ],
   },

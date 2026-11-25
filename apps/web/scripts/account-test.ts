@@ -14,6 +14,7 @@ import {
   claimNotify,
   createToken,
   deleteAccount,
+  deleteOwnAccount,
   getSession,
   maskEmail,
   peekLink,
@@ -25,6 +26,10 @@ import {
   verifyLink,
   type Session,
 } from "../src/account/account.server.ts";
+import {
+  checkTurnstile,
+  sendVerificationLater,
+} from "../src/account/contact.server.ts";
 
 const SECRET = "test-secret-not-real";
 
@@ -317,4 +322,173 @@ test("a stranger who typed a VERIFIED address is not upgraded when its owner con
   // The real owner opens the stranger's email link in their own browser and confirms.
   await verifyLink(db, stranger.token!.linkToken, s, at(6 * MIN));
   assert.equal((await getSession(db, stranger.sessionToken, at(6 * MIN)))?.verified, false);
+});
+
+// --- 2026-11-25 follow-ups (owner, "DECIDED" (1) to (3)) --------------------------------------
+
+const count = async (db: D1Database, sql: string, ...args: unknown[]) =>
+  (await db
+    .prepare(sql)
+    .bind(...args)
+    .first<{ n: number }>())!.n;
+
+test("self-delete (verified): account, every session, tokens, ALL its messages and replies go", async () => {
+  const db = fakeD1();
+  const r = await started(db);
+  const session = (await getSession(db, r.sessionToken, t0))!;
+  await verifyCode(db, SECRET, session, r.token!.code, at(MIN));
+  const verified = (await getSession(db, r.sessionToken, at(MIN)))!;
+  // A second browser of the same person, verified by a link.
+  const other = await createToken(db, SECRET, r.accountId, null, at(2 * MIN));
+  const v = await verifyLink(db, other!.linkToken, null, at(2 * MIN));
+  assert.ok(v.ok && v.sessionToken);
+  await sendAsSession(db, verified, "second, confirmed", at(3 * MIN));
+  await db
+    .prepare(
+      "INSERT INTO message_reply (message_id, body, created_at, send_status) VALUES (?, 'reply', ?, 'sent')",
+    )
+    .bind(r.messageId, at(4 * MIN).toISOString())
+    .run();
+  // Someone else's account and message stay.
+  const stranger = await started(db, t0, {
+    name: "Other",
+    email: "other@example.com",
+    body: "not theirs",
+  });
+
+  assert.deepEqual(await deleteOwnAccount(db, verified), { kind: "deleted" });
+  for (const [sql, arg] of [
+    ["SELECT COUNT(*) AS n FROM contact_account WHERE id = ?", r.accountId],
+    ["SELECT COUNT(*) AS n FROM contact_session WHERE account_id = ?", r.accountId],
+    ["SELECT COUNT(*) AS n FROM verify_token WHERE account_id = ?", r.accountId],
+    ["SELECT COUNT(*) AS n FROM message WHERE email = ?", "visitor@example.com"],
+    ["SELECT COUNT(*) AS n FROM message_reply WHERE message_id = ?", r.messageId],
+  ] as const) {
+    assert.equal(await count(db, sql, arg), 0, sql);
+  }
+  assert.equal(await getSession(db, v.ok ? v.sessionToken : "", at(5 * MIN)), null);
+  assert.equal(
+    await count(db, "SELECT COUNT(*) AS n FROM message WHERE account_id = ?", stranger.accountId),
+    1,
+  );
+  // Again with the same (now deleted) session: nothing left.
+  assert.deepEqual(await deleteOwnAccount(db, verified), { kind: "gone" });
+});
+
+test("self-delete: an unverified browser cannot delete, whether the account is verified or not", async () => {
+  const db = fakeD1();
+  // A verified account, and a stranger who typed its address.
+  const owner = await started(db);
+  const s = (await getSession(db, owner.sessionToken, t0))!;
+  await verifyCode(db, SECRET, s, owner.token!.code, at(MIN));
+  const typed = await started(db, at(2 * MIN), { ...input, body: "stranger" });
+  const strangerSession = (await getSession(db, typed.sessionToken, at(2 * MIN)))!;
+  assert.equal(strangerSession.verified, false);
+  // A never-verified account, from its own (unverified) browser.
+  const fresh = await started(db, t0, { name: "New", email: "new@example.com", body: "hi" });
+  const freshSession = (await getSession(db, fresh.sessionToken, t0))!;
+  // The same answer for both: no oracle on whether an address is verified.
+  assert.deepEqual(await deleteOwnAccount(db, strangerSession), { kind: "verify-first" });
+  assert.deepEqual(await deleteOwnAccount(db, freshSession), { kind: "verify-first" });
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM contact_account"), 2);
+  assert.equal(
+    await count(db, "SELECT COUNT(*) AS n FROM message WHERE account_id = ?", owner.accountId),
+    2,
+  );
+});
+
+test("self-delete: a session whose row is gone (signed out elsewhere) deletes nothing", async () => {
+  const db = fakeD1();
+  const r = await started(db);
+  const session = (await getSession(db, r.sessionToken, t0))!;
+  await verifyCode(db, SECRET, session, r.token!.code, at(MIN));
+  const verified = (await getSession(db, r.sessionToken, at(MIN)))!;
+  await db.prepare("DELETE FROM contact_session").run();
+  assert.deepEqual(await deleteOwnAccount(db, verified), { kind: "gone" });
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM contact_account"), 1);
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message"), 1);
+});
+
+const envFor = (db: D1Database) =>
+  ({
+    DB: db,
+    RESEND_API_KEY: "re_test_fake",
+    OWNER_NOTIFY_TO: "",
+  }) as unknown as Env;
+
+test("verification email in the background: handed to waitUntil, recorded in D1 when done", async () => {
+  const db = fakeD1();
+  const r = await started(db);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const fake = (async () => {
+    await gate;
+    return new Response(JSON.stringify({ id: "email-id-9" }), { status: 200 });
+  }) as unknown as typeof fetch;
+  const handed: Promise<unknown>[] = [];
+  const task = sendVerificationLater(
+    envFor(db),
+    { waitUntil: (p) => handed.push(p) },
+    "https://seanperez.net",
+    "visitor@example.com",
+    r.token!,
+    fake,
+  );
+  // Returned at once, the mail still in flight: the caller's answer does not wait for it.
+  assert.equal(handed.length, 1);
+  const status = () =>
+    db
+      .prepare("SELECT send_status, send_id FROM verify_token WHERE link_hash = ?")
+      .bind(r.token!.linkHash)
+      .first<{ send_status: string; send_id: string | null }>();
+  assert.equal((await status())?.send_status, "pending");
+  release();
+  await task;
+  assert.deepEqual({ ...(await status()) }, { send_status: "sent", send_id: "email-id-9" });
+});
+
+test("verification email in the background: a refusal is recorded as failed, never thrown", async () => {
+  const db = fakeD1();
+  const r = await started(db);
+  const fake = (async () =>
+    new Response(JSON.stringify({ name: "validation_error" }), {
+      status: 422,
+    })) as unknown as typeof fetch;
+  await sendVerificationLater(envFor(db), undefined, "https://x", "visitor@example.com", r.token!, fake);
+  const row = await db
+    .prepare("SELECT send_status, send_error FROM verify_token WHERE link_hash = ?")
+    .bind(r.token!.linkHash)
+    .first<{ send_status: string; send_error: string }>();
+  assert.deepEqual({ ...row }, { send_status: "failed", send_error: "422 validation_error" });
+});
+
+test("checkTurnstile: no secret = not open; no token; Siteverify outcomes", async () => {
+  const env = { TURNSTILE_SECRET_KEY: "s", TURNSTILE_HOSTNAMES: "seanperez.net" };
+  const answer = (body: object, status = 200) =>
+    (async (_url: string, init: RequestInit) => {
+      const sent = new URLSearchParams(init.body as URLSearchParams);
+      assert.equal(sent.get("secret"), "s");
+      assert.equal(sent.get("response"), "tok");
+      assert.equal(sent.get("remoteip"), "203.0.113.9");
+      return new Response(JSON.stringify(body), { status });
+    }) as unknown as typeof fetch;
+  assert.deepEqual(
+    await checkTurnstile({ TURNSTILE_SECRET_KEY: "", TURNSTILE_HOSTNAMES: "" }, "tok", "", "contact"),
+    { ok: false, status: 503, message: "The contact form is not open yet." },
+  );
+  assert.equal((await checkTurnstile(env, "", "", "contact")).ok, false);
+  const ok = answer({ success: true, hostname: "seanperez.net", action: "contact" });
+  assert.deepEqual(await checkTurnstile(env, "tok", "203.0.113.9", "contact", ok), { ok: true });
+  for (const bad of [
+    { success: false, hostname: "seanperez.net", action: "contact" },
+    { success: true, hostname: "evil.example", action: "contact" },
+    { success: true, hostname: "seanperez.net", action: "other" },
+    // The test secret's shape is accepted only where example.com is listed.
+    { success: true, hostname: "example.com" },
+  ]) {
+    const r = await checkTurnstile(env, "tok", "203.0.113.9", "contact", answer(bad));
+    assert.equal(r.ok === false && r.status, 403, JSON.stringify(bad));
+  }
+  const down = await checkTurnstile(env, "tok", "203.0.113.9", "contact", answer({}, 500));
+  assert.equal(down.ok === false && down.status, 502);
 });

@@ -42,10 +42,19 @@ async function me(page: Page) {
   });
 }
 
-async function mail(page: Page, to: string) {
-  const res = await page.request.get(`/api/dev-mail?to=${encodeURIComponent(to)}`);
-  const body = (await res.json()) as { text: string } | null;
-  expect(body).not.toBeNull();
+/** The dev outbox's last mail to `to`. Polled: since 2026-11-25 the verification email goes out
+ * AFTER the response (`waitUntil`), so it can land a moment later. `after`: a mail other than
+ * this text (a resend). */
+async function mail(page: Page, to: string, after?: string) {
+  let body: { text: string } | null = null;
+  await expect
+    .poll(async () => {
+      const res = await page.request.get(`/api/dev-mail?to=${encodeURIComponent(to)}`);
+      body = (await res.json()) as { text: string } | null;
+      return !!body && body.text !== after;
+    })
+    .toBe(true);
+  body = body as { text: string } | null;
   const code = /code: (\d{6})/.exec(body!.text)?.[1];
   const link = /link: (\S+)/.exec(body!.text)?.[1];
   expect(code).toBeTruthy();
@@ -78,7 +87,8 @@ test("first send makes an unverified session; a wrong code fails; the right code
 }) => {
   const email = address("code");
   const aside = await sendContact(page, email, `hello ${Date.now()}`);
-  expect(await me(page)).toEqual({ name: "E2E Visitor", verified: false });
+  // Unverified: no name from the server (the account may be someone else's, RULE 2 2026-11-25).
+  expect(await me(page)).toEqual({ name: "", verified: false });
   const cookies = await page.context().cookies();
   const session = cookies.find((c) => c.name === "spn_session");
   expect(session?.httpOnly).toBe(true);
@@ -109,6 +119,8 @@ test("first send makes an unverified session; a wrong code fails; the right code
     await composer.fill(later);
     await expect(composer).toHaveValue(later, { timeout: 500 });
   }).toPass();
+  // Verified: no security check is drawn.
+  await expect(page.getByRole("form", { name: "Security check" })).toHaveCount(0);
   await composer.press("Enter");
   await expect(page.getByRole("log").getByText(later)).toBeVisible();
   await expect(page.locator("aside").getByRole("textbox", { name: "Message" })).not.toHaveValue(later);
@@ -175,7 +187,7 @@ test("a known address gets the same answer as a new one (no enumeration)", async
   await other.close();
 });
 
-test("an unverified session posts in Sean's thread directly, marked Unverified in /admin", async ({
+test("an unverified session posts in Sean's thread after the security check, marked Unverified in /admin", async ({
   page,
 }) => {
   const email = address("unverified-thread");
@@ -187,8 +199,136 @@ test("an unverified session posts in Sean's thread directly, marked Unverified i
     await composer.fill(later);
     await expect(composer).toHaveValue(later, { timeout: 500 });
   }).toPass();
+  // Unverified: the security check is drawn (Turnstile's always-pass TEST key) and its token
+  // goes with the send.
+  await expect(page.getByRole("form", { name: "Security check" })).toHaveCount(1);
   await composer.press("Enter");
   await expect(page.getByText("Confirm your email so Sean knows it's you.").first()).toBeVisible();
   await page.goto("/admin/messages/?show=unverified");
   await expect(page.getByRole("main").getByText(later)).toBeVisible();
+});
+
+test("an unverified session's send in Sean's thread without a security-check token is refused", async ({
+  page,
+}) => {
+  const email = address("unverified-no-token");
+  await sendContact(page, email, "first, from Contact me");
+  await page.goto("/messages/sean-perez/");
+  const check = page.getByRole("form", { name: "Security check" });
+  await expect(check).toHaveCount(1);
+  // As a script posting without the widget would: no widget, no token.
+  await check.evaluate((form) => {
+    form.querySelector("[data-qds-turnstile]")?.remove();
+    form.querySelector('[name="cf-turnstile-response"]')?.remove();
+  });
+  const text = `no token ${Date.now()}`;
+  const composer = page.getByRole("main").getByRole("textbox", { name: "Write a message" });
+  await expect(async () => {
+    await composer.fill(text);
+    await expect(composer).toHaveValue(text, { timeout: 500 });
+  }).toPass();
+  await composer.press("Enter");
+  await expect(page.getByText("Please complete the security check").first()).toBeVisible();
+  await page.goto("/admin/messages/?show=unverified");
+  await expect(page.getByRole("main").getByText(text)).toHaveCount(0);
+});
+
+test("Send the email again: a new code arrives (in the background) and the newest one works", async ({
+  page,
+}) => {
+  const email = address("resend");
+  const aside = await sendContact(page, email, "resend test");
+  const first = await mail(page, email);
+  // The send gap is 60 s (`SEND_GAP_MS`): move the first token back instead of waiting.
+  execFileSync(
+    "pnpm",
+    [
+      "wrangler",
+      "d1",
+      "execute",
+      "seanperez-net",
+      "--local",
+      "--command",
+      `UPDATE verify_token SET created_at = '2000-01-01T00:00:00.000Z' WHERE account_id = (SELECT id FROM contact_account WHERE email = '${email}');`,
+    ],
+    { cwd: new URL("..", import.meta.url), stdio: "ignore" },
+  );
+  await aside.getByRole("button", { name: "Send the email again" }).click();
+  await expect(aside.getByText("A new email is on its way.")).toBeVisible();
+  const second = await mail(page, email, first.text);
+  expect(second.code === first.code && second.link === first.link).toBe(false);
+  await aside.getByRole("textbox", { name: "Code" }).fill(second.code);
+  await aside.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+});
+
+test("Delete my account on /profile/: confirm, signed out, its messages gone from /admin", async ({
+  page,
+}) => {
+  const email = address("self-delete");
+  const text = `delete me ${Date.now()}`;
+  const aside = await sendContact(page, email, text);
+  const { code } = await mail(page, email);
+  await aside.getByRole("textbox", { name: "Code" }).fill(code);
+  await aside.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+
+  await page.goto("/profile/");
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Your account" })).toBeVisible();
+  await main.getByRole("button", { name: "Delete my account" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Delete your account?" });
+  await expect(dialog).toBeVisible();
+  // Cancel keeps it.
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+  expect((await me(page))?.verified).toBe(true);
+
+  await main.getByRole("button", { name: "Delete my account" }).click();
+  await dialog.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("Account deleted").first()).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Your account" })).toHaveCount(0);
+  expect(await me(page)).toBeNull();
+  const cookies = await page.context().cookies();
+  expect(cookies.find((c) => c.name === "spn_session")).toBeUndefined();
+
+  await page.goto("/admin/messages/");
+  await expect(page.getByRole("main").getByText(text)).toHaveCount(0);
+  await page.goto("/admin/accounts/");
+  await expect(page.getByRole("main").getByText(email)).toHaveCount(0);
+});
+
+test("Delete my account: an unverified browser gets no Delete and no name (the server refusal: account-test.ts)", async ({
+  page,
+  browser,
+}) => {
+  const email = address("delete-verified");
+  const aside = await sendContact(page, email, "the real owner");
+  const { code } = await mail(page, email);
+  await aside.getByRole("textbox", { name: "Code" }).fill(code);
+  await aside.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+
+  // A stranger types the same address in another browser: an unverified session on it. It is
+  // not told the owner's name, and it cannot delete.
+  const other = await browser.newContext();
+  const stranger = await other.newPage();
+  await sendContact(stranger, email, "a stranger");
+  expect(await me(stranger)).toEqual({ name: "", verified: false });
+  await stranger.goto("/profile/");
+  const main = stranger.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Your account" })).toBeVisible();
+  await expect(main.getByText("Email not confirmed yet.")).toBeVisible();
+  await expect(main.getByRole("button", { name: "Delete my account" })).toHaveCount(0);
+  await other.close();
+  expect((await me(page))?.verified).toBe(true);
+  await page.goto("/admin/accounts/");
+  await expect(page.getByRole("main").getByText(email)).toBeVisible();
+});
+
+test("/privacy/ explains self-delete with a link to Profile", async ({ page }) => {
+  await page.goto("/privacy/");
+  const main = page.getByRole("main");
+  await expect(main.getByText("Delete my account")).toBeVisible();
+  await expect(main.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile/");
 });

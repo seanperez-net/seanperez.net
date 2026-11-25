@@ -94,9 +94,16 @@ test("no location from Cloudflare: world view and Location unknown", async ({ pa
   await page.goto("/devices/");
   await expect(page.locator('[data-device="this-device"] [data-field="Location"]')).toHaveText("Location unknown");
   await page.goto("/maps/?node=this-device");
+  // Compact (iPhone): the side panel is a sheet. `?node=` may open it itself after hydration,
+  // and the dev-only Qwik inspector tip can cover the opener, so open it only while it is still
+  // closed, and click through the tip (`force`).
   const open = page.getByRole("button", { name: "Show side panel" });
-  if (await open.isVisible()) await open.click();
-  await expect(page.getByText("This device: Location unknown.")).toBeVisible({ timeout: 30_000 });
+  const unknown = page.getByText("This device: Location unknown.");
+  await expect(async () => {
+    if (!(await unknown.isVisible()) && (await open.isVisible()))
+      await open.click({ force: true, timeout: 2_000 }).catch(() => {});
+    await expect(unknown).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   // The world, fitted: a low zoom in the URL once the camera is written.
   await expect(page).toHaveURL(/at=[-\d.]+,[-\d.]+,[0-3](\.\d+)?z/, { timeout: 15_000 });
 });

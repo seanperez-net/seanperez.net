@@ -29,7 +29,7 @@ export default component$(() => (
         We email you once with a link and a code to confirm the address is
         yours. Until you confirm, your messages are marked unverified, and if
         you never confirm, the account and those messages are deleted after 7
-        days. A verified account is kept until you ask for it to be deleted.
+        days. A verified account is kept until you delete it (below).
       </p>
       <h2 class="text-title-large">Who else handles it</h2>
       <p>
@@ -40,8 +40,20 @@ export default component$(() => (
       </p>
       <h2 class="text-title-large">Deleting it</h2>
       <p>
-        Send a message asking for your account to be deleted, and it will be.
-        Signing out (in Contact me) removes the sign-in from that browser.
+        You can delete your account yourself, from a browser where you
+        confirmed your address (the link or the code): open{" "}
+        <a href="/profile/" class="text-primary underline underline-offset-4">
+          Profile
+        </a>{" "}
+        and choose “Delete my account”. That deletes the account, every
+        message sent from it, Sean's replies to them and its sign-in on every
+        browser, at once. A browser that has not confirmed the address cannot
+        delete it, so no one who only typed your address can.
+      </p>
+      <p>
+        Signing out (in Contact me) only removes the sign-in from that browser.
+        From another browser, send a message asking for your account to be
+        deleted, and it will be.
       </p>
     </div>
   </Layout.Pane>

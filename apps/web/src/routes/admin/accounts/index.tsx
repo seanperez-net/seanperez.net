@@ -1,6 +1,5 @@
 import { component$ } from "@qwik.dev/core";
 import {
-  Form,
   routeAction$,
   routeLoader$,
   z,
@@ -80,16 +79,16 @@ export default component$(() => {
                     ? `Seen ${a.last_seen_at}`
                     : formatDate(a.created_at)
                 }
+                // A Button, not a <Form>: the router's Form is a plain function component and
+                // cannot be serialized inside a JSX prop (Qwik Q34, crashed `pnpm dev`).
                 end={
-                  <Form action={remove}>
-                    <input type="hidden" name="id" value={a.id} />
-                    <Button
-                      type="submit"
-                      look="text"
-                      label="Delete"
-                      aria-label={`Delete ${a.name}'s account`}
-                    />
-                  </Form>
+                  <Button
+                    look="text"
+                    label="Delete"
+                    aria-label={`Delete ${a.name}'s account`}
+                    isLoading={remove.isRunning}
+                    onClick$={() => remove.submit({ id: a.id })}
+                  />
                 }
               />
             ))}

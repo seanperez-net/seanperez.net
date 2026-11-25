@@ -1,12 +1,19 @@
 import {
   $,
+  isBrowser,
   useComputed$,
   useContext,
+  useOnDocument,
   useSignal,
   useTask$,
   useVisibleTask$,
 } from "@qwik.dev/core";
-import { layoutContextId, openCompanion, useSnackbar } from "@seanperez/ui";
+import {
+  layoutContextId,
+  openCompanion,
+  useSnackbar,
+  waitForTurnstileToken,
+} from "@seanperez/ui";
 import type { ChatMessage } from "@seanperez/chat";
 import { useMyApps } from "../apps/use-my-apps";
 import {
@@ -32,7 +39,10 @@ import {
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { CONTACT_COMPANION_ID, draftContactMessage } from "./contact-panel";
 import { useSendToSean } from "./contact-actions";
-import { fetchMe } from "../account/me";
+import { ME_CHANGED_EVENT, fetchMe, type Me } from "../account/me";
+
+/** The security check's form appears a render after `me` turns unverified: wait this long. */
+const CHECK_FORM_WAIT_MS = 3000;
 
 /** Milliseconds between the canned reply's words (the streaming demo). */
 const WORD_MS = 60;
@@ -130,6 +140,26 @@ export function useDemoThread(id: string) {
     if (list) local.value = list.map((m) => toChatMessage(m, thread.person));
   });
 
+  // Sean's thread: this browser's contact session (`/api/me`), so an UNVERIFIED one can show the
+  // security check (`SendCheck`) before the visitor sends (owner, 2026-11-25, "DECIDED" (2)).
+  // Read on resume, on a browser render, and when Contact me signs in, verifies or signs out.
+  const sean = DEMO && id === OWNER_ACCOUNT.chatId;
+  const me = useSignal<Me | null>(null);
+  const readMe = $(async () => {
+    if (sean) me.value = await fetchMe();
+  });
+  useOnDocument("qinit", readMe);
+  useOnDocument(ME_CHANGED_EVENT, readMe);
+  useTask$(() => {
+    if (isBrowser) return readMe();
+  });
+  /** Draw `SendCheck`: Sean's thread with an unverified session. */
+  const needsCheck = useComputed$(() => sean && me.value?.verified === false);
+  /** `SendCheck`'s form (the widget writes its token there). */
+  const checkForm = useSignal<HTMLFormElement>();
+  /** A send is spending the check's token (`SendCheck` resets the widget after). */
+  const checking = useSignal(false);
+
   const send$ = $(async (text: string) => {
     // Sean's thread (2026-11-25, owner: "when trying to send a message to me and not logged in
     // ... it should pop that contact me window and ... auto focus the name"): there is no sign-in
@@ -140,8 +170,9 @@ export function useDemoThread(id: string) {
     // straight to him: no form. Verified: delivered; unverified: delivered marked "Unverified",
     // at most 3 waiting. No session: Contact me as above.
     if (DEMO && id === OWNER_ACCOUNT.chatId) {
-      const me = await fetchMe();
-      if (me) {
+      const current = await fetchMe();
+      me.value = current;
+      if (current) {
         const mine: ChatMessage = {
           id: `local-${Date.now()}`,
           author: ME,
@@ -151,7 +182,25 @@ export function useDemoThread(id: string) {
           status: "sending",
         };
         local.value = [...local.value, mine];
-        const { value } = await sendToSean.submit({ message: text });
+        // Unverified: the security check's token goes with it (the server checks it). The
+        // check's form is drawn once `me` is known; wait for it, then for its token.
+        let token = "";
+        if (!current.verified) {
+          const until = Date.now() + CHECK_FORM_WAIT_MS;
+          while (!checkForm.value && Date.now() < until)
+            await new Promise((r) => setTimeout(r, 50));
+          if (checkForm.value) token = await waitForTurnstileToken(checkForm.value);
+        }
+        checking.value = true;
+        let value;
+        try {
+          ({ value } = await sendToSean.submit({
+            message: text,
+            ...(token ? { "cf-turnstile-response": token } : {}),
+          }));
+        } finally {
+          checking.value = false;
+        }
         const sent = !value.failed;
         if (!sent && value.noSession && !apps.removed.includes("contact")) {
           // The session ended meanwhile: Contact me after all.
@@ -172,7 +221,7 @@ export function useDemoThread(id: string) {
           status,
         });
         if (!sent && value.message) await showSnackbar$({ message: value.message });
-        else if (sent && !me.verified) {
+        else if (sent && !current.verified) {
           await showSnackbar$({
             message: "Sent. Confirm your email so Sean knows it's you.",
           });
@@ -289,6 +338,9 @@ export function useDemoThread(id: string) {
 
   return {
     thread,
+    needsCheck,
+    checkForm,
+    checking,
     messages,
     streaming,
     send$,

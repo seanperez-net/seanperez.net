@@ -5,6 +5,7 @@
  * worker never keeps (`routes/service-worker.ts` `storable`).
  */
 export interface Me {
+  /** The account's name, for a VERIFIED browser only; "" when unverified (`/api/me`). */
   name: string;
   /** This browser confirmed the address (link or code). */
   verified: boolean;
