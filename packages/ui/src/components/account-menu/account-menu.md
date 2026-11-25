@@ -63,6 +63,7 @@ the demo person back in.
 | `presenceUntilText`   | `string`                                    |                                       | The current choice's end in the host's words ("Until 3:40 PM"): the submenu row's second line |
 | `presenceOptions`     | `{ value, label, glyph, durations?, durationsLabel? }[]` | Automatic, Busy (with `DEFAULT_PRESENCE_DURATIONS`), Away, Appear offline |                                                                           |
 | `presenceGroupLabel`  | `string`                                    | `Status`                              |                                                                           |
+| `presenceLook`        | `"rows" \| "submenu"`                      | `rows`                                | `submenu`: ONE Status row opening the choices (NEW 2026-11-25, below)      |
 | `themeRows`           | `boolean`                                   | `false`                               | Device default / Light / Dark, bound to the theme context (`Layout.Root`) |
 | `themeOptions`        | `{ value, label, icon }[]`                  | the three                             |                                                                           |
 | `themeGroupLabel`     | `string`                                    | `Theme`                               |                                                                           |
@@ -154,7 +155,9 @@ seeds the avatar's tone). Presence (2026-11-24) is the VISITOR's own: `presence`
 `onPresenceChange$`, `presenceDuration`, `presenceUntilText` and `statusText` ("Until 3:40 PM"
 for a Busy that ends) from
 `apps/web/src/presence/use-presence.tsx`, saved in their browser, never sent. NO email (owner 2026-11-24, spam). The menu:
-header, then `items` Profile (`/profile/`, `person`) and Contacts (`/contacts/`, `contacts`), as
+header, the Status row (`presenceLook="submenu"`, 2026-11-25), then `items` Profile (`/profile/`,
+`person`) and Devices (`/devices/`, `devices`; no Contacts row since 2026-11-25, owner: "we dont
+need contacts in both places leave it in the rail"), as
 e-store's `CFOS_ACCOUNT_LINKS` (`packages/os/src/cfos/app-shell.tsx`: Profile `/profile/` `person`),
 then "Theme colors" (`themeColors`). No `themeRows` (light / dark is in the rail and the drawer
 footer), no Sign out. Not `manageAccountHref`: "Manage your account" means editing, and visitors
@@ -193,3 +196,30 @@ owner's approval.
 - Second agent (RULE 2, 2026-11-24, given the problem, not this design): the same shape (Busy
   as `Menu.Sub` with a "Busy for" radio group, the four choices, state in the trigger's text
   and the checked fill, ids only in the library, `today` at local midnight, the no-JS fallback).
+
+## `presenceLook="submenu"`: the status as one row (NEW, not in e-store; owner 2026-11-25)
+
+Owner, 2026-11-25: "the status in the account menu should be a select or dropdown menu it takes
+up to much space like that it loojks nice juwst put it in a drop down". e-store's AccountMenu has
+the inline rows only (`account-menu.tsx`, `statusRows` in one `Menu.RadioGroup`; checked
+2026-11-25, read-only), which stay the default (`presenceLook="rows"`).
+
+- ONE `Menu.SubTrigger` after the header (its own separator): the current choice's glyph and
+  label, and for a choice with durations the host's "Until 3:40 PM" as a second line. Its name
+  is "Status: Busy, Until 3:40 PM" (a visually hidden "Status: " prefix, `presenceGroupLabel`).
+  No choice yet: the first option (Automatic).
+- Its submenu is the same `Menu.RadioGroup` (named `presenceGroupLabel`) of `menuitemradio`
+  rows; Busy keeps its durations as its own submenu (two levels). Choosing any row closes the
+  whole menu, focus back on the avatar.
+- Keys (APG menu, `menu.md`): Right / Enter / Space on the Status row open the submenu on its
+  first row; Left closes a level; Escape closes one level; Tab closes all.
+- `align="end"` (the app bar): both submenus open towards the start (`Menu.SubContent
+  side="start"`, NEW in `menu.md`), so the durations cascade left of the status list instead of
+  covering the menu. Where the start side has no room (390px) they flip to the end and lie over
+  the main menu (CSS anchor `position-try`); usable, not pretty. M3 says submenus are best on
+  large screens; a compact bottom sheet is not done.
+- JavaScript only: with `presenceAction` (no-JS posting) the rows stay inline.
+- Run in Chrome 2026-11-25 (apps/web, 1568px and a 390px iframe): open by click and keys, Busy >
+  For 1 hour chosen by keyboard, the row then read "Busy / Until 6:30 AM", focus back on the
+  avatar, set back to Automatic. Playground: `/account-menu/` knob "Status look". Playwright
+  `e2e/presence-local.spec.ts` updated (opens Status first).

@@ -40,11 +40,13 @@ import {
   restoreContacts,
   setLabel,
   setPhoto,
+  setProfile,
   setStarred,
   trashContacts,
   trashDaysLeft,
   updateContact,
   type ContactInput,
+  type LinkedProfile,
   type LocalBook,
   type LocalContact,
   type SiteBase,
@@ -52,14 +54,24 @@ import {
 import { localBookId, localRowKey } from "../contacts/local-context";
 import { PhotoError, photoFromFile } from "../contacts/photo";
 import {
+  CONTACTS,
   CONTACT_HEADING_ID,
+  findContact,
   CONTACT_LABELS,
   IMPORTED_LABEL_ID,
   contactsListHref,
 } from "../content/contacts";
 import { ContactEditForm } from "./contact-editor";
-import { ConfirmDialog, LabelNameDialog } from "./contacts-dialogs";
+import {
+  ConfirmDialog,
+  LabelNameDialog,
+  LinkProfileDialog,
+} from "./contacts-dialogs";
+import { findAccount } from "../content/accounts";
 import { ResumeSection } from "./resume-section";
+import { formatListTime } from "@seanperez/chat";
+import { recentInteractions } from "../contacts/interactions";
+import { useStoredMessages } from "./use-demo-thread";
 
 /** Google's History times: "Today, 10:10 PM", else the date (the visitor's clock and locale). */
 const formatWhen = (ms: number): string => {
@@ -76,6 +88,54 @@ const formatWhen = (ms: number): string => {
         year: "numeric",
       });
 };
+
+/**
+ * The site's accounts a contact can be linked to as its PROFILE (`LinkedProfile`): the people
+ * with a contact page and a profile (today the owner, his résumé). Module data, never props.
+ */
+const PROFILE_ACCOUNTS = CONTACTS.filter((c) => c.kind === "person").map(
+  (c) => ({ id: c.accountId, name: findAccount(c.accountId)?.name ?? "" }),
+);
+
+/**
+ * Google's "Recent interactions" card (filled, its second column): one row per conversation in
+ * Messages this contact's account is in, as the visitor sees it (their deletions and their own
+ * messages, `messages.local`; `contacts/interactions.ts`). Its own component so the stored
+ * messages are read only on a page whose contact has an account. Nothing to show: no card.
+ */
+const RecentInteractions = component$<{ accountId: string; rowKey: string }>(
+  ({ accountId, rowKey }) => {
+    const state = useContext(localBookId);
+    const stored = useStoredMessages();
+    const rows = useComputed$(() =>
+      recentInteractions(accountId, stored.value),
+    );
+    return rows.value.length > 0 ? (
+      <ResumeSection
+        id="person-interactions"
+        title="Recent interactions"
+        full
+        variant="filled"
+      >
+        <List.Root aria-labelledby="person-interactions">
+          {rows.value.map((i) => (
+            <List.Item
+              key={i.threadId}
+              href={i.href}
+              startIcon={i.icon}
+              headline={i.mine ? `You: ${i.preview}` : i.preview}
+              // Fixed UTC dates (as Messages' list): the server and the browser agree.
+              supportingText={`${i.title} · ${formatListTime(i.at)}`}
+              onClick$={() => {
+                state.counts.value = bumpCount(rowKey, "contact");
+              }}
+            />
+          ))}
+        </List.Root>
+      </ResumeSection>
+    ) : null;
+  },
+);
 
 /** The edit view's form (the pane header's Save submits it by id). */
 const EDIT_FORM_ID = "contact-edit-form";
@@ -104,6 +164,11 @@ export interface ContactPersonProps {
   detailsTitle?: string;
   /** Where Back goes (single-pane). */
   backHref?: string;
+  /**
+   * The contact's ACCOUNT (`content/accounts.ts`), when it has one (the site's contacts): its
+   * conversations in Messages are the page's "Recent interactions" (`contacts/interactions.ts`).
+   */
+  accountId?: string;
 }
 
 /**
@@ -145,6 +210,7 @@ export const ContactPerson = component$<ContactPersonProps>(
     fallbackIcon,
     detailsTitle = "Contact details",
     backHref = "/contacts/",
+    accountId,
   }) => {
     const loc = useLocation();
     const nav = useNavigate();
@@ -161,6 +227,7 @@ export const ContactPerson = component$<ContactPersonProps>(
     const cancelOpen = useSignal(false);
     const purgeOpen = useSignal(false);
     const createOpen = useSignal(false);
+    const profileOpen = useSignal(false);
     const fileRef = useSignal<HTMLInputElement>();
 
     const choices = useComputed$(() => assignableLabels(state.book.value));
@@ -334,6 +401,33 @@ export const ContactPerson = component$<ContactPersonProps>(
       await showSnackbar$({ message: "Photo removed" });
     });
 
+    const linkProfile$ = $(async (profile: LinkedProfile) => {
+      const had = !!record.profile;
+      await write$((book, id, now) => setProfile(book, id, profile, now));
+      await showSnackbar$({
+        message: had ? "Profile changed" : "Profile added",
+      });
+    });
+
+    const unlinkProfile$ = $(async () => {
+      const before = record.profile;
+      if (!before) return;
+      const change = await write$((book, id, now) =>
+        setProfile(book, id, undefined, now),
+      );
+      const id = change.result;
+      await showSnackbar$({
+        message: "Profile removed",
+        action: "Undo",
+        showClose: true,
+        onAction$: $(async () => {
+          await commit(state, (book, now) => ({
+            book: setProfile(book, id, before, now),
+          }));
+        }),
+      });
+    });
+
     const contacted$ = $(() => {
       state.counts.value = bumpCount(rowKey, "contact");
     });
@@ -423,6 +517,21 @@ export const ContactPerson = component$<ContactPersonProps>(
                       >
                         Export as CSV
                       </Menu.Item>
+                      {/* A linked PROFILE (Google's PROFILE source), the visitor's own contacts
+                          only: a site contact has its own. */}
+                      {!site && (
+                        <Menu.Item
+                          aria-haspopup="dialog"
+                          onClick$={() => (profileOpen.value = true)}
+                        >
+                          {record.profile ? "Change profile" : "Add profile"}
+                        </Menu.Item>
+                      )}
+                      {!site && record.profile && (
+                        <Menu.Item onClick$={unlinkProfile$}>
+                          Remove profile
+                        </Menu.Item>
+                      )}
                       {record.photo && (
                         <Menu.Item onClick$={removePhoto$}>
                           Remove photo
@@ -603,7 +712,8 @@ export const ContactPerson = component$<ContactPersonProps>(
               <div class="grid min-w-0 content-start gap-4">
                 {(record.emails.length > 0 ||
                   record.phones.length > 0 ||
-                  !!record.notes) && (
+                  !!record.notes ||
+                  !trashed.value) && (
                   <ResumeSection
                     id="person-details"
                     title={detailsTitle}
@@ -633,6 +743,22 @@ export const ContactPerson = component$<ContactPersonProps>(
                           onClick$={contacted$}
                         />
                       ))}
+                      {/* Google's prompts for what is missing ("Add phone number"): they open
+                          the edit view. */}
+                      {!trashed.value && record.emails.length === 0 && (
+                        <List.Item
+                          href={`${viewHref.value}?edit`}
+                          startIcon="mail"
+                          headline="Add email"
+                        />
+                      )}
+                      {!trashed.value && record.phones.length === 0 && (
+                        <List.Item
+                          href={`${viewHref.value}?edit`}
+                          startIcon="call"
+                          headline="Add phone number"
+                        />
+                      )}
                       {record.notes && (
                         <List.Item
                           startIcon="sticky_note_2"
@@ -653,10 +779,20 @@ export const ContactPerson = component$<ContactPersonProps>(
               {/* Google's second column: recent interactions, History. */}
               <div class="grid min-w-0 content-start gap-4">
                 <Slot name="aside" />
-                {!site && (
+                {accountId && (
+                  <RecentInteractions accountId={accountId} rowKey={rowKey} />
+                )}
+                {/* Google's History: when the contact was last edited and added (Help
+                    1069522). Drawn in the browser only (`ready`): "Today" and the time zone
+                    are the visitor's, never the server's. A site contact was added by the
+                    site (`addedAt`) and is "edited" once the visitor changed it (their local
+                    override). "Last edited" is `updatedAt`, which every change moves (a star,
+                    a label too), as Google's `updateTime`. */}
+                {state.ready.value && (
                   <section
                     aria-labelledby="person-history"
                     class="grid gap-2 px-4"
+                    data-contact-history=""
                   >
                     <h3
                       id="person-history"
@@ -664,16 +800,25 @@ export const ContactPerson = component$<ContactPersonProps>(
                     >
                       History
                     </h3>
-                    <p class="text-body-medium text-on-surface">
-                      Last edited{" "}
-                      <span class="text-body-small text-on-surface-variant">
-                        · {formatWhen(record.updatedAt)}
-                      </span>
-                    </p>
+                    {(!site || overridden) && record.updatedAt > 0 && (
+                      <p class="text-body-medium text-on-surface">
+                        Last edited{" "}
+                        <span class="text-body-small text-on-surface-variant">
+                          · {formatWhen(record.updatedAt)}
+                        </span>
+                      </p>
+                    )}
                     <p class="text-body-medium text-on-surface">
                       Added to contacts{" "}
                       <span class="text-body-small text-on-surface-variant">
-                        · {formatWhen(record.createdAt)}
+                        ·{" "}
+                        {formatWhen(
+                          site
+                            ? Date.parse(
+                                findContact(site.siteId)?.addedAt ?? "",
+                              ) || record.createdAt
+                            : record.createdAt,
+                        )}
                       </span>
                     </p>
                   </section>
@@ -706,6 +851,14 @@ export const ContactPerson = component$<ContactPersonProps>(
           title="Create label"
           onSave$={createLabel$}
         />
+        {!site && (
+          <LinkProfileDialog
+            open={profileOpen}
+            accounts={PROFILE_ACCOUNTS}
+            current={record.profile}
+            onSave$={linkProfile$}
+          />
+        )}
       </>
     );
   },

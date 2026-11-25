@@ -53,10 +53,7 @@ import { readLabelCache } from "../contacts/frequency";
 import { localLabelsId, type DrawerLabel } from "../contacts/local-context";
 import { contactsDrawerGroups } from "../content/contacts";
 import { GUEST_ACCOUNT } from "../content/accounts";
-import {
-  MESSAGES_DRAWER_GROUPS,
-  messagesHref,
-} from "../content/conversations";
+import { MESSAGES_DRAWER_GROUPS, messagesHref } from "../content/conversations";
 import { DEMO } from "../demo/demo";
 import { choosePresence } from "../presence/presence-client";
 import { untilText, usePresenceProvider } from "../presence/use-presence";
@@ -217,7 +214,8 @@ const ACCOUNT_ITEMS: AccountMenuItem[] = [
   { id: "profile", label: "Profile", href: "/profile/", icon: "person" },
   // The Maps nodes as the account's devices (owner, 2026-11-24).
   { id: "devices", label: "Devices", href: "/devices/", icon: "devices" },
-  { id: "contacts", label: "Contacts", href: "/contacts/", icon: "contacts" },
+  // No Contacts row (owner, 2026-11-25: "we dont need contacts in both places leave it in the
+  // rail"): Contacts is a rail app.
 ];
 
 export default component$(() => {
@@ -401,7 +399,7 @@ export default component$(() => {
             `pane` column. Maps keeps its own place search in its Search companion. */}
           <SiteSearch q:slot="pane" />
           {/* The visitor's own account: name and presence dot (no email). The menu holds
-            Profile and Contacts (`ACCOUNT_ITEMS`), then "Theme colors" (owner, 2026-11-24): it opens the Theme Controls menu at the avatar
+            Profile and Devices (`ACCOUNT_ITEMS`; Contacts is in the rail only, 2026-11-25), then "Theme colors" (owner, 2026-11-24): it opens the Theme Controls menu at the avatar
             on every route (`themeColors`). Light / dark is in the rail and the compact drawer's
             footer (`themeToggle: "rail"`), not here. No Sign out: nothing would work. */}
           <AccountMenu
@@ -414,6 +412,8 @@ export default component$(() => {
             // Busy's length (1 h, 4 h, end of day, until changed) from its submenu.
             presenceDuration={presence.lasts ?? undefined}
             presenceUntilText={presenceUntil.value}
+            // ONE Status row opening the choices (owner, 2026-11-25: "it takes up to much space").
+            presenceLook="submenu"
             onPresenceChange$={$((pref: AccountPresencePref, lasts?: string) =>
               choosePresence(pref, lasts),
             )}
@@ -438,9 +438,8 @@ export default component$(() => {
             {activeCompanion.value === MESSAGES_DETAILS_COMPANION.id && (
               <MessagesDetailsPanel />
             )}
-            {activeCompanion.value === CONTACT_PANEL.id && contactMeOn.value && (
-              <ContactPanel />
-            )}
+            {activeCompanion.value === CONTACT_PANEL.id &&
+              contactMeOn.value && <ContactPanel />}
           </div>
           {/* Contact me's own "More" menu (Remove from my apps), in the pane's title row. */}
           {activeCompanion.value === CONTACT_PANEL.id && contactMeOn.value && (

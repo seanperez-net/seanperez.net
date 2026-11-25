@@ -9,6 +9,7 @@ import { EmptyState, Layout, LoadingIndicator } from "@seanperez/ui";
 import { LocalContactProfile } from "../../../../components/local-contact-profile";
 import { localBookId } from "../../../../contacts/local-context";
 import { CONTACT_HEADING_ID } from "../../../../content/contacts";
+import { useContactBook } from "../../layout";
 
 /**
  * `/contacts/local/<id>/`: one of the visitor's OWN contacts, created or imported in THIS browser
@@ -39,12 +40,27 @@ export default component$(() => {
   const contact = useComputed$(
     () => state.book.value.contacts.find((c) => c.id === loc.params.id) ?? null,
   );
+  // A contact linked to one of the site's accounts shows that account's profile (2026-11-25):
+  // the profile comes from the layout's loader, the same one the site's contact pages read.
+  const site = useContactBook();
+  const linked = useComputed$(() => {
+    const p = contact.value?.profile;
+    if (!p || !("account" in p)) return null;
+    const row = site.value.find((r) => r.accountId === p.account && r.profile);
+    return row?.profile
+      ? { profile: row.profile, presence: row.presence ?? "offline" }
+      : null;
+  });
   return (
     <>
       {!state.ready.value ? (
         <LoadingIndicator aria-label="Loading contact" />
       ) : contact.value ? (
-        <LocalContactProfile key={contact.value.id} contact={contact.value} />
+        <LocalContactProfile
+          key={contact.value.id}
+          contact={contact.value}
+          linked={linked.value}
+        />
       ) : (
         <>
           <Layout.PaneHeader

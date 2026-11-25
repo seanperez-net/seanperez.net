@@ -51,8 +51,18 @@ test("guest account, Sean's welcome deleted locally, Contact me removed and back
   await expect(page.locator("[data-chat-message='w1']")).toHaveCount(0);
 
   // Contact me: remove from Profile's "Your apps", then the account menu offers it back.
+  // Remove opens "How apps work" (/docs/apps/, owner 2026-11-25), where the removal happens.
   await page.goto("/profile/");
-  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await page.getByRole("link", { name: "Remove", exact: true }).click();
+  await expect(page).toHaveURL(/\/docs\/apps\/#remove$/);
+  const removeIt = page.getByRole("button", { name: "Remove Contact me" });
+  const addItBack = page.getByRole("button", { name: "Add it back" });
+  // An early click can be lost on WebKit before the page resumes (apps-tutorial.spec.ts).
+  await expect(async () => {
+    if (await removeIt.isEnabled()) await removeIt.click({ timeout: 2_000 });
+    await expect(addItBack).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  await page.goto("/profile/");
   await expect(page.getByRole("button", { name: "Add back" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Add back" })).toBeVisible();
@@ -60,7 +70,7 @@ test("guest account, Sean's welcome deleted locally, Contact me removed and back
   await expect(page.getByRole("menuitem", { name: "Add Contact me back" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Add back" }).click();
-  await expect(page.getByRole("button", { name: "Remove", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Remove", exact: true })).toBeVisible();
 
   expect(posted).toEqual([]);
 });

@@ -15,8 +15,7 @@ import {
 } from "../account/contact.server";
 import { DEMO } from "../demo/demo";
 import { MAX_BODY } from "../messages/messages-local";
-/** The same Turnstile action as Contact me: one widget configuration, one Siteverify check. */
-const TURNSTILE_ACTION = "contact";
+import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
 
 /**
  * The contact account's actions besides the first send (`useSendMessage` in `contact-panel.tsx`):
@@ -78,13 +77,23 @@ export const useVerifyCode = routeAction$(
 // Re-exported from routes/layout.tsx (see the file comment).
 // eslint-disable-next-line qwik/loader-location
 export const useResendVerification = routeAction$(
-  async (_data, { platform, cookie, url, fail }) => {
+  async (data, { platform, request, cookie, url, fail }) => {
     if (!DEMO) return fail(404, { message: "Not found." });
     const env = platform.env;
     if (!accountsOpen(env)) return fail(503, { message: "Not open yet." });
     const session = await sessionOf(env, cookie, url);
     if (!session) return fail(400, { message: "Send a message first." });
     if (session.verified) return { resent: false, verified: true };
+    // Turnstile on every resend (security review, 2026-11-25): an unverified session is anyone
+    // who typed an address, so without it a script could make the 3 emails a day go to the real
+    // address on its own. Its own action (`resend`). Fail closed; no secret: "not open yet".
+    const check = await checkTurnstile(
+      env,
+      data["cf-turnstile-response"],
+      request.headers.get("CF-Connecting-IP") ?? "",
+      TURNSTILE_ACTIONS.resend,
+    );
+    if (!check.ok) return fail(check.status, { message: check.message });
     const token = await createToken(
       env.DB,
       env.AUTH_SECRET,
@@ -102,7 +111,15 @@ export const useResendVerification = routeAction$(
     void sendVerificationLater(env, platform.ctx, url.origin, session.email, token);
     return { resent: true, verified: false };
   },
-  { invalidate: [] },
+  {
+    invalidate: [],
+    validation: [
+      zod$({
+        // The security check's token (Turnstile tokens are at most 2048 characters).
+        "cf-turnstile-response": z.string().max(2048).optional(),
+      }),
+    ],
+  },
 );
 
 // Re-exported from routes/layout.tsx (see the file comment).
@@ -124,7 +141,7 @@ export const useSendToSean = routeAction$(
         env,
         data["cf-turnstile-response"],
         request.headers.get("CF-Connecting-IP") ?? "",
-        TURNSTILE_ACTION,
+        TURNSTILE_ACTIONS.message,
       );
       if (!check.ok) {
         return fail(check.status, { message: check.message, noSession: false });

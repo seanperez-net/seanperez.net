@@ -62,6 +62,13 @@ export const PAGES = {
       "A messages app built with Qwik: demo conversations with devices and an assistant.",
     card: "Messages",
   },
+  // "How apps work" (2026-11-25): the tutorial "Remove from my apps" opens (owner).
+  "/docs/apps/": {
+    title: "How apps work · Sean Perez",
+    description:
+      "How apps work on this site: remove Contact me, add it back, and where that choice is kept (your browser only).",
+    card: "How apps work",
+  },
   // The owner's contact profile: the résumé that was /about/ (301 there, owner 2026-11-24).
   "/contacts/sean-perez/": {
     title: "Sean Perez · Contacts",

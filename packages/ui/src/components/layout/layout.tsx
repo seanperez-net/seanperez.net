@@ -182,12 +182,19 @@ export const layoutVariants = tv({
       "shadow-2",
     ],
     // The floating / docked card's list: 12dp from the card's top edge, as from its sides.
-    drawerCardBody: ["pt-(--layout-drawer-inset)"],
+    // Under its fixed header (2026-11-25): no top inset (the 64dp header is the top inset, as a
+    // pane's header is), and the scrollbar track starts AT the header's edge, as a pane's does
+    // (`.scrollbar-pane:has(> .pane-header-bleed)` gives a pane the header's height; here the
+    // header is outside the scroller, so the start margin is 0). The end keeps the 20dp margin
+    // off the card's rounded corner.
+    drawerCardBody: ["[--scrollbar-track-margin-start:0px]"],
+    // The standard drawer has no header: 12dp from its top edge, as from its sides.
+    drawerStandardBody: ["pt-(--layout-drawer-inset)"],
     // The drawer's HEADLINE (M3 navigation drawer anatomy "Headline", material-web v0_192
     // `headline-*` = title-small, `headline-color` = on-surface-variant, read 2026-11-24): a
     // section's name above its children in the compact modal drawer and the standard one
-    // (e-store's `navDrawerSectionVariants.headline`), and the section's name at the top of the
-    // floating / docked card (e-store's `DrawerPanel` header, ported 2026-11-24). Not a link.
+    // (e-store's `navDrawerSectionVariants.headline`). Not a link. The floating / docked card's
+    // section name is its fixed header since 2026-11-25 (`drawerHeader`).
     // On the rows' label line: 12dp inset + 16dp row padding = M3's 28dp left padding.
     drawerSection: [
       "flex",
@@ -253,14 +260,28 @@ export const layoutVariants = tv({
     // `overflow: clip`, not `hidden`: it clips the rows while the row track grows but is no
     // scroll container (MDN `overflow`), so nothing in it can scroll or show a bar (2026-11-24).
     drawerGroupInner: ["flex", "min-h-0", "flex-col", "overflow-clip"],
-    drawerHeader: ["layout-drawer-header-rulers"],
+    // The drawer's fixed HEADER (2026-11-25, owner: "the drawer should have its header so
+    // contacts stays static up there in all the drawers including the floating"): the section's
+    // name as the M3 headline (title-small, on-surface-variant) on the rows' label line (28dp),
+    // in a row as tall as a pane's header (`--layout-pane-header`, 64dp), so the drawer's header
+    // and the primary pane's header share one row. It does not scroll; the list below it does.
+    // e-store's `DrawerPanel` header (`pane-header-flex`, title-small, `shrink-0`) above its
+    // scrolling `<nav>`; e-store's divider under it is left out (our pane header has none).
+    drawerHeader: [
+      "layout-drawer-header-rulers",
+      "text-title-small",
+      "text-on-surface-variant",
+    ],
+    drawerHeaderTitle: ["min-w-0", "truncate"],
     // The modal navigation drawer (below 600px only): a `Modal` on the start edge. Its bar's
     // inset puts the close button exactly where the app bar's menu button that opened it is.
     drawerModal: [
       "[--modal-sheet-width:min(var(--layout-drawer-width),85vw)]",
       "[--modal-bar-inset:calc(var(--layout-margin)-var(--layout-icon-button-overhang))]",
     ],
-    drawerModalBody: [],
+    // Under the modal's fixed header row (`Modal.CloseTitleAction`, 64dp): the scrollbar track
+    // starts at that row's edge, as the card's and a pane's do (2026-11-25).
+    drawerModalBody: ["[--scrollbar-track-margin-start:0px]"],
     // The compact drawer's footer (e-store's nav drawer row 3, centred, `px-3`), holding the
     // large light / dark switch with `themeToggle: "rail"`. At the drawer's END (`mt-auto`, the
     // free space above it) and as far from the bottom edge as the rail's footer is
@@ -1614,6 +1635,17 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
             <div class={styles.drawerCard()}>
               {shownSection.value && (
                 <>
+                  {/* e-store's `DrawerPanel` header: the section's name as the drawer's
+                      headline, FIXED above the scrolling list (2026-11-25). The visible title
+                      names the `<nav>` (`aria-labelledby`, reviewer 2026-11-25). */}
+                  <div class={styles.drawerHeader()} data-qds-drawer-header="">
+                    <span
+                      id={`${drawerId}-title`}
+                      class={styles.drawerHeaderTitle()}
+                    >
+                      {shownSection.value.label}
+                    </span>
+                  </div>
                   <div
                     class={[styles.drawerBody(), styles.drawerCardBody()]}
                     data-roving="vertical"
@@ -1621,13 +1653,8 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
                   >
                     <nav
                       class={styles.drawerList()}
-                      aria-label={shownSection.value?.label}
+                      aria-labelledby={`${drawerId}-title`}
                     >
-                      {/* e-store's `DrawerPanel` header: the section's name as the drawer's
-                          headline (the nav is already named by it, so hidden from AT). */}
-                      <div aria-hidden="true" class={styles.drawerSection()}>
-                        {shownSection.value.label}
-                      </div>
                       {rows(shownSection.value.items ?? [], false)}
                     </nav>
                   </div>
@@ -1650,7 +1677,7 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
           >
             <div class={styles.drawerCard()}>
               <div
-                class={[styles.drawerBody(), styles.drawerCardBody()]}
+                class={[styles.drawerBody(), styles.drawerStandardBody()]}
                 data-roving="vertical"
                 onKeyDown$={[rovingKeys]}
               >

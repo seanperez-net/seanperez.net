@@ -30,7 +30,11 @@ button (`Menu.Trigger`) opening a `role="menu"` popover in the top layer.
   `size` `xs` 32dp / `sm` 40dp (default); 48dp touch target either way. `unstyled` (e-store's
   `Dropdown.Trigger unstyled`, ported 2026-11-23): none of these classes, the host draws it
   (`SplitButton.Trigger`, `FABMenu.Trigger`); the ARIA, popover and keys stay.
-- `Menu.Content`: `align` `start` (default) / `end`; `side` `bottom` (default) / `top`;
+- `Menu.Content`: `align` `start` (default) / `end`; `side` `bottom` (default) / `top` / `end`
+  (a submenu's default) / `start` (NEW 2026-11-25, not in e-store: a submenu beside its row's
+  start edge, flipping to the end without room; the account menu's nested Status and Busy
+  submenus at the app bar's end cascade towards the start with it, instead of the second level
+  opening back over the first);
   `floating` (no anchored position). Anchored with CSS anchor positioning, 4px from the
   trigger, flipping when it would leave the window; the last fallback scrolls
   (`tokens/components/menu.css`).

@@ -1,6 +1,6 @@
 import { component$, useComputed$ } from "@qwik.dev/core";
 import { useLocation } from "@qwik.dev/router";
-import { List, type LayoutCompanion } from "@seanperez/ui";
+import { EmptyState, List, type LayoutCompanion } from "@seanperez/ui";
 import { ChatAvatar } from "@seanperez/chat";
 import { usePresence } from "../presence/use-presence";
 import {
@@ -49,36 +49,39 @@ export const MessagesDetailsPanel = component$(() => {
     return slug ? (findThread(slug) ?? null) : null;
   });
   return (
-    // Spacing between the panel's parts (placement only; no library component is restyled).
+    // The panel's ONE body (m3-hierarchy H6): the conversation as a list row, then its members as a
+    // list (m3-hierarchy B1, B10). Spacing between the two parts only; no library part restyled.
     <div class="grid gap-4">
       {thread.value ? (
         <>
-          <div class="flex items-center gap-3">
-            <ChatAvatar
-              person={withOwnAccount(
-                thread.value.person,
-                presence.shown,
-                own.fields,
-              )}
-              size="lg"
+          {/* The record this companion is about: ONE non-interactive row (M3 lists anatomy:
+              leading avatar, label, supporting text). It was a hand-built avatar + heading block
+              (e-store's `ChatConversationInfo` markup); the panel's header already names it. */}
+          <List.Root padding="none" aria-label="Conversation">
+            <List.Item
+              lines="two-line"
+              start={
+                <ChatAvatar
+                  person={withOwnAccount(
+                    thread.value.person,
+                    presence.shown,
+                    own.fields,
+                  )}
+                />
+              }
+              headline={ownThreadTitle(thread.value, own.fields)}
+              supportingText={thread.value.subtitle}
             />
-            <div class="min-w-0">
-              <h3 class="text-title-medium text-on-surface">
-                {ownThreadTitle(thread.value, own.fields)}
-              </h3>
-              <p class="text-body-medium text-on-surface-variant">
-                {thread.value.subtitle}
-              </p>
-            </div>
-          </div>
+          </List.Root>
           <section aria-labelledby="messages-members-title">
+            {/* A section heading over a list, not a card (m3-hierarchy B5, B10). */}
             <h3
               id="messages-members-title"
-              class="pb-1 text-title-small text-on-surface-variant"
+              class="px-4 pb-1 text-title-small text-on-surface-variant"
             >
               Members ({thread.value.members.length})
             </h3>
-            <List.Root padding="none">
+            <List.Root padding="none" aria-labelledby="messages-members-title">
               {thread.value.members.map((person) => {
                 // An app's account has a Contacts page (accounts, 2026-11-24); the viewer's own
                 // row stays plain.
@@ -88,7 +91,11 @@ export const MessagesDetailsPanel = component$(() => {
                     key={person.id}
                     start={
                       <ChatAvatar
-                        person={withOwnAccount(person, presence.shown, own.fields)}
+                        person={withOwnAccount(
+                          person,
+                          presence.shown,
+                          own.fields,
+                        )}
                       />
                     }
                     headline={
@@ -110,9 +117,13 @@ export const MessagesDetailsPanel = component$(() => {
           </section>
         </>
       ) : (
-        <p class="text-body-medium text-on-surface-variant">
-          Open a conversation to see its details.
-        </p>
+        // Nothing chosen: the library's EmptyState (m3-hierarchy B9), as the list's empty views.
+        <EmptyState
+          size="sm"
+          icon={MESSAGES_DETAILS_COMPANION.icon}
+          headline="Open a conversation to see its details."
+          live={false}
+        />
       )}
     </div>
   );

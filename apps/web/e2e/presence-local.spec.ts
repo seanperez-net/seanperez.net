@@ -9,14 +9,20 @@ import { expect, test, type Page } from "@playwright/test";
 const FAST = "/profile/?presence-test=fast";
 const trigger = (page: Page) => page.locator('[aria-label^="Account:"]').first();
 
+// The status is ONE "Status: ..." row opening the choices (2026-11-25, `presenceLook="submenu"`).
+const openStatus = (page: Page) =>
+  page.getByRole("menuitem", { name: /^Status:/ }).click();
+
 async function busyFor(page: Page, length: string) {
   await trigger(page).click();
+  await openStatus(page);
   await page.getByRole("menuitem", { name: /^Busy/ }).click();
   await page.getByRole("menuitemradio", { name: length }).click();
 }
 
 async function choose(page: Page, status: string) {
   await trigger(page).click();
+  await openStatus(page);
   await page.getByRole("menuitemradio", { name: status }).click();
 }
 
@@ -46,7 +52,7 @@ test("idle, manual status, expiry, reload and a second tab, with nothing sent", 
   await expect(trigger(page)).toHaveAttribute("aria-label", /, Busy$/);
   await trigger(page).click();
   await expect(page.locator("[data-qds-account-menu-status]")).toHaveText(/Busy · Until \d/);
-  await expect(page.getByRole("menuitem", { name: /^Busy\W+Until \d/ })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /^Status: Busy\W+Until \d/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(trigger(page)).not.toHaveAttribute("aria-label", /, Busy$/, { timeout: 25_000 });
 

@@ -145,7 +145,7 @@ test("five wrong codes lock the code", async ({ page }) => {
   expect((await me(page))?.verified).toBe(false);
 });
 
-test("/verify GET does not verify; Confirm (POST) does, for the sending browser too", async ({
+test("/verify GET does not verify; Confirm (POST) confirms the opening browser only", async ({
   page,
   browser,
 }) => {
@@ -165,7 +165,8 @@ test("/verify GET does not verify; Confirm (POST) does, for the sending browser 
   await phone.getByRole("button", { name: "Confirm" }).click();
   await expect(phone.getByText("Confirmed.")).toBeVisible();
   expect((await me(phone))?.verified).toBe(true);
-  expect((await me(page))?.verified).toBe(true);
+  // The browser that ASKED is not upgraded by the link (it may be a stranger's): it types the code.
+  expect((await me(page))?.verified).toBe(false);
   await other.close();
 });
 
@@ -331,4 +332,113 @@ test("/privacy/ explains self-delete with a link to Profile", async ({ page }) =
   const main = page.getByRole("main");
   await expect(main.getByText("Delete my account")).toBeVisible();
   await expect(main.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile/");
+});
+
+// --- 2026-11-25 security review gaps -------------------------------------------------------------
+
+/** One SQL statement on the LOCAL D1 (test setup only). */
+function localSql(command: string) {
+  execFileSync("pnpm", ["wrangler", "d1", "execute", "seanperez-net", "--local", "--command", command], {
+    cwd: new URL("..", import.meta.url),
+    stdio: "ignore",
+  });
+}
+
+test("confirming confirms only this browser's messages: a stranger's, same address, stays unverified", async ({
+  page,
+  browser,
+}) => {
+  const email = address("stranger-wait");
+  const mine = `owner's own ${Date.now()}`;
+  const theirs = `stranger's ${Date.now()}`;
+  const aside = await sendContact(page, email, mine);
+  const { code } = await mail(page, email);
+
+  // A stranger types the same address in another browser (its email is held back by the 60 s
+  // gap, so the owner's code stays the latest).
+  const other = await browser.newContext();
+  const stranger = await other.newPage();
+  await sendContact(stranger, email, theirs);
+
+  await aside.getByRole("textbox", { name: "Code" }).fill(code);
+  await aside.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+  expect((await me(stranger))?.verified).toBe(false);
+  await other.close();
+
+  await page.goto("/admin/messages/?show=verified");
+  await expect(page.getByRole("main").getByText(mine)).toBeVisible();
+  await expect(page.getByRole("main").getByText(theirs)).toHaveCount(0);
+  await page.goto("/admin/messages/?show=unverified");
+  await expect(page.getByRole("main").getByText(theirs)).toBeVisible();
+});
+
+test("Send the email again without a security-check token is refused (Turnstile is on here)", async ({
+  page,
+}) => {
+  const email = address("resend-no-token");
+  const aside = await sendContact(page, email, "resend without a token");
+  const first = await mail(page, email);
+  localSql(
+    `UPDATE verify_token SET created_at = '2000-01-01T00:00:00.000Z' WHERE account_id = (SELECT id FROM contact_account WHERE email = '${email}');`,
+  );
+  // As a script posting without the widget would: no widget, no token.
+  const resendForm = aside.locator('form:has([data-action="resend"])');
+  await expect(resendForm).toHaveCount(1);
+  await resendForm.evaluate((form) => {
+    form.querySelector("[data-qds-turnstile]")?.remove();
+    form.querySelector('[name="cf-turnstile-response"]')?.remove();
+  });
+  await aside.getByRole("button", { name: "Send the email again" }).click();
+  await expect(aside.getByText("Please complete the security check")).toBeVisible();
+  await expect(aside.getByText("A new email is on its way.")).toHaveCount(0);
+  // No second email: the last one is still the first.
+  const last = await page.request.get(`/api/dev-mail?to=${encodeURIComponent(email)}`);
+  expect(((await last.json()) as { text: string }).text).toBe(first.text);
+});
+
+test("each form's security check has its own Turnstile action (the server-side mismatch: account-test.ts)", async ({
+  page,
+}) => {
+  // Cloudflare's TEST secret returns no `action`, so a mismatch can only be refused end to end
+  // with real keys; here the widgets are checked to ask for their own action.
+  const aside = await sendContact(page, address("actions"), "actions");
+  await expect(aside.locator('[data-qds-turnstile][data-action="resend"]')).toHaveCount(1);
+  // The form closes after a send (owner, 2026-11-25); "Write another message" brings it back.
+  await expect(aside.getByRole("textbox", { name: "Message" })).toHaveCount(0);
+  await aside.getByRole("button", { name: "Write another message" }).click();
+  await expect(aside.locator('[data-qds-turnstile][data-action="contact"]')).toHaveCount(1);
+  await expect(aside.getByRole("textbox", { name: "Name" })).toBeFocused();
+  await page.goto("/messages/sean-perez/");
+  await expect(
+    page.getByRole("form", { name: "Security check" }).locator('[data-qds-turnstile][data-action="message"]'),
+  ).toHaveCount(1);
+});
+
+test("Delete my account also deletes the address's messages from before accounts", async ({ page }) => {
+  const email = address("pre-account");
+  const old = `before accounts ${Date.now()}`;
+  // A row as the contact form stored it before accounts: no account, the address as typed.
+  localSql(
+    `INSERT INTO message (name, email, body, created_at, confirmed_at) VALUES ('Old', '${email.toUpperCase()}', '${old}', '2026-11-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z');`,
+  );
+  await page.goto("/admin/messages/");
+  await expect(page.getByRole("main").getByText(old)).toBeVisible();
+
+  const aside = await sendContact(page, email, "now with an account");
+  const { code } = await mail(page, email);
+  await aside.getByRole("textbox", { name: "Code" }).fill(code);
+  await aside.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+
+  await page.goto("/profile/");
+  const main = page.getByRole("main");
+  await main.getByRole("button", { name: "Delete my account" }).click();
+  await page
+    .getByRole("alertdialog", { name: "Delete your account?" })
+    .getByRole("button", { name: "Delete" })
+    .click();
+  await expect(page.getByText("Account deleted").first()).toBeVisible();
+  await page.goto("/admin/messages/");
+  await expect(page.getByRole("main").getByText(old)).toHaveCount(0);
 });

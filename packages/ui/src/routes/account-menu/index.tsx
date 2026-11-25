@@ -63,6 +63,8 @@ export default component$(() => {
     statusRows: knob.boolean(true, "Status rows"),
     // Busy as a submenu of durations (2026-11-24); off: a plain Busy row.
     busyDurations: knob.boolean(true, "Busy durations"),
+    // ONE Status row opening the choices (2026-11-25); `rows`: e-store's inline rows.
+    presenceLook: knob.select(["rows", "submenu"] as const, "submenu", "Status look"),
     themeRows: knob.boolean(false, "Theme rows"),
     manageAccount: knob.boolean(true, "Manage account row"),
     align: knob.select(["start", "end"] as const, "end"),
@@ -110,6 +112,7 @@ export default component$(() => {
                 : "Demo session, no auth"
             }
             presencePref={pref.value}
+            presenceLook={knobs.values.presenceLook}
             presenceDuration={pref.value === "busy" ? duration.value : undefined}
             presenceUntilText={
               pref.value === "busy" && duration.value

@@ -1,5 +1,6 @@
 import { component$, type Signal } from "@qwik.dev/core";
 import { Turnstile } from "@seanperez/ui";
+import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
 import { useContactSetup } from "./contact-panel";
 
 /**
@@ -10,7 +11,8 @@ import { useContactSetup } from "./contact-panel";
  *
  * The same widget and settings as Contact me (`contact-panel.tsx`): `compact`,
  * `appearance="interaction-only"` (most visitors never see it; when Cloudflare needs a click it
- * shows here), action `contact`. It sits in its own small `<form>` because the widget writes its
+ * shows here). Its own action, `message` (`TURNSTILE_ACTIONS`, 2026-11-25): a token solved here
+ * is refused by Contact me and "Send the email again", and theirs here. It sits in its own small `<form>` because the widget writes its
  * token into the form around it, and the composer is the chat package's own form (no slot);
  * `useDemoThread`'s send reads the token from here with `waitForTurnstileToken`.
  *
@@ -41,7 +43,7 @@ export const SendCheck = component$<{
     >
       <Turnstile
         siteKey={setup.value.siteKey}
-        action="contact"
+        action={TURNSTILE_ACTIONS.message}
         size="compact"
         appearance="interaction-only"
         loadOn="visible"

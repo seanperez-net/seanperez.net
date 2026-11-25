@@ -47,7 +47,8 @@ export const messageEmbedsVariants = tv({
     ],
     chipText: "truncate",
     link: "underline underline-offset-2 wrap-anywhere focus-ring rounded-xs",
-    cards: "flex min-w-0 flex-col gap-2 pt-1",
+    // The column of link cards: each card fills it, at most 28rem (e-store's card width).
+    cards: "flex w-full min-w-0 max-w-md flex-col gap-2 pt-1",
     cardSource:
       "flex items-center gap-1 text-body-small text-on-surface-variant",
     cardTitle: "text-title-small text-on-surface wrap-break-word",
@@ -180,12 +181,15 @@ export const ChatLinkCard = component$<{
       data-chat-embed="link"
       // e-store's name: the title and the source, then where it opens.
       aria-label={`${embed.title} (${source}), ${L.externalLink}`}
-      class="w-full max-w-md overflow-hidden"
+      // No `class`: the card clips its own corners (`Card.Root` is `overflow-hidden`) and the
+      // `cards` column sets the width (m3-hierarchy checklist 5: no class on library parts).
     >
       {embed.imageUrl && (
         // e-store's media box (lazy, no referrer), but 1.91:1, not e-store's 3:2: 3:2 is the
         // Farcaster embed ratio; a link card shows the page's Open Graph image, 1200 x 630
-        // (1.91:1) by convention (our own og-image too), so 3:2 cropped its sides.
+        // (1.91:1) by convention (our own og-image too), so 3:2 cropped its sides. `Card.Media`
+        // without `src` is the documented slot for your own media (`card.md`): its `src` form
+        // has no `loading` / `referrerPolicy` and no crop to a ratio.
         <Card.Media>
           <img
             src={embed.imageUrl}

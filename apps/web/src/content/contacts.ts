@@ -52,6 +52,11 @@ export interface ContactEntry {
   presence?: AvatarPresence;
   /** Its labels (`CONTACT_LABELS` ids). */
   labels: string[];
+  /**
+   * When the site added it to everyone's contacts (ISO, midday UTC so no time zone moves the
+   * day): the person page's History "Added to contacts" (2026-11-25, Google's History).
+   */
+  addedAt: string;
 }
 
 export const CONTACTS: ContactEntry[] = [
@@ -62,6 +67,8 @@ export const CONTACTS: ContactEntry[] = [
     seed: OWNER_ACCOUNT.id,
     presence: OWNER_ACCOUNT.presence,
     labels: ["work"],
+    // The day Contacts replaced About (`home-resume-no-footer`).
+    addedAt: "2026-11-24T12:00:00Z",
   },
   {
     id: ASSISTANT_ACCOUNT.contactId!,
@@ -69,6 +76,7 @@ export const CONTACTS: ContactEntry[] = [
     kind: "app",
     seed: ASSISTANT_ACCOUNT.id,
     labels: ["apps"],
+    addedAt: "2026-11-24T12:00:00Z",
   },
 ];
 
@@ -116,8 +124,7 @@ const LISTS: ContactsList[] = [
     label: "Frequent",
     icon: "history",
     empty: "No frequent contacts",
-    emptyDetail:
-      "The people you open and get in touch with most show up here.",
+    emptyDetail: "The people you open and get in touch with most show up here.",
   },
   {
     slug: "other",

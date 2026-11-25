@@ -46,6 +46,7 @@ import {
   type ImportedContact,
   type LabelledValue,
 } from "./imported";
+import { safeLinkHref } from "../profile/profile";
 
 /** Trash retention, as Google's (30 days, its help article S1). */
 export const TRASH_DAYS = 30;
@@ -61,6 +62,19 @@ export const LOCAL_LABEL_PREFIX = "l-";
 /** A stored photo's longest data URL (`photo.ts` makes 256px JPEGs of about 15-40 KB). */
 export const MAX_PHOTO = 200_000;
 const PHOTO_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+
+/**
+ * A LINKED PROFILE (2026-11-25, Google's PROFILE source; `.claude/notes/
+ * contacts-google-parity-2026-11-25.md`): the person's own profile, shown read-only in the
+ * contact's "Profile" card. Either one of the site's accounts that has a profile (today the
+ * owner's: his résumé), or a profile ADDRESS anywhere (`https:` only, `safeLinkHref`; never
+ * fetched). Google links a contact to a profile by a verified email, phone or profile URL; here
+ * the visitor links it by hand, in their browser.
+ */
+export type LinkedProfile = { account: string } | { href: string };
+
+/** The longest profile address kept. */
+export const MAX_PROFILE_HREF = 500;
 
 export const isLocalLabelId = (id: string) => /^l-[\w-]{1,64}$/.test(id);
 
@@ -85,7 +99,13 @@ export interface LocalContact {
    * URL made by `photo.ts` (at most `MAX_PHOTO` characters). Never uploaded.
    */
   photo?: string;
-  /** Milliseconds since the epoch. */
+  /** Their own profile, linked in this browser (`LinkedProfile`). */
+  profile?: LinkedProfile;
+  /**
+   * Milliseconds since the epoch. `updatedAt` is the SYNC clock: every change moves it (an edit,
+   * a star, a label, a photo, the Trash), as Google's `metadata.sources[].updateTime`; "Last
+   * edited" on the person page is this time.
+   */
   createdAt: number;
   updatedAt: number;
   /** In the Trash since then. */
@@ -149,6 +169,19 @@ const contactSchema = z.object({
     .optional(),
   starred: z.boolean().optional(),
   photo: z.string().max(MAX_PHOTO).regex(PHOTO_RE).optional(),
+  profile: z
+    .union([
+      z.object({ account: z.string().regex(/^[\w-]{1,64}$/) }).strict(),
+      z
+        .object({
+          href: z
+            .string()
+            .max(MAX_PROFILE_HREF)
+            .refine((h) => safeLinkHref(h) === h),
+        })
+        .strict(),
+    ])
+    .optional(),
   createdAt: time,
   updatedAt: time,
   deletedAt: time.optional(),
@@ -704,6 +737,40 @@ export function setPhoto(
       : { ...c, photo, updatedAt: now },
   );
 }
+
+/**
+ * Links `profile` to a live contact, or unlinks it (`undefined`). An address must be `https:` with
+ * no user name or password (`safeLinkHref`, the no-email rule: never `mailto:`); anything else
+ * leaves the book as it was.
+ */
+export function setProfile(
+  book: LocalBook,
+  id: string,
+  profile: LinkedProfile | undefined,
+  now: number,
+): LocalBook {
+  let next: LinkedProfile | undefined = profile;
+  if (profile && "href" in profile) {
+    const href = safeLinkHref(profile.href);
+    if (!href || href.length > MAX_PROFILE_HREF) return book;
+    next = { href };
+  } else if (profile && !/^[\w-]{1,64}$/.test(profile.account)) return book;
+  const same = (a?: LinkedProfile, b?: LinkedProfile) =>
+    JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  return touch(book, new Set([id]), (c) =>
+    c.deletedAt !== undefined || same(c.profile, next)
+      ? null
+      : next
+        ? { ...c, profile: next, updatedAt: now }
+        : { ...withoutProfile(c), updatedAt: now },
+  );
+}
+
+const withoutProfile = (c: LocalContact): LocalContact => {
+  const copy = { ...c };
+  delete copy.profile;
+  return copy;
+};
 
 // ─── Import ──────────────────────────────────────────────────────────────────
 

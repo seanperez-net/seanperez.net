@@ -1,4 +1,4 @@
-import { $, Slot, component$, useSignal } from "@qwik.dev/core";
+import { Slot, component$, useSignal } from "@qwik.dev/core";
 import {
   AVATAR_PRESENCE_LABELS,
   Avatar,
@@ -11,6 +11,7 @@ import { setAppRemovedIn, useMyApps } from "../apps/use-my-apps";
 import { usePresence } from "../presence/use-presence";
 import type { Profile, ProfileLink } from "../profile/profile";
 import { BrandMark } from "./brand-mark";
+import { APPS_DOCS_HREF } from "./contact-me-menu";
 import { ResumeSection, type ResumeSectionVariant } from "./resume-section";
 
 /**
@@ -30,61 +31,61 @@ import { ResumeSection, type ResumeSectionVariant } from "./resume-section";
  */
 export const ProfileHeader = component$<{ profile: Profile; seed: string }>(
   ({ profile, seed }) => {
-  const presence = usePresence();
-  return (
-    <section aria-labelledby="profile-name" class="flex flex-col gap-2">
-      {/* e-store's header row: the avatar at the start, the page's own actions (`q:slot=
+    const presence = usePresence();
+    return (
+      <section aria-labelledby="profile-name" class="flex flex-col gap-2">
+        {/* e-store's header row: the avatar at the start, the page's own actions (`q:slot=
         "actions"`, e.g. Edit profile) at the end. The wrapper keeps the avatar its own size, so
         its presence dot sits on the circle. */}
-      <div class="flex items-end justify-between gap-4">
-        <span class="inline-flex shrink-0 rounded-full">
-          <Avatar
-            name={profile.name}
-            seed={seed}
-            size="xl"
-            // The visitor's own status.
-            presence={presence.shown}
-            decorative
-          />
-        </span>
-        <Slot name="actions" />
-      </div>
-      <h3
-        id="profile-name"
-        class="mt-2 text-headline-small wrap-break-word text-on-surface"
-      >
-        {profile.name}
-      </h3>
-      {profile.headline && (
-        <p class="text-body-large text-on-surface">{profile.headline}</p>
-      )}
-      <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 text-body-medium text-on-surface-variant">
-        {profile.location && (
-          <li class="inline-flex items-center gap-1">
-            <Icon name="location_on" size="sm" />
-            <span class="sr-only">Location: </span>
-            {profile.location}
-          </li>
+        <div class="flex items-end justify-between gap-4">
+          <span class="inline-flex shrink-0 rounded-full">
+            <Avatar
+              name={profile.name}
+              seed={seed}
+              size="xl"
+              // The visitor's own status.
+              presence={presence.shown}
+              decorative
+            />
+          </span>
+          <Slot name="actions" />
+        </div>
+        <h3
+          id="profile-name"
+          class="mt-2 text-headline-small wrap-break-word text-on-surface"
+        >
+          {profile.name}
+        </h3>
+        {profile.headline && (
+          <p class="text-body-large text-on-surface">{profile.headline}</p>
         )}
-        {/* The presence word, with the dot's state. */}
-        <li>{AVATAR_PRESENCE_LABELS[presence.shown]}</li>
-      </ul>
-      {/* Plain text: line breaks kept, never markdown or HTML. */}
-      {profile.bio ? (
-        <p class="text-body-large whitespace-pre-line text-on-surface-variant">
-          {profile.bio}
-        </p>
-      ) : (
-        !profile.headline &&
-        !profile.location && (
-          <p class="text-body-medium text-on-surface-variant">
-            Add a headline and a short bio with Edit profile. They're kept in
-            this browser only.
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 text-body-medium text-on-surface-variant">
+          {profile.location && (
+            <li class="inline-flex items-center gap-1">
+              <Icon name="location_on" size="sm" />
+              <span class="sr-only">Location: </span>
+              {profile.location}
+            </li>
+          )}
+          {/* The presence word, with the dot's state. */}
+          <li>{AVATAR_PRESENCE_LABELS[presence.shown]}</li>
+        </ul>
+        {/* Plain text: line breaks kept, never markdown or HTML. */}
+        {profile.bio ? (
+          <p class="text-body-large whitespace-pre-line text-on-surface-variant">
+            {profile.bio}
           </p>
-        )
-      )}
-    </section>
-  );
+        ) : (
+          !profile.headline &&
+          !profile.location && (
+            <p class="text-body-medium text-on-surface-variant">
+              Add a headline and a short bio with Edit profile. They're kept in
+              this browser only.
+            </p>
+          )
+        )}
+      </section>
+    );
   },
 );
 
@@ -145,7 +146,7 @@ export const YOUR_APPS_ID = "your-apps";
  * there by default"): the site's removable apps, each with Remove or Add back, saved in the
  * visitor's browser (`apps/my-apps.ts`). The one place that always lists Contact me, so a removed
  * one can always come back (with the Undo in the removal snackbar and the account menu's row).
- * Remove here asks nothing: Add back is on the same row.
+ * Remove opens "How apps work" (`/docs/apps/`, the removal happens there); Add back acts here.
  */
 export const YourApps = component$(() => {
   const apps = useMyApps();
@@ -179,22 +180,13 @@ export const YourApps = component$(() => {
                 }}
               />
             ) : (
+              // Removing opens "How apps work" (2026-11-25, owner: removing "send you to docs
+              // ... a tutorial of sorts"), where the removal happens.
               <Button
                 look="text"
                 label="Remove"
-                disabled={busy.value}
-                onClick$={async () => {
-                  busy.value = true;
-                  const saved = await setAppRemovedIn(apps, "contact", true);
-                  busy.value = false;
-                  await showSnackbar$({
-                    message: saved ? CONTACT_REMOVED_NOTICE : NOT_KEPT_NOTICE,
-                    action: "Undo",
-                    onAction$: $(async () => {
-                      await setAppRemovedIn(apps, "contact", false);
-                    }),
-                  });
-                }}
+                type="link"
+                href={APPS_DOCS_HREF}
               />
             )
           }

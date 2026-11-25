@@ -1,56 +1,29 @@
-import { $, component$, useSignal } from "@qwik.dev/core";
-import { Icon, Menu, useSnackbar } from "@seanperez/ui";
-import { setAppRemovedIn, useMyApps } from "../apps/use-my-apps";
-import { ConfirmDialog } from "./contacts-dialogs";
-import { CONTACT_REMOVED_NOTICE, NOT_KEPT_NOTICE } from "./profile-parts";
+import { component$ } from "@qwik.dev/core";
+import { Icon, Menu } from "@seanperez/ui";
+
+/** Where "Remove from my apps" goes: the tutorial, at its removal steps. */
+export const APPS_DOCS_HREF = "/docs/apps/#remove";
 
 /**
  * The Contact me companion's "More" menu (2026-11-25, owner: Contact me is "its own little app that
  * can be deleted but its there by default"), in the supporting pane's title row
- * (`Layout.SupportingPane` `header-actions`, from e-store). ONE item, "Remove from my apps",
- * which confirms first (an M3 basic dialog, `ConfirmDialog`, as the Contacts app's removals)
- * and says where it comes back: Undo in the snackbar, `/profile/` "Your apps", and the account
- * menu's "Add Contact me back" row while it is removed. Saved in the visitor's browser only
- * (`apps/my-apps.ts`); the owner's inbox is untouched.
+ * (`Layout.SupportingPane` `header-actions`, from e-store). ONE item, "Remove from my apps".
+ *
+ * Since 2026-11-25 (later; owner: "have that send you to docs or something ... a tutorial of
+ * sorts removing it and thats how you would add and remove other apps") the item is a LINK to
+ * `/docs/apps/` ("How apps work"), where the removal happens with Contact me as the worked
+ * example; that page replaces the confirm dialog this menu had. Saved in the visitor's browser
+ * only (`apps/my-apps.ts`); the owner's inbox is untouched.
  */
-export const ContactMeMenu = component$(() => {
-  const apps = useMyApps();
-  const { showSnackbar$ } = useSnackbar();
-  const confirmOpen = useSignal(false);
-  const remove$ = $(async () => {
-    const saved = await setAppRemovedIn(apps, "contact", true);
-    await showSnackbar$({
-      message: saved ? CONTACT_REMOVED_NOTICE : NOT_KEPT_NOTICE,
-      action: "Undo",
-      onAction$: $(async () => {
-        await setAppRemovedIn(apps, "contact", false);
-      }),
-    });
-  });
-  return (
-    <>
-      <Menu.Root>
-        <Menu.Trigger look="plain" aria-label="More options for Contact me">
-          <Icon name="more_vert" size="sm" />
-        </Menu.Trigger>
-        <Menu.Content align="end">
-          <Menu.Item
-            data-remove-app="contact"
-            onClick$={() => {
-              confirmOpen.value = true;
-            }}
-          >
-            Remove from my apps
-          </Menu.Item>
-        </Menu.Content>
-      </Menu.Root>
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Remove Contact me?"
-        description="It leaves your apps in this browser only. You can add it back any time from Profile or the account menu."
-        confirmLabel="Remove"
-        onConfirm$={remove$}
-      />
-    </>
-  );
-});
+export const ContactMeMenu = component$(() => (
+  <Menu.Root>
+    <Menu.Trigger look="plain" aria-label="More options for Contact me">
+      <Icon name="more_vert" size="sm" />
+    </Menu.Trigger>
+    <Menu.Content align="end">
+      <Menu.Item data-remove-app="contact" href={APPS_DOCS_HREF}>
+        Remove from my apps
+      </Menu.Item>
+    </Menu.Content>
+  </Menu.Root>
+));

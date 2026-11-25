@@ -350,8 +350,8 @@ export async function startContact(
       .bind(crypto.randomUUID(), email, input.name, iso(now)),
     db
       .prepare(
-        `INSERT INTO message (name, email, body, created_at, account_id, confirmed_at)
-         SELECT ?, ?, ?, ?, ${accountOf}, NULL
+        `INSERT INTO message (name, email, body, created_at, account_id, confirmed_at, session_hash)
+         SELECT ?, ?, ?, ?, ${accountOf}, NULL, ?
          WHERE (SELECT COUNT(*) FROM message WHERE created_at >= ?) < ?
            AND (SELECT COUNT(*) FROM message WHERE account_id = ${accountOf} AND confirmed_at IS NULL) < ?
          RETURNING id`,
@@ -362,6 +362,7 @@ export async function startContact(
         input.body,
         iso(now),
         email,
+        sessionHash,
         day,
         MESSAGES_PER_DAY,
         email,
@@ -421,8 +422,8 @@ export async function sendAsSession(
     : [session.accountId, UNCONFIRMED_PER_ACCOUNT];
   const row = await db
     .prepare(
-      `INSERT INTO message (name, email, body, created_at, account_id, confirmed_at)
-       SELECT ?, ?, ?, ?, ?, ?
+      `INSERT INTO message (name, email, body, created_at, account_id, confirmed_at, session_hash)
+       SELECT ?, ?, ?, ?, ?, ?, ?
        WHERE (SELECT COUNT(*) FROM message WHERE created_at >= ?) < ?
          AND ${accountCap}
        RETURNING id`,
@@ -434,6 +435,7 @@ export async function sendAsSession(
       iso(now),
       session.accountId,
       session.verified ? iso(now) : null,
+      session.tokenHash,
       day,
       MESSAGES_PER_DAY,
       ...capValues,
@@ -475,10 +477,17 @@ interface TokenRow {
 }
 
 /**
- * Marks the token used and verifies: the account (if it was not), the messages it sent from the
- * token's time on, the browser that asked for the token, and THIS browser (its session if it has
- * one for the account, else a new verified one). The token is claimed first (single use), then
- * the rest is one batch.
+ * Marks the token used and verifies: the account (if it was not), THIS browser (its session if it has
+ * one for the account, else a new verified one), and the waiting messages of exactly the sessions
+ * it upgrades (this browser's only). The token is claimed first (single use), then the rest is one batch.
+ *
+ * Messages are confirmed by SESSION (migration 0005, `message.session_hash`; security review gap
+ * 2026-11-25): before, every waiting message of the account was confirmed, including one a
+ * stranger had sent from another browser by typing the same address. Now another session's
+ * waiting messages stay unconfirmed and go with the 7-day purge; a row with no `session_hash`
+ * (sent between 0004 and 0005) matches no session and is never confirmed by a code or link. No
+ * time bound any more: a message sent from the session before a "Send the email again" token is
+ * the same browser's and is confirmed with it.
  */
 async function complete(
   db: D1Database,
@@ -500,8 +509,14 @@ async function complete(
     .run();
   if (used.meta.changes === 0) return { ok: false, reason: "used" };
   const currentHash =
-    current && current.accountId === token.account_id ? current.tokenHash : null;
+    current && current.accountId === token.account_id
+      ? current.tokenHash
+      : null;
   const sessionToken = currentHash ? null : randomToken();
+  // ONLY the browser that proves the token is verified, link or code (owner: "use your
+  // recommendations", 2026-11-25; second agent's HIGH): the browser that ASKED for the email may be
+  // a stranger who typed the same address, so it is never upgraded. Someone who opens the link on
+  // another device confirms that device; the browser they wrote from types the code instead.
   const statements = [
     db
       .prepare(
@@ -510,22 +525,19 @@ async function complete(
       .bind(iso(now), token.account_id),
     db
       .prepare(
-        "UPDATE message SET confirmed_at = ? WHERE account_id = ? AND confirmed_at IS NULL AND created_at >= ?",
+        `UPDATE message SET confirmed_at = ? WHERE account_id = ? AND confirmed_at IS NULL
+         AND session_hash IS NOT NULL AND session_hash = ?`,
       )
-      .bind(iso(now), token.account_id, token.created_at),
+      .bind(iso(now), token.account_id, currentHash ?? ""),
     db
       .prepare(
         `UPDATE contact_session SET verified_at = ?, expires_at = ?
-         WHERE account_id = ? AND token_hash IN (?, ?)`,
+         WHERE account_id = ? AND token_hash = ?`,
       )
       .bind(
         iso(now),
         later(now, SESSION_MS),
         token.account_id,
-        // The browser that ASKED is upgraded only when the account was not verified yet (second
-        // agent, RULE 2): otherwise a stranger who typed a verified person's address would get a
-        // verified session the moment that person clicked "Confirm".
-        before.verified_at ? "" : (token.session_hash ?? ""),
         currentHash ?? "",
       ),
   ];
@@ -739,7 +751,9 @@ export async function deleteAccount(db: D1Database, id: string) {
       )
       .bind(id),
     db
-      .prepare("UPDATE message SET account_id = NULL WHERE account_id = ?")
+      .prepare(
+        "UPDATE message SET account_id = NULL, session_hash = NULL WHERE account_id = ?",
+      )
       .bind(id),
     db.prepare("DELETE FROM contact_session WHERE account_id = ?").bind(id),
     db.prepare("DELETE FROM verify_token WHERE account_id = ?").bind(id),
@@ -763,6 +777,13 @@ export type DeleteOwnResult =
  * replies to them. Identified ONLY by the session (the cookie), never by anything the browser
  * sends.
  *
+ * Also the messages with the SAME address and NO account (security review gap, 2026-11-25): rows
+ * from before accounts existed (migration 0003, or accounts not set up), and rows the owner's
+ * `deleteAccount` unlinked. Matched on the address as stored (`lower(trim(email))`, since those
+ * rows kept the address as typed) against the account's normalized address. Safe only because
+ * the session is VERIFIED: this browser proved it reads that mailbox. Another account's
+ * messages are never touched (`account_id IS NULL`).
+ *
  * Only a VERIFIED session (this browser confirmed the address by link or code) may delete.
  * `startContact` gives an unverified session to anyone who types an address, so an unverified
  * session proves nothing: allowing it would let a stranger delete a real person's account (or,
@@ -780,7 +801,18 @@ export async function deleteOwnAccount(
     WHERE token_hash = ? AND account_id = ? AND verified_at IS NOT NULL)`;
   const id = session.accountId;
   const hash = session.tokenHash;
-  const [, , , removed] = await db.batch([
+  const email = normalizeEmail(session.email);
+  const preAccount = "account_id IS NULL AND lower(trim(email)) = ?";
+  const [, , , , , removed] = await db.batch([
+    // The messages from before accounts (no account, same address) and the replies to them.
+    db
+      .prepare(
+        `DELETE FROM message_reply WHERE message_id IN (SELECT id FROM message WHERE ${preAccount}) AND ${allowed}`,
+      )
+      .bind(email, hash, id),
+    db
+      .prepare(`DELETE FROM message WHERE ${preAccount} AND ${allowed}`)
+      .bind(email, hash, id),
     db
       .prepare(
         `DELETE FROM message_reply WHERE message_id IN (SELECT id FROM message WHERE account_id = ?) AND ${allowed}`,

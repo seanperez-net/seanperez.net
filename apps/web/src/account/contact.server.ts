@@ -221,6 +221,9 @@ export type TurnstileCheck =
  * POST the secret, the token and the visitor's IP; fail closed. Moved here from
  * `contact-panel.tsx` on 2026-11-25 so Contact me and an UNVERIFIED session's send in Sean's
  * thread (owner, "DECIDED" (2)) run the same check. No secret: 503 "not open yet", as Contact me.
+ * Since 2026-11-25 each form has its OWN action (`turnstile-actions.ts`: `contact`, `message`,
+ * `resend`) and the caller passes the one it expects, so a token solved for one form is refused
+ * by the others (Cloudflare "Best practices": validate the action and hostname).
  *
  * A real token carries the widget's `action`. Cloudflare's TEST secret answers
  * `hostname: "example.com"` and no action (Turnstile "Testing"); that is accepted only where

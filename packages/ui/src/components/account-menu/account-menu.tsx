@@ -4,6 +4,7 @@ import {
   component$,
   isServer,
   untrack,
+  useComputed$,
   useContext,
   useId,
   useSignal,
@@ -196,6 +197,15 @@ export type AccountMenuProps = {
   presenceOptions?: AccountPresenceOption[];
   presenceGroupLabel?: string;
   /**
+   * How the status choice draws: `rows` (default, e-store's: one radio row per status, inline
+   * in the menu) or `submenu` (NEW 2026-11-25, owner: "the status in the account menu should be
+   * a select or dropdown menu it takes up to much space"): ONE row showing the current status
+   * (glyph, label, the host's "Until ..." line) that opens a submenu holding the same radio
+   * rows, Busy's durations still its own submenu. JavaScript only: with `presenceAction` the
+   * rows stay inline (a submenu cannot open without JavaScript).
+   */
+  presenceLook?: "rows" | "submenu";
+  /**
    * Device default / Light / Dark rows, bound to the enclosing theme context (`Layout.Root` or
    * `ThemeRoot` provides it), which applies and saves the pick. No rows without one.
    */
@@ -260,6 +270,7 @@ export const AccountMenu = component$<AccountMenuProps>(
     presenceUntilText,
     presenceOptions = DEFAULT_PRESENCE_OPTIONS,
     presenceGroupLabel = "Status",
+    presenceLook = "rows",
     themeRows = false,
     themeLook = "rows",
     themeOptions: givenThemeOptions,
@@ -394,6 +405,9 @@ export const AccountMenu = component$<AccountMenuProps>(
           duration={duration}
           untilText={presenceUntilText}
           onPresenceChange$={onPresenceChange$}
+          // Inside the Status submenu (`presenceLook="submenu"`), the durations cascade the way
+          // that submenu went: towards the start for a menu at the window's end.
+          side={presenceLook === "submenu" && align === "end" ? "start" : undefined}
         />
       ) : (
       <Menu.RadioItem
@@ -476,7 +490,23 @@ export const AccountMenu = component$<AccountMenuProps>(
                 {manageAccountLabel}
               </Menu.Item>
             )}
-            {hasStatusRows && (
+            {hasStatusRows && presenceLook === "submenu" && !presenceAction && (
+              <>
+                <Menu.Separator />
+                <PresenceStatusSub
+                  options={presenceOptions}
+                  groupLabel={presenceGroupLabel}
+                  pref={pref}
+                  untilText={presenceUntilText}
+                  // A menu at the window's end (the app bar's avatar): towards the start.
+                  side={align === "end" ? "start" : undefined}
+                  onPresenceChange$={onPresenceChange$}
+                >
+                  {statusRows}
+                </PresenceStatusSub>
+              </>
+            )}
+            {hasStatusRows && (presenceLook === "rows" || !!presenceAction) && (
               <>
                 <Menu.Separator />
                 <Menu.RadioGroup
@@ -617,6 +647,79 @@ export const AccountMenu = component$<AccountMenuProps>(
 );
 
 /**
+ * The status as ONE row (`presenceLook="submenu"`, NEW 2026-11-25, owner: "the status in the
+ * account menu should be a select or dropdown menu it takes up to much space"; e-store's
+ * AccountMenu has inline rows only). A `Menu.Sub`: its trigger shows the current choice (glyph,
+ * label and, for a choice with an end, the host's "Until 3:40 PM" as a second line) and is named
+ * "Status: Busy, Until 3:40 PM" (a visually hidden prefix); its submenu is the `Menu.RadioGroup`
+ * of status rows the menu would otherwise show inline (Busy keeps its own durations submenu).
+ * Its own component so the signal is read in its JSX only (rule Q12).
+ */
+const PresenceStatusSub = component$<{
+  options: AccountPresenceOption[];
+  groupLabel: string;
+  pref: Signal<string>;
+  untilText?: string;
+  side?: "start" | "end";
+  onPresenceChange$?: QRL<
+    (value: AccountPresencePref, duration?: string) => void
+  >;
+}>(({ options, groupLabel, pref, untilText, side, onPresenceChange$ }) => {
+  // No choice yet (no `presencePref`): the row reads just "Status" and no radio is checked,
+  // rather than naming a choice the submenu does not mark (reviewer 2026-11-25).
+  const current = useComputed$(() =>
+    options.find((o) => o.value === pref.value),
+  );
+  return (
+    <Menu.Sub>
+      <Menu.SubTrigger data-qds-account-menu-status-trigger="">
+        {current.value && (
+          <AvatarPresenceGlyph
+            presence={current.value.glyph}
+            size="md"
+            class="me-1"
+          />
+        )}
+        <span class="flex min-w-0 flex-col">
+          <span>
+            {current.value ? (
+              <>
+                <span class="sr-only">{groupLabel}: </span>
+                {current.value.label}
+              </>
+            ) : (
+              groupLabel
+            )}
+          </span>
+          {current.value?.durations?.length && untilText ? (
+            <span
+              class="text-body-small text-on-surface-variant"
+              data-qds-account-menu-presence-until=""
+            >
+              {/* A pause in the row's name: "Status: Busy, Until 3:40 PM". */}
+              <span class="sr-only">, </span>
+              {untilText}
+            </span>
+          ) : null}
+        </span>
+      </Menu.SubTrigger>
+      <Menu.SubContent side={side}>
+        <Menu.RadioGroup
+          value={pref}
+          onValueChange$={
+            onPresenceChange$ as QRL<(value: string) => void> | undefined
+          }
+          aria-label={groupLabel}
+          data-qds-account-menu-presence-group=""
+        >
+          <Slot />
+        </Menu.RadioGroup>
+      </Menu.SubContent>
+    </Menu.Sub>
+  );
+});
+
+/**
  * A status row with durations (NEW 2026-11-24, owner: "yes add the busy durations"; e-store's
  * AccountMenu has none): `Menu.Sub`, its trigger the status (glyph, label and, while it is the
  * current choice, the host's "Until 3:40 PM" as a second line, so the state is in the row's
@@ -629,10 +732,11 @@ const PresenceDurationRow = component$<{
   pref: Signal<string>;
   duration: Signal<string>;
   untilText?: string;
+  side?: "start" | "end";
   onPresenceChange$?: QRL<
     (value: AccountPresencePref, duration?: string) => void
   >;
-}>(({ option, pref, duration, untilText, onPresenceChange$ }) => {
+}>(({ option, pref, duration, untilText, side, onPresenceChange$ }) => {
   const value = option.value;
   const pick$ = $((id: string) => {
     pref.value = value;
@@ -660,7 +764,7 @@ const PresenceDurationRow = component$<{
           )}
         </span>
       </Menu.SubTrigger>
-      <Menu.SubContent>
+      <Menu.SubContent side={side}>
         <Menu.RadioGroup
           // The host passes `presenceDuration` only for the current choice, so only its
           // duration is checked.

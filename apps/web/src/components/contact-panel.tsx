@@ -3,6 +3,7 @@ import {
   component$,
   isBrowser,
   useOnDocument,
+  useId,
   useOnWindow,
   useSignal,
   useStore,
@@ -38,11 +39,9 @@ import {
   sessionOf,
   setSessionCookie,
 } from "../account/contact.server";
+import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
 import { PROFILE_MAX } from "../profile/limits";
-import {
-  saveProfileChanges,
-  useProfileOverride,
-} from "../profile/use-profile";
+import { saveProfileChanges, useProfileOverride } from "../profile/use-profile";
 import { SocialLinks } from "./social-links";
 import { useResendVerification, useVerifyCode } from "./contact-actions";
 import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
@@ -81,8 +80,6 @@ import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
  */
 export const CONTACT_COMPANION_ID = "contact";
 
-/** Echoed back by Siteverify for a real token; checked below. */
-export const TURNSTILE_ACTION = "contact";
 /**
  * The honeypot's name. Not `website` (forms audit 2026-11-24, owner): browsers and password
  * managers guess a field's purpose from its name, and "website" reads as a URL field (the `url`
@@ -183,7 +180,7 @@ export const useSendMessage = routeAction$(
       env,
       data["cf-turnstile-response"],
       request.headers.get("CF-Connecting-IP") ?? "",
-      TURNSTILE_ACTION,
+      TURNSTILE_ACTIONS.contact,
     );
     if (!check.ok) return fail(check.status, { message: check.message });
 
@@ -231,7 +228,13 @@ export const useSendMessage = routeAction$(
           });
         }
         if (result.confirmed) {
-          notifyOwnerLater(env, platform.ctx, url.origin, session.accountId, result.messageId);
+          notifyOwnerLater(
+            env,
+            platform.ctx,
+            url.origin,
+            session.accountId,
+            result.messageId,
+          );
         }
         return { sent: true, needsCode: !session.verified };
       }
@@ -332,6 +335,11 @@ export const ContactPanel = component$(() => {
   // A submit waiting for the security check's token (`loadOn="interaction"` below): Send shows
   // its spinner from the click, before the action itself runs (`send.isRunning`).
   const checking = useSignal(false);
+  // The same for "Send the email again" (its own security check, below).
+  const checkingResend = useSignal(false);
+  // "Send the email again" sits beside Confirm but submits its OWN form (the `form` attribute),
+  // which holds its Turnstile widget: a form inside the code form is not allowed.
+  const resendFormId = useId();
   // What the fields show. On the server (a no-JS POST) the text that was sent; in the browser the
   // saved draft replaces it on mount (it is saved on every keystroke, so it is never older).
   const root = useSignal<HTMLElement>();
@@ -352,6 +360,10 @@ export const ContactPanel = component$(() => {
     if (!name || !oneLine.test(name) || name === profile.fields?.name) return;
     await saveProfileChanges(profile, { name });
   });
+  // The form itself (owner, 2026-11-25: "why doesnt the form disapear when send"): closed after a
+  // send and while a code is awaited, so the panel shows what comes next; "Write another
+  // message" opens it again.
+  const formOpen = useSignal(true);
   // The name typed in a send, saved once the send succeeded.
   const sentName = useSignal("");
   // The message sent, for Sean's thread (below).
@@ -364,7 +376,10 @@ export const ContactPanel = component$(() => {
   });
   const wake = $(() => {
     offline.value = !navigator.onLine;
-    void readMe();
+    // Back with a code still awaited: the code step, not a blank form.
+    void readMe().then(() => {
+      if (me.value && !me.value.verified) formOpen.value = false;
+    });
     const saved = readPref(DRAFT_KEY, parseDraft);
     if (saved) Object.assign(draft, saved);
     // No name in the draft: the profile's, when the visitor set one.
@@ -446,6 +461,7 @@ export const ContactPanel = component$(() => {
         status: "sent",
       });
     confirmed.value = result;
+    formOpen.value = false;
     // A first message: the account waits for the link or code; the code field is next.
     if (result.needsCode) {
       me.value = { name: name.trim() || me.value?.name || "", verified: false };
@@ -458,16 +474,18 @@ export const ContactPanel = component$(() => {
         ? "Message sent. Check your email to confirm it."
         : "Message sent",
     });
-    // Focus was on Send (now busy, then idle); next comes the code, else a new message at Name.
-    requestAnimationFrame(() =>
-      root.value
-        ?.querySelector<HTMLInputElement>(
-          result.needsCode
-            ? 'input[name="code"]'
-            : 'input[name="name"]:not(:disabled)',
-        )
-        ?.focus(),
-    );
+    // Focus was on Send (gone with the form): to the code, else to "Write another message".
+    // The code step renders a frame or two later (found in Chrome): try for up to 10 frames.
+    const target = result.needsCode
+      ? 'input[name="code"]'
+      : "[data-write-another]";
+    let tries = 10;
+    const focusNext = () => {
+      const el = root.value?.querySelector<HTMLElement>(target);
+      if (el) el.focus();
+      else if (--tries > 0) requestAnimationFrame(focusNext);
+    };
+    requestAnimationFrame(focusNext);
   });
   // Confirmed with the code: the account is verified in this browser.
   useTask$(({ track }) => {
@@ -491,9 +509,12 @@ export const ContactPanel = component$(() => {
       ) : (
         <>
           <p class="text-body-medium text-on-surface-variant">
-            Send a message. Your email address is only used to confirm it's
-            you and to reply.{" "}
-            <a href="/privacy/" class="text-primary underline underline-offset-4">
+            Send a message. Your email address is only used to confirm it's you
+            and to reply.{" "}
+            <a
+              href="/privacy/"
+              class="text-primary underline underline-offset-4"
+            >
               Privacy
             </a>
           </p>
@@ -526,12 +547,40 @@ export const ContactPanel = component$(() => {
                     isLoading={verify.isRunning}
                   />
                   <Button
+                    type="submit"
+                    form={resendFormId}
                     look="text"
                     label="Send the email again"
-                    isLoading={resend.isRunning}
-                    onClick$={() => resend.submit()}
+                    isLoading={checkingResend.value || resend.isRunning}
                   />
                 </div>
+              </Form>
+              {/* "Send the email again" passes its own security check (security review,
+                2026-11-25; action `resend`, checked by `useResendVerification`): without it, anyone
+                who typed an address could send its owner the day's 3 emails from a script. The
+                same widget settings as Contact me's below; it loads on the first submit of this
+                form (`loadOn="interaction"`), so it costs nothing until then, and the submit waits
+                for its token. */}
+              <Form
+                action={resend}
+                id={resendFormId}
+                onSubmit$={async (_, form: HTMLFormElement) => {
+                  checkingResend.value = true;
+                  try {
+                    await waitForTurnstileToken(form);
+                  } finally {
+                    checkingResend.value = false;
+                  }
+                }}
+              >
+                <Turnstile
+                  siteKey={setup.value.siteKey}
+                  action={TURNSTILE_ACTIONS.resend}
+                  size="compact"
+                  appearance="interaction-only"
+                  loadOn="interaction"
+                  pending={resend.isRunning}
+                />
               </Form>
               {resend.value?.failed && resend.value.message && (
                 <p role="alert" class="text-body-medium text-error">
@@ -539,133 +588,166 @@ export const ContactPanel = component$(() => {
                 </p>
               )}
               {resend.value?.resent && (
-                <p role="status" class="text-body-medium text-on-surface-variant">
+                <p
+                  role="status"
+                  class="text-body-medium text-on-surface-variant"
+                >
                   A new email is on its way. Use the newest code.
                 </p>
               )}
             </div>
           )}
-          <Form
-            action={send}
-            class="grid grid-cols-1 gap-4"
-            // Turnstile loads on the first use of the form, so a quick Send can come before its
-            // token: the router awaits this before it reads and posts the form, so the token the
-            // widget writes meanwhile is sent. No token after 10 s (or a widget error): it is
-            // posted anyway and the action answers "Please complete the security check".
-            onSubmit$={async (_, form: HTMLFormElement) => {
-              const data = new FormData(form);
-              sentName.value = String(data.get("name") ?? "");
-              sentText.value = String(data.get("message") ?? "");
-              checking.value = true;
-              try {
-                await waitForTurnstileToken(form);
-              } finally {
-                checking.value = false;
-              }
-            }}
-            // The Name field committed (blur, Enter): it becomes the profile's name. Not per
-            // keystroke; `change` bubbles.
-            onChange$={(event: Event) => {
-              const field = event.target as HTMLInputElement;
-              if (field.name === "name") void saveName(field.value);
-            }}
-            // `input` bubbles: one listener saves whichever field changed.
-            onInput$={(event: Event) => {
-              const field = event.target as HTMLInputElement;
-              const name = DRAFT_FIELDS.find((k) => k === field.name);
-              if (!name) return;
-              draft[name] = field.value;
-              writePref(
-                DRAFT_KEY,
-                draft.name || draft.email || draft.message
-                  ? { ...draft }
-                  : null,
-              );
-            }}
-          >
-            <TextField
-              name="name"
-              label="Name"
-              // The compact sheet opens on it (`data-autofocus`, Layout.SupportingPane).
-              data-autofocus=""
-              autocomplete="name"
-              autocapitalize="words"
-              spellcheck={false}
-              required
-              maxLength={MAX.name}
-              value={draft.name}
-              error={send.value?.fieldErrors?.name}
-            />
-            <TextField
-              name="email"
-              type="email"
-              label="Email"
-              autocomplete="email"
-              required
-              maxLength={MAX.email}
-              value={draft.email}
-              error={send.value?.fieldErrors?.email}
-            />
-            <TextField
-              name="message"
-              type="textarea"
-              rows={6}
-              label="Message"
-              required
-              maxLength={MAX.message}
-              value={draft.message}
-              error={send.value?.fieldErrors?.message}
-            />
-            {/* Honeypot: `hidden`, so it is not shown, not focusable and not read out, but it
-              is still posted. `aria-hidden`, `tabIndex` and `autocomplete` are belt and braces
-              for a reader or a filler that ignores `hidden`. */}
-            <div hidden aria-hidden="true">
-              <label>
-                Leave this empty
-                <input
-                  name={HONEYPOT}
-                  type="text"
-                  tabIndex={-1}
-                  autocomplete="off"
-                />
-              </label>
-            </div>
-            <Turnstile
-              siteKey={setup.value.siteKey}
-              action="contact"
-              // `compact` (150 x 140): `normal` and `flexible` need at least 300px, wider than
-              // the side pane's 264px of content (Turnstile widget-configurations, "Widget size").
-              size="compact"
-              // Shown only when Cloudflare needs the visitor to click (most never see it). Also
-              // hides the dev test key's "for testing only" badge.
-              appearance="interaction-only"
-              // Not on view (perf audit 2026-11-24): this panel is open by default on every
-              // route, so api.js (about 87 KB) and its iframe loaded for every visitor. Now on
-              // the first focus, press, typing or submit in this form.
-              loadOn="interaction"
-              pending={send.isRunning}
-            />
-            {offline.value && (
-              <p role="status" class="text-body-medium text-on-surface-variant">
-                You're offline, so the message can't be sent now. Send it when
-                you're back online.
-              </p>
-            )}
-            {send.value?.failed && send.value.message && (
-              <p role="alert" class="text-body-medium text-error">
-                {send.value.message}
-              </p>
-            )}
-            <div>
+          {!formOpen.value && (
+            <div class="grid grid-cols-1 justify-items-start gap-2">
+              {!(me.value && !me.value.verified) && (
+                <p role="status" class="text-body-large text-on-surface">
+                  Your message was sent.
+                </p>
+              )}
               <Button
-                type="submit"
-                label="Send"
-                leadingIcon="mail"
-                isLoading={checking.value || send.isRunning}
-                disabled={offline.value}
+                look="text"
+                leadingIcon="edit"
+                label="Write another message"
+                data-write-another=""
+                onClick$={() => {
+                  formOpen.value = true;
+                  requestAnimationFrame(() =>
+                    root.value
+                      ?.querySelector<HTMLInputElement>(
+                        'input[name="name"]:not(:disabled)',
+                      )
+                      ?.focus(),
+                  );
+                }}
               />
             </div>
-          </Form>
+          )}
+          {formOpen.value && (
+            <Form
+              action={send}
+              class="grid grid-cols-1 gap-4"
+              // Turnstile loads on the first use of the form, so a quick Send can come before its
+              // token: the router awaits this before it reads and posts the form, so the token the
+              // widget writes meanwhile is sent. No token after 10 s (or a widget error): it is
+              // posted anyway and the action answers "Please complete the security check".
+              onSubmit$={async (_, form: HTMLFormElement) => {
+                const data = new FormData(form);
+                sentName.value = String(data.get("name") ?? "");
+                sentText.value = String(data.get("message") ?? "");
+                checking.value = true;
+                try {
+                  await waitForTurnstileToken(form);
+                } finally {
+                  checking.value = false;
+                }
+              }}
+              // The Name field committed (blur, Enter): it becomes the profile's name. Not per
+              // keystroke; `change` bubbles.
+              onChange$={(event: Event) => {
+                const field = event.target as HTMLInputElement;
+                if (field.name === "name") void saveName(field.value);
+              }}
+              // `input` bubbles: one listener saves whichever field changed.
+              onInput$={(event: Event) => {
+                const field = event.target as HTMLInputElement;
+                const name = DRAFT_FIELDS.find((k) => k === field.name);
+                if (!name) return;
+                draft[name] = field.value;
+                writePref(
+                  DRAFT_KEY,
+                  draft.name || draft.email || draft.message
+                    ? { ...draft }
+                    : null,
+                );
+              }}
+            >
+              <TextField
+                name="name"
+                label="Name"
+                // The compact sheet opens on it (`data-autofocus`, Layout.SupportingPane).
+                data-autofocus=""
+                autocomplete="name"
+                autocapitalize="words"
+                spellcheck={false}
+                required
+                maxLength={MAX.name}
+                value={draft.name}
+                error={send.value?.fieldErrors?.name}
+              />
+              <TextField
+                name="email"
+                type="email"
+                label="Email"
+                autocomplete="email"
+                required
+                maxLength={MAX.email}
+                value={draft.email}
+                error={send.value?.fieldErrors?.email}
+              />
+              <TextField
+                name="message"
+                type="textarea"
+                rows={6}
+                label="Message"
+                required
+                maxLength={MAX.message}
+                value={draft.message}
+                error={send.value?.fieldErrors?.message}
+              />
+              {/* Honeypot: `hidden`, so it is not shown, not focusable and not read out, but it
+              is still posted. `aria-hidden`, `tabIndex` and `autocomplete` are belt and braces
+              for a reader or a filler that ignores `hidden`. */}
+              <div hidden aria-hidden="true">
+                <label>
+                  Leave this empty
+                  <input
+                    name={HONEYPOT}
+                    type="text"
+                    tabIndex={-1}
+                    autocomplete="off"
+                  />
+                </label>
+              </div>
+              <Turnstile
+                siteKey={setup.value.siteKey}
+                action={TURNSTILE_ACTIONS.contact}
+                // `compact` (150 x 140): `normal` and `flexible` need at least 300px, wider than
+                // the side pane's 264px of content (Turnstile widget-configurations, "Widget size").
+                size="compact"
+                // Shown only when Cloudflare needs the visitor to click (most never see it). Also
+                // hides the dev test key's "for testing only" badge.
+                appearance="interaction-only"
+                // Not on view (perf audit 2026-11-24): this panel is open by default on every
+                // route, so api.js (about 87 KB) and its iframe loaded for every visitor. Now on
+                // the first focus, press, typing or submit in this form.
+                loadOn="interaction"
+                pending={send.isRunning}
+              />
+              {offline.value && (
+                <p
+                  role="status"
+                  class="text-body-medium text-on-surface-variant"
+                >
+                  You're offline, so the message can't be sent now. Send it when
+                  you're back online.
+                </p>
+              )}
+              {send.value?.failed && send.value.message && (
+                <p role="alert" class="text-body-medium text-error">
+                  {send.value.message}
+                </p>
+              )}
+              <div>
+                <Button
+                  type="submit"
+                  label="Send"
+                  leadingIcon="mail"
+                  isLoading={checking.value || send.isRunning}
+                  disabled={offline.value}
+                />
+              </div>
+            </Form>
+          )}
         </>
       )}
       {/* Signed in (a session from Contact me): who, and the way out (a shared computer). */}
@@ -682,6 +764,7 @@ export const ContactPanel = component$(() => {
             onClick$={async () => {
               await signOutMe();
               me.value = null;
+              formOpen.value = true;
             }}
           />
         </div>

@@ -1,4 +1,4 @@
-import { component$ } from "@qwik.dev/core";
+import { component$, isBrowser, useTask$ } from "@qwik.dev/core";
 import {
   Form,
   routeAction$,
@@ -10,6 +10,7 @@ import {
   useLocation,
 } from "@qwik.dev/router";
 import { Button, Layout } from "@seanperez/ui";
+import { ME_CHANGED_EVENT } from "../../account/me";
 import { peekLink, verifyLink } from "../../account/account.server";
 import {
   accountsOpen,
@@ -23,8 +24,9 @@ import {
  * `/verify/?t=<link token>`: the link in the verification email (plan 1.2). The GET only SHOWS a
  * Confirm button (mail scanners and link previews follow GET links and would use up a token that
  * a GET verified: Cloudflare's own OTP troubleshooting page, read for the accounts plan); the
- * POST (`useConfirmLink`) verifies. Works on any device: a browser without the session gets a new
- * verified one, and the browser that sent the message is upgraded too.
+ * POST (`useConfirmLink`) verifies. Works on any device, but confirms ONLY this browser (a new
+ * verified session if it had none): the browser that asked may be a stranger's (owner, 2026-11-25,
+ * second agent's HIGH). The browser that wrote confirms itself with the code.
  *
  * Private and never indexed: `no-store` (no edge cache, no service-worker copy), `noindex`,
  * `Referrer-Policy: no-referrer` (the token is in the URL). The masked address is shown only to
@@ -101,6 +103,12 @@ const STATE_TEXT = {
 export default component$(() => {
   const link = useLink();
   const confirm = useConfirmLink();
+  // Confirmed: an open Contact me panel (and Sean's thread) re-read the session, so they stop
+  // asking for the code (found in Chrome, 2026-11-25).
+  useTask$(({ track }) => {
+    const done = track(() => confirm.value?.verified);
+    if (isBrowser && done) document.dispatchEvent(new CustomEvent(ME_CHANGED_EVENT));
+  });
   // The token from the address (the loader keeps it out of its JSON).
   const loc = useLocation();
   return (
@@ -111,8 +119,9 @@ export default component$(() => {
         {confirm.value?.verified ? (
           <>
             <p role="status" class="text-body-large text-on-surface">
-              Confirmed. Sean will see your message as verified, and this
-              browser can now message him in Messages without the form.
+              Confirmed. This browser can now message Sean in Messages without
+              the form. If you wrote from another browser, enter the code from
+              the email there to confirm it too.
             </p>
             <Button
               type="link"

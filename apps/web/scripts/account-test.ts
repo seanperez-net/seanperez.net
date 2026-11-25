@@ -30,6 +30,7 @@ import {
   checkTurnstile,
   sendVerificationLater,
 } from "../src/account/contact.server.ts";
+import { TURNSTILE_ACTIONS } from "../src/account/turnstile-actions.ts";
 
 const SECRET = "test-secret-not-real";
 
@@ -37,7 +38,11 @@ const SECRET = "test-secret-not-real";
 function fakeD1(): D1Database {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys = ON");
-  for (const file of ["0003_create_message.sql", "0004_contact_accounts.sql"]) {
+  for (const file of [
+    "0003_create_message.sql",
+    "0004_contact_accounts.sql",
+    "0005_message_session.sql",
+  ]) {
     sqlite.exec(
       readFileSync(new URL(`../migrations/${file}`, import.meta.url), "utf8"),
     );
@@ -163,7 +168,7 @@ test("a code expires after 30 minutes", async () => {
   );
 });
 
-test("the link: GET peeks without verifying, POST verifies and signs in another browser", async () => {
+test("the link: GET peeks without verifying, POST verifies the OPENING browser only", async () => {
   const db = fakeD1();
   const r = await started(db);
   const peek = await peekLink(db, r.token!.linkToken, at(MIN));
@@ -172,13 +177,13 @@ test("the link: GET peeks without verifying, POST verifies and signs in another 
     (await getSession(db, r.sessionToken, at(MIN)))?.verified,
     false,
   );
-  // Opened on another device (no session there): a new verified session for it, and the
-  // browser that sent the message is upgraded too.
+  // Opened on another device (no session there): a new verified session for THAT device only.
+  // The browser that asked is NOT upgraded (it may be a stranger who typed the address).
   const v = await verifyLink(db, r.token!.linkToken, null, at(MIN));
   assert.ok(v.ok && v.sessionToken);
   if (!v.ok || !v.sessionToken) return;
   assert.equal((await getSession(db, v.sessionToken, at(MIN)))?.verified, true);
-  assert.equal((await getSession(db, r.sessionToken, at(MIN)))?.verified, true);
+  assert.equal((await getSession(db, r.sessionToken, at(MIN)))?.verified, false);
   assert.deepEqual(await verifyLink(db, "not-a-token", null, at(MIN)), {
     ok: false,
     reason: "invalid",
@@ -491,4 +496,146 @@ test("checkTurnstile: no secret = not open; no token; Siteverify outcomes", asyn
   }
   const down = await checkTurnstile(env, "tok", "203.0.113.9", "contact", answer({}, 500));
   assert.equal(down.ok === false && down.status, 502);
+});
+
+// --- 2026-11-25 security review gaps (session-scoped confirm, Turnstile actions, self-delete) ----
+
+const confirmedOf = async (db: D1Database, body: string) =>
+  (await db
+    .prepare("SELECT confirmed_at FROM message WHERE body = ?")
+    .bind(body)
+    .first<{ confirmed_at: string | null }>())?.confirmed_at ?? null;
+
+test("a code confirms only its own browser's messages, not a stranger's with the same address", async () => {
+  const db = fakeD1();
+  const owner = await started(db, t0, { ...input, body: "owner's first" });
+  // A stranger types the same (still unverified) address in another browser.
+  const stranger = await started(db, at(2 * MIN), { ...input, name: "Stranger", body: "stranger's" });
+  const strangerSession = (await getSession(db, stranger.sessionToken, at(2 * MIN)))!;
+  // (One more each: the account may have 3 waiting in all, `UNCONFIRMED_PER_ACCOUNT`.)
+  assert.equal(strangerSession.verified, false);
+  // The owner gets a fresh code for their own browser ("Send the email again") and types it.
+  const ownerSession = (await getSession(db, owner.sessionToken, at(4 * MIN)))!;
+  await sendAsSession(db, ownerSession, "owner's second", at(4 * MIN));
+  const fresh = await createToken(db, SECRET, owner.accountId, ownerSession.tokenHash, at(5 * MIN));
+  const v = await verifyCode(db, SECRET, ownerSession, fresh!.code, at(5 * MIN));
+  assert.equal(v.ok, true);
+  // The owner's messages, sent before AND after the token, are confirmed...
+  assert.ok(await confirmedOf(db, "owner's first"));
+  assert.ok(await confirmedOf(db, "owner's second"));
+  // ...the stranger's stay waiting, and its browser is not signed in as verified.
+  assert.equal(await confirmedOf(db, "stranger's"), null);
+  assert.equal((await getSession(db, stranger.sessionToken, at(5 * MIN)))?.verified, false);
+  // ...and the 7-day purge takes them.
+  await purgeExpired(db, at(8 * 24 * 60 * MIN));
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message WHERE body LIKE 'stranger%'"), 0);
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message WHERE body LIKE 'owner%'"), 2);
+});
+
+test("the link never upgrades the asking browser, so a stranger who typed the address gains nothing", async () => {
+  const db = fakeD1();
+  // A stranger types the person's address; the real person opens the emailed link elsewhere.
+  const stranger = await started(db, t0, { ...input, body: "stranger's" });
+  const v = await verifyLink(db, stranger.token!.linkToken, null, at(MIN));
+  assert.ok(v.ok && v.sessionToken);
+  // The account is verified, the opening device is; the stranger's browser and message are not.
+  assert.equal((await getSession(db, stranger.sessionToken, at(MIN)))?.verified, false);
+  assert.equal(await confirmedOf(db, "stranger's"), null);
+  // The asker's own browser confirms its message by typing the code (only it can).
+});
+
+test("a stranger's link confirmed by the owner of an already VERIFIED address confirms nothing of the stranger's", async () => {
+  const db = fakeD1();
+  const owner = await started(db);
+  const s = (await getSession(db, owner.sessionToken, t0))!;
+  await verifyCode(db, SECRET, s, owner.token!.code, t0);
+  const stranger = await started(db, at(5 * MIN), { ...input, body: "typed by a stranger" });
+  await verifyLink(db, stranger.token!.linkToken, s, at(6 * MIN));
+  assert.equal(await confirmedOf(db, "typed by a stranger"), null);
+});
+
+test("a waiting message with no session_hash (sent before 0005) is never confirmed by a code", async () => {
+  const db = fakeD1();
+  const r = await started(db);
+  await db
+    .prepare(
+      "INSERT INTO message (name, email, body, created_at, account_id) VALUES ('V', 'visitor@example.com', 'legacy wait', ?, ?)",
+    )
+    .bind(at(MIN).toISOString(), r.accountId)
+    .run();
+  const s = (await getSession(db, r.sessionToken, at(2 * MIN)))!;
+  assert.equal((await verifyCode(db, SECRET, s, r.token!.code, at(2 * MIN))).ok, true);
+  assert.equal(await confirmedOf(db, "legacy wait"), null);
+  assert.ok(await confirmedOf(db, "Hello"));
+});
+
+test("checkTurnstile: each form's action; a token solved for another form is refused", async () => {
+  const env = { TURNSTILE_SECRET_KEY: "s", TURNSTILE_HOSTNAMES: "seanperez.net" };
+  const solvedFor = (action: string) =>
+    (async () =>
+      new Response(JSON.stringify({ success: true, hostname: "seanperez.net", action }), {
+        status: 200,
+      })) as unknown as typeof fetch;
+  const actions = Object.values(TURNSTILE_ACTIONS);
+  assert.deepEqual(actions, ["contact", "message", "resend"]);
+  for (const expected of actions) {
+    for (const solved of actions) {
+      const r = await checkTurnstile(env, "tok", "", expected, solvedFor(solved));
+      if (solved === expected) assert.deepEqual(r, { ok: true });
+      else assert.equal(r.ok === false && r.status, 403, `${solved} -> ${expected}`);
+    }
+  }
+});
+
+test("self-delete also removes the address's messages from before accounts (verified only)", async () => {
+  const db = fakeD1();
+  const old = (email: string, body: string) =>
+    db
+      .prepare(
+        "INSERT INTO message (name, email, body, created_at, confirmed_at) VALUES ('Old', ?, ?, ?, ?)",
+      )
+      .bind(email, body, t0.toISOString(), t0.toISOString())
+      .run();
+  // As typed before accounts (case and spaces kept), and someone else's.
+  await old(" Visitor@EXAMPLE.com ", "before accounts");
+  await old("someone@example.com", "not theirs, before accounts");
+  const oldId = (await db
+    .prepare("SELECT id FROM message WHERE body = 'before accounts'")
+    .first<{ id: number }>())!.id;
+  await db
+    .prepare(
+      "INSERT INTO message_reply (message_id, body, created_at, send_status) VALUES (?, 'old reply', ?, 'sent')",
+    )
+    .bind(oldId, t0.toISOString())
+    .run();
+  const r = await started(db, at(MIN));
+  const unverified = (await getSession(db, r.sessionToken, at(MIN)))!;
+  // Unverified: refused, the old rows stay.
+  assert.deepEqual(await deleteOwnAccount(db, unverified), { kind: "verify-first" });
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message WHERE body = 'before accounts'"), 1);
+  await verifyCode(db, SECRET, unverified, r.token!.code, at(2 * MIN));
+  const verified = (await getSession(db, r.sessionToken, at(2 * MIN)))!;
+  assert.deepEqual(await deleteOwnAccount(db, verified), { kind: "deleted" });
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message WHERE body = 'before accounts'"), 0);
+  assert.equal(await count(db, "SELECT COUNT(*) AS n FROM message_reply WHERE message_id = ?", oldId), 0);
+  assert.equal(
+    await count(db, "SELECT COUNT(*) AS n FROM message WHERE body = 'not theirs, before accounts'"),
+    1,
+  );
+});
+
+test("a typed code upgrades only the typing browser, never a stranger who asked for the latest email", async () => {
+  const db = fakeD1();
+  const owner = await started(db, t0, { ...input, body: "owner's" });
+  // More than 60 s later a stranger types the same address: the LATEST token is theirs.
+  const stranger = await started(db, at(2 * MIN), { ...input, body: "stranger's" });
+  assert.ok(stranger.token);
+  const ownerSession = (await getSession(db, owner.sessionToken, at(3 * MIN)))!;
+  // The owner reads the newest email and types its code in their own browser.
+  const v = await verifyCode(db, SECRET, ownerSession, stranger.token!.code, at(3 * MIN));
+  assert.equal(v.ok, true);
+  assert.equal((await getSession(db, owner.sessionToken, at(3 * MIN)))?.verified, true);
+  assert.equal((await getSession(db, stranger.sessionToken, at(3 * MIN)))?.verified, false);
+  assert.ok(await confirmedOf(db, "owner's"));
+  assert.equal(await confirmedOf(db, "stranger's"), null);
 });

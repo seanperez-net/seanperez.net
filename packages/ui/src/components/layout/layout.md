@@ -80,9 +80,8 @@ min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the 
   is drawn as current (pill and bold label, `data-current`) but announced `aria-current="true"`
   (WAI-ARIA: the current item in a set), `NavigationRail.Item current="section"`. e-store marks
   that parent `aria-current="page"` too (its `isActive`); we do not. The floating / docked card
-  has no heading: its `<nav>` is named by the section, and the rail label above it already says
-  which section it is (e-store's card shows `section.label` in title-small; the owner called the
-  repeat "components twice"). In the compact modal a section's name is a title-small headline
+  shows the section's name as its FIXED header (see "The drawer's header" below; hidden from AT,
+  its `<nav>` is named by the section). In the compact modal a section's name is a title-small headline
   row (e-store's `navDrawerSectionVariants.headline`), not a link, then its children.
 - Reviewer fixes (2026-11-23): the card never closes under focus (rail mouse-leave and hovering
   another destination wait while focus is in it); the `<aside>` keeps `popover="manual"` docked
@@ -129,7 +128,7 @@ min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the 
 
   | Part                                                       | Role                                                             | Colour                                            | Height                            | Start                                                                           | Source                                                                                       |
   | ---------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-  | Headline (section name; top of the floating / docked card) | `title-small`                                                    | `on-surface-variant`                              | 56                                | 28dp (label line)                                                               | M3 headline; e-store `navDrawerSectionVariants.headline`, `DrawerPanel` header (PORTED)      |
+  | Headline (section name; the floating / docked card's FIXED header, 64 since 2026-11-25) | `title-small`                                                    | `on-surface-variant`                              | 56 inline, 64 as the card's header | 28dp (label line)                                                               | M3 headline; e-store `navDrawerSectionVariants.headline`, `DrawerPanel` header (PORTED)      |
   | Group header (collapsible)                                 | `label-medium` (12 / 16 / 500)                                   | `on-surface-variant`                              | 40                                | 28dp                                                                            | Google Chat's 12px / 500; e-store `sm` density 40 (NEW for us: M3 has no collapsible header) |
   | Row                                                        | `label-large`                                                    | `on-surface-variant`                              | 56 (`--layout-drawer-row-height`) | 28dp with its icon; 40dp without one in a section (e-store's 12px child indent) | M3 / material-web                                                                            |
   | Current row                                                | `label-large` bold (`--text-label-large-prominent--font-weight`) | `on-secondary-container` on `secondary-container` | 56                                | as a row                                                                        | material-web `active-*`                                                                      |
@@ -174,6 +173,38 @@ min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the 
   - App side: `apps/web/src/routes/layout.tsx` `DRAWER_GROUPS` (rail `href` -> groups); /admin
     passes none. Checked in Chrome 2026-11-24 (site at 1000 / 700 / 390 in iframes, light and
     dark; playground Overview disabled, categories enabled).
+
+## The drawer's header (2026-11-25, from e-store's `DrawerPanel`)
+
+Owner, 2026-11-25: "the drawer should have its header so contacts stays static up there in all
+the drawers including the floating there should be a pane header or drawer header make sure they
+are similar and match the spec ... just needs to be added with the correct margin for the
+scrollbars". Until then the section's name was the first row of the scrolling list.
+
+- Floating and docked card: the section's name in a header row OUTSIDE the scroller
+  (`drawerHeader`, `data-qds-drawer-header`), then the scrolling list. e-store's `DrawerPanel`
+  (`layout.tsx` 1552-1592): a `pane-header-flex` header with the label in title-small
+  on-surface-variant, then the scrolling `<nav class="scrollbar-pane flex-1 overflow-y-auto">`.
+  Differs: no `Separator` under it (our pane header has none, and the two are to match); the
+  header is on `layout-drawer-header-rulers` (title on the rows' 28dp label line, M3 drawer).
+- Matches the pane header: the same height (`--layout-pane-header`, 64dp) and the same top, so
+  the drawer's title and the primary pane's title share one centre line (measured in Chrome
+  2026-11-25 at 1697px on /contacts/: both headers 64-128px, both titles centred at 96px). The
+  TYPE differs on purpose: the drawer's headline is M3's title-small (navigation drawer specs,
+  material-web `headline-*`), the pane's title is title-large (M3 pane header). Owner may want one
+  role for both: ask.
+- Scrollbar: the list's track starts AT the header's edge (`--scrollbar-track-margin-start: 0`)
+  and keeps 20dp at the end (the card's rounded corner), as a pane's track starts below its
+  sticky header (`.scrollbar-pane:has(> .pane-header-bleed)`). No top inset: the 64dp header is
+  the inset (the old 12dp `pt` is gone). The compact modal's list does the same under its own
+  fixed bar (`Modal.CloseTitleAction`, 64dp, "Menu" + the close button), which it already had.
+- Not changed: the compact modal and the standard drawer list EVERY destination, so their
+  section names stay inline headlines between dividers (they scroll); only the modal's bar is
+  fixed. Sticky section headlines there are an owner question (PLAN.md).
+- Checked in Chrome 2026-11-25: docked Contacts (1697px) scrolled 40px, the header stayed, rows
+  clipped at its edge, thumb starting at it; floating Contacts card hovered from Home; docked
+  Messages in a 1000px iframe; compact modal in a 390px iframe (bar 0-64, list from 64, track
+  margin 0). Light theme not checked (no colour changed).
 
 ## The rail's FAB (2026-11-24, ported from e-store)
 

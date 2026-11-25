@@ -39,7 +39,7 @@ export const ContactAppProfile = component$<{
       }
       seed={seed}
       fallbackIcon={account.icon}
-      detailsTitle="Your details"
+      accountId={account.id}
     >
       {account.chatId && (
         <div

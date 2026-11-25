@@ -309,9 +309,11 @@ export type MenuContentProps = Omit<
   /**
    * `bottom` (default, under the trigger), `top` (above it, for a trigger near the bottom of
    * its frame) or `end` (beside the trigger's inline-end edge, the first item level with it: a
-   * submenu, its default). Each flips when it would leave the window.
+   * submenu, its default) or `start` (NEW 2026-11-25: beside the trigger's inline-start edge,
+   * for a submenu of a submenu that already opened towards the start, so it cascades the same
+   * way instead of covering the menu it came from). Each flips when it would leave the window.
    */
-  side?: "bottom" | "top" | "end";
+  side?: "bottom" | "top" | "end" | "start";
   onToggle$?: QRL<(event: ToggleEvent, element: HTMLDivElement) => void>;
   onPointerOver$?: QRL<(event: PointerEvent, element: HTMLDivElement) => void>;
 };
@@ -379,14 +381,29 @@ const Content = component$<MenuContentProps>(
     // Plain strings: anchor positioning is newer than the CSS types Qwik ships.
     const position: Record<string, string> = floating
       ? {}
+      : placement === "start"
+        ? {
+            positionAnchor: anchor,
+            top: "calc(anchor(top) - 8px)",
+            bottom: "auto",
+            // Logical insets, so RTL mirrors it (reviewer 2026-11-25).
+            insetInlineStart: "auto",
+            insetInlineEnd: "anchor(start)",
+            position: "absolute",
+            margin: "unset",
+            // As `end`, mirrored: flips to the end side where the start has no room.
+            positionTry:
+              "flip-inline, flip-block, flip-block flip-inline, --qds-menu-scroll-below-end",
+          }
       : placement === "end"
         ? {
             positionAnchor: anchor,
             // `py-2` (8px) above the first item: level with the trigger's top (e-store's).
             top: "calc(anchor(top) - 8px)",
             bottom: "auto",
-            left: "anchor(end)",
-            right: "auto",
+            // Logical insets (were `left` / `right`), so RTL mirrors it (reviewer 2026-11-25).
+            insetInlineStart: "anchor(end)",
+            insetInlineEnd: "auto",
             position: "absolute",
             margin: "unset",
             // e-store's flips; then, where neither side has room (a phone: the account menu at

@@ -1,22 +1,14 @@
 import { $, component$ } from "@qwik.dev/core";
-import {
-  AvatarPresenceGlyph,
-  GithubIcon,
-  IconButton,
-  List,
-  useSnackbar,
-} from "@seanperez/ui";
+import { GithubIcon, IconButton, useSnackbar } from "@seanperez/ui";
 import type { AvatarPresence } from "@seanperez/ui";
 import type { LocalContact, SiteBase } from "../contacts/local-book";
-import { PRESENCE_WORDS, contactHref } from "../content/contacts";
-import { RESUME, type ResumeEntry } from "../content/resume";
+import { contactHref } from "../content/contacts";
 import { DEMO } from "../demo/demo";
 import type { Profile } from "../profile/profile";
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { useMessagesWindow } from "./messages-window-host";
 import { ContactPerson } from "./contact-person";
-import { ProfileLinks } from "./profile-parts";
-import { ResumeSection } from "./resume-section";
+import { OwnerProfileSections, ProfileCard } from "./profile-card";
 
 export interface ContactProfileProps {
   id: string;
@@ -30,25 +22,6 @@ export interface ContactProfileProps {
   overridden: boolean;
 }
 
-/** Experience / Education rows, or the résumé's "To be added." while the list is empty. */
-const EntryList = component$<{ labelledBy: string; rows: ResumeEntry[] }>(
-  ({ labelledBy, rows }) =>
-    rows.length ? (
-      <List.Root aria-labelledby={labelledBy}>
-        {rows.map((entry) => (
-          <List.Item
-            key={entry.title + entry.place}
-            headline={`${entry.title}, ${entry.place}`}
-            supportingText={entry.detail}
-            trailingSupportingText={entry.dates}
-          />
-        ))}
-      </List.Root>
-    ) : (
-      <p class="text-body-medium text-on-surface-variant">{RESUME.emptyNote}</p>
-    ),
-);
-
 /**
  * The OWNER's contact page (owner, 2026-11-24): the résumé that was `/about/`, in Google
  * Contacts' person page (`ContactPerson`: actions in the pane header, the avatar with its "+",
@@ -59,9 +32,10 @@ const EntryList = component$<{ labelledBy: string; rows: ResumeEntry[] }>(
  * - The `actions` row: Google's round tonal buttons with a caption (`IconButton showLabel`, owner
  *   2026-11-24): Message (owner: email, chat and video live inside Messages, so one action),
  *   GitHub, Copy link. NO address on the site.
- * - Cards: FILLED (Google's detail cards are filled, observed): "Contact details" (availability
- *   and location rows, the location opens the Maps app), About, Experience, Education, Projects,
- *   Links.
+ * - Cards: FILLED (Google's detail cards are filled, observed). Since 2026-11-25 Google's two
+ *   SOURCES: "Contact details" (the visitor's emails, phones and notes, editable, with "Add ..."
+ *   prompts) and ONE "Profile" card (`profile-card.tsx`: availability, location, About,
+ *   Experience, Education, Projects, Links; read-only). The résumé's ids are kept.
  * - The visitor's own changes (name, emails, phones, notes, labels, star, photo) are a LOCAL
  *   override (`ContactPerson site`); the résumé and the "Contact me" companion never change.
  */
@@ -103,7 +77,7 @@ export const ContactProfile = component$<ContactProfileProps>(
         seed={seed}
         // The owner's static status (`OWNER_ACCOUNT.presence`), not the visitor's (2026-11-25).
         presence={presence}
-        detailsTitle="Your details"
+        accountId={OWNER_ACCOUNT.id}
       >
         {/* Google's quick actions: round tonal buttons, a caption under each (`showLabel`). */}
         <div
@@ -146,85 +120,15 @@ export const ContactProfile = component$<ContactProfileProps>(
           />
         </div>
 
-        {/* Availability is always there (his account's status), so the card always is. */}
-        <ResumeSection
-          id="contact-details"
-          title="Contact details"
-          full
-          variant="filled"
+        {/* His PROFILE (Google's PROFILE source, 2026-11-25; owner: "put it in the profile
+            card"): availability, location, About, the résumé and his links, read-only here.
+            The visitor's own additions (emails, phones, notes) are the "Contact details" card. */}
+        <ProfileCard
+          id="contact-profile"
+          source={`From ${profile.name}'s profile. It can't be edited here.`}
         >
-          <List.Root aria-labelledby="contact-details">
-            <List.Item
-              start={<AvatarPresenceGlyph presence={presence} />}
-              headline={PRESENCE_WORDS[presence]}
-              supportingText="Availability"
-            />
-            {profile.location && (
-              <List.Item
-                // The Maps app searches the place (`?q=`, `map-url.ts`): an in-site link.
-                href={`/maps/?q=${encodeURIComponent(profile.location)}`}
-                // Not on sight: the Maps route carries MapLibre (perf audit, 2026-11-24).
-                prefetchBundles="intent"
-                startIcon="location_on"
-                headline={profile.location}
-                supportingText="Show on map"
-              />
-            )}
-          </List.Root>
-        </ResumeSection>
-
-        <ResumeSection id="contact-about" title="About" variant="filled">
-          {/* Plain text: line breaks kept, never markdown or HTML. */}
-          <p class="text-body-large whitespace-pre-line text-on-surface-variant">
-            {profile.bio}
-          </p>
-        </ResumeSection>
-
-        <ResumeSection
-          id="resume-experience"
-          title="Experience"
-          variant="filled"
-        >
-          <EntryList labelledBy="resume-experience" rows={RESUME.experience} />
-        </ResumeSection>
-
-        <ResumeSection id="resume-education" title="Education" variant="filled">
-          <EntryList labelledBy="resume-education" rows={RESUME.education} />
-        </ResumeSection>
-
-        {/* The public GitHub repos (build time, `scripts/repos.ts`): one link row each, the
-            description under the name, the main language at the end. */}
-        <ResumeSection
-          id="resume-projects"
-          title="Projects"
-          full
-          variant="filled"
-        >
-          <List.Root aria-labelledby="resume-projects">
-            {RESUME.projects.map((repo) => (
-              <List.Item
-                key={repo.url}
-                href={repo.url}
-                // Off the site: a plain `<a>`, not the router's client navigation.
-                reload
-                rel="external"
-                headline={repo.name}
-                supportingText={repo.description || undefined}
-                trailingSupportingText={repo.language || undefined}
-              />
-            ))}
-          </List.Root>
-        </ResumeSection>
-
-        {profile.links.length > 0 && (
-          <ProfileLinks
-            // Google's narrow second column.
-            q:slot="aside"
-            id="resume-links"
-            links={profile.links}
-            variant="filled"
-          />
-        )}
+          <OwnerProfileSections profile={profile} presence={presence} />
+        </ProfileCard>
       </ContactPerson>
     );
   },
