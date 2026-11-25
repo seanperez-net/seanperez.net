@@ -3,6 +3,7 @@ import type { NodeHub } from "./node-hub.server";
 import type { MapNode } from "../components/map-nodes";
 import { INGEST_MAX_BYTES, ingestReport, toMapNode } from "./node-schema";
 import type { NodesMessage } from "./node-schema";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
 
 /**
  * The live nodes' three routes, answered by the Worker BEFORE the Qwik router
@@ -108,6 +109,9 @@ export async function readNodesSnapshot(
 }
 
 async function ingest(request: Request, env: Env): Promise<Response> {
+  // Rate limit FIRST (2026-11-25, `limits/limit.server.ts`), before the token compare: shields
+  // the hub's requests. One route-wide key while there is one token.
+  if (!(await allow(env, "ingest", WEIGHT.ingest))) return text(429, TOO_MANY);
   const secret = env.NODE_INGEST_TOKEN ?? "";
   if (secret.length < MIN_TOKEN_LENGTH)
     return text(503, "Ingest is not configured");
@@ -134,9 +138,7 @@ async function ingest(request: Request, env: Env): Promise<Response> {
   if (!parsed.success)
     return text(400, `Invalid report\n${z.prettifyError(parsed.error)}`);
 
-  const result = await hub(env).ingest(
-    toMapNode(parsed.data, Date.now()),
-  );
+  const result = await hub(env).ingest(toMapNode(parsed.data, Date.now()));
   if (!result.ok) return text(result.status, result.error);
   return new Response(null, { status: 204 });
 }

@@ -1,0 +1,3 @@
+# The admin is never indexed (it sits behind Cloudflare Access).
+User-agent: *
+Disallow: /

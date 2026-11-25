@@ -6,3 +6,6 @@
 @source "../../../packages/ui/src";
 /* The chat package (`@seanperez/chat`, the Messages app): its classes too. */
 @source "../../../packages/chat/src";
+
+/* A post's type classes (`ARTICLE_CLASS`) live in the data package (2026-11-25). */
+@source "../../../packages/data/src/feed/format.ts";

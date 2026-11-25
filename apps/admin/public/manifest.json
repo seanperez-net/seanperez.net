@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "seanperez.net admin",
+  "short_name": "Admin",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fff",
+  "description": "The owner's admin app for seanperez.net."
+}

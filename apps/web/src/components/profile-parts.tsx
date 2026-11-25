@@ -7,9 +7,13 @@ import {
   List,
   useSnackbar,
 } from "@seanperez/ui";
-import { setAppRemovedIn, useMyApps } from "../apps/use-my-apps";
+import {
+  setAppRemovedIn,
+  showAppsNotice,
+  useMyApps,
+} from "../apps/use-my-apps";
 import { usePresence } from "../presence/use-presence";
-import type { Profile, ProfileLink } from "../profile/profile";
+import type { Profile, ProfileLink } from "@seanperez/data/profile/profile";
 import { BrandMark } from "./brand-mark";
 import { APPS_DOCS_HREF } from "./contact-me-menu";
 import { ResumeSection, type ResumeSectionVariant } from "./resume-section";
@@ -150,7 +154,7 @@ export const YOUR_APPS_ID = "your-apps";
  */
 export const YourApps = component$(() => {
   const apps = useMyApps();
-  const { showSnackbar$ } = useSnackbar();
+  const snackbar = useSnackbar();
   const busy = useSignal(false);
   return (
     <ResumeSection id={YOUR_APPS_ID} title="Your apps" full>
@@ -174,7 +178,7 @@ export const YourApps = component$(() => {
                   busy.value = true;
                   const saved = await setAppRemovedIn(apps, "contact", false);
                   busy.value = false;
-                  await showSnackbar$({
+                  await showAppsNotice(apps, snackbar, {
                     message: saved ? CONTACT_ADDED_NOTICE : NOT_KEPT_NOTICE,
                   });
                 }}

@@ -18,27 +18,46 @@ test("the menu's Remove opens the tutorial; remove and add back work locally", a
   });
 
   await page.goto("/");
+  // A client navigation, not a page load (2026-11-25): the window keeps this mark.
+  await page.evaluate(() => ((window as { spaMark?: number }).spaMark = 1));
   await page.getByRole("button", { name: "More options for Contact me" }).click();
   await page.getByRole("menuitem", { name: "Remove from my apps" }).click();
   await expect(page).toHaveURL(/\/docs\/apps\/#remove$/);
   await expect(page.getByRole("heading", { name: "How apps work" })).toBeVisible();
+  expect(await page.evaluate(() => (window as { spaMark?: number }).spaMark)).toBe(1);
 
   const status = page.locator("[data-apps-status]");
   const remove = page.getByRole("button", { name: "Remove Contact me" });
   const addBack = page.getByRole("button", { name: "Add it back" });
+  const railButton = page.getByRole("button", { name: "Contact me", exact: true });
+  // Contact me's panel is open: its More menu is in the pane's title row.
+  const panelOpen = page.getByRole("button", { name: "More options for Contact me" });
+  // The snackbar itself (its live region repeats the text for screen readers).
+  const snackbar = page.locator("[data-snackbar]");
+  const removedNotice = snackbar.getByText("Contact me removed. Add it back from Profile.", {
+    exact: true,
+  });
+  const backNotice = snackbar.getByText("Contact me is back in your apps.", { exact: true });
   await expect(status).toHaveText("Contact me is in your apps.");
-  // On WebKit a click made right after arriving from the menu was sometimes lost (the button
-  // stayed enabled, nothing ran): click again only while nothing happened.
-  await expect(async () => {
-    if (await remove.isEnabled()) await remove.click();
-    await expect(status).toHaveText("Contact me is removed from your apps.", {
-      timeout: 3000,
-    });
-  }).toPass();
-  await expect(page.getByRole("button", { name: "Contact me", exact: true })).toHaveCount(0);
-  await expect(page.getByText("Contact me removed. Add it back from Profile.", { exact: true })).toBeVisible();
+  await expect(panelOpen).toBeVisible();
+  // ONE click, at once: it must never be lost (was retried on WebKit after a full page load).
+  await remove.click();
+  await expect(status).toHaveText("Contact me is removed from your apps.");
+  await expect(railButton).toHaveCount(0);
+  await expect(panelOpen).toHaveCount(0);
+  await expect(removedNotice).toBeVisible();
+
+  // Add it back: the rail button AND its open pane return, and "is back" replaces "removed".
+  await addBack.click();
+  await expect(status).toHaveText("Contact me is in your apps.");
+  await expect(railButton).toBeVisible();
+  await expect(panelOpen).toBeVisible();
+  await expect(backNotice).toBeVisible();
+  await expect(removedNotice).toHaveCount(0);
 
   // Kept in this browser: still removed after a reload, on another page too.
+  await remove.click();
+  await expect(status).toHaveText("Contact me is removed from your apps.");
   await page.goto("/profile/");
   await expect(page.getByRole("button", { name: "Add back" })).toBeVisible();
   await page.goto("/docs/apps/");
@@ -47,7 +66,9 @@ test("the menu's Remove opens the tutorial; remove and add back work locally", a
 
   await addBack.click();
   await expect(status).toHaveText("Contact me is in your apps.");
-  await expect(page.getByRole("button", { name: "Contact me", exact: true })).toBeVisible();
+  await expect(railButton).toBeVisible();
+  // Open on load by default, so open again once back.
+  await expect(panelOpen).toBeVisible();
 
   expect(sent).toEqual([]);
 });

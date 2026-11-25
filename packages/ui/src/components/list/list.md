@@ -18,6 +18,7 @@ https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/
 | Choose one row                                     | `List.Root interactive` + `value` on rows    | `role="listbox"` + `role="option"`, `aria-selected`, ONE Tab stop                    |
 | Places to go                                       | `List.Root` + `href` on rows                 | `<ul>` + `<li>` + `<a>`, each link a Tab stop, the current one `aria-current="page"` |
 | Rows that do something and hold their own controls | `List.Root rovingFocus` + `onClick$` on rows | `<ul>` (not a listbox), ONE Tab stop handing focus to its rows                       |
+| Link rows with their own actions (Star, Edit, ⋮)   | `List.Root rovingFocus` + `href` + `actions` | `<li>` holding the `<a>` and, BESIDE it, the actions (see "Row actions")             |
 | A few clickable rows in a plain list               | `List.Root` + `onClick$` on rows             | each such row is its own Tab stop (Enter / Space click it)                           |
 | Sections that open and close                       | `List.Group`                                 | disclosure button + nested `<ul>`                                                    |
 
@@ -49,22 +50,23 @@ and `tabIndex`.
 Every `Item` prop (`headline`, `supportingText`, `overline`, `startIcon`, `start`, `endIcon`,
 `end`, `trailingSupportingText`, `lines`, `align`, `headlineLines`, `supportingLines`, ...), plus:
 
-| Prop         | Type                   | Default | Description                                                                                                                                                                                                                                                                      |
-| ------------ | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `value`      | `string`               | -       | The row's value in a selection list.                                                                                                                                                                                                                                             |
-| `selected`   | `boolean`              | -       | Marks the row selected outright (else the list's `value` decides).                                                                                                                                                                                                               |
-| `disabled`   | `boolean`              | `false` | `data-disabled` (and `aria-disabled` on an option), 38% opacity, no pointer events, skipped by the arrows; an `href` row loses its link.                                                                                                                                         |
-| `onClick$`   | `QRL<() => void>`      | -       | Makes the row interactive.                                                                                                                                                                                                                                                       |
-| `href`       | `string`               | -       | The row is a link (`UnstyledButton type="link"`: the router's `<Link>`, through `safeHref`). In a selection list (an option) no `<a>` is rendered: choosing the option navigates (`useNavigate`, or a page load with `reload`), so Cmd/Ctrl-click does not open a new tab there. |
-| `reload`     | `boolean`              | -       | With `href`: a plain `<a>` (a full page load).                                                                                                                                                                                                                                   |
-| `prefetchBundles` | `PrefetchStrategy` | router default (`"visible"`) | With `href`: the router `Link`'s prop (through `UnstyledButton`). `"intent"` for a link to a heavy page (a map). NEW 2026-11-24, not in e-store |
-| `rel`        | `string`               | -       | With `href`: the link's `rel` (`me`, `external`); use `reload` for a link off the site. New 2026-11-24, not in e-store. `UnstyledButton` keeps a given `rel` (and adds `noopener noreferrer` for `_blank`).                                                                      |
-| `externalLabel` | `string` | `"external link"` | With `href` and a `rel` containing `external`: the row ends with the `open_in_new` icon (its trailing icon, `role="img"` named by this text, mirrored in RTL). An explicit `end` / `endIcon` replaces it. NEW 2026-11-24, not in e-store; the reasons are in `button.md` "External links" |
-| `linkData`   | `{ [data-*]: string }` | -       | With `href`: `data-*` on the `<a>`.                                                                                                                                                                                                                                              |
-| `aria-label` | `string`               | -       | The row's name, on its interactive element (the `<a>`, else the `<li>`).                                                                                                                                                                                                         |
-| `role`       | `string`               | -       | Overrides the computed role.                                                                                                                                                                                                                                                     |
-| `itemClass`  | `ClassList`            | -       | Classes on the inner `Item`.                                                                                                                                                                                                                                                     |
-| children     | -                      | -       | Rendered in the `Item`'s text column (e.g. one `Checkbox` whose label is the whole row).                                                                                                                                                                                         |
+| Prop              | Type                   | Default                      | Description                                                                                                                                                                                                                                                                               |
+| ----------------- | ---------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`           | `string`               | -                            | The row's value in a selection list.                                                                                                                                                                                                                                                      |
+| `selected`        | `boolean`              | -                            | Marks the row selected outright (else the list's `value` decides).                                                                                                                                                                                                                        |
+| `disabled`        | `boolean`              | `false`                      | `data-disabled` (and `aria-disabled` on an option), 38% opacity, no pointer events, skipped by the arrows; an `href` row loses its link.                                                                                                                                                  |
+| `onClick$`        | `QRL<() => void>`      | -                            | Makes the row interactive.                                                                                                                                                                                                                                                                |
+| `href`            | `string`               | -                            | The row is a link (`UnstyledButton type="link"`: the router's `<Link>`, through `safeHref`). In a selection list (an option) no `<a>` is rendered: choosing the option navigates (`useNavigate`, or a page load with `reload`), so Cmd/Ctrl-click does not open a new tab there.          |
+| `reload`          | `boolean`              | -                            | With `href`: a plain `<a>` (a full page load).                                                                                                                                                                                                                                            |
+| `prefetchBundles` | `PrefetchStrategy`     | router default (`"visible"`) | With `href`: the router `Link`'s prop (through `UnstyledButton`). `"intent"` for a link to a heavy page (a map). NEW 2026-11-24, not in e-store                                                                                                                                           |
+| `rel`             | `string`               | -                            | With `href`: the link's `rel` (`me`, `external`); use `reload` for a link off the site. New 2026-11-24, not in e-store. `UnstyledButton` keeps a given `rel` (and adds `noopener noreferrer` for `_blank`).                                                                               |
+| `externalLabel`   | `string`               | `"external link"`            | With `href` and a `rel` containing `external`: the row ends with the `open_in_new` icon (its trailing icon, `role="img"` named by this text, mirrored in RTL). An explicit `end` / `endIcon` replaces it. NEW 2026-11-24, not in e-store; the reasons are in `button.md` "External links" |
+| `actions`         | `JSXOutput`            | -                            | The row's own controls, rendered BESIDE the row's link (a sibling of the `<a>` in the `<li>`, never inside it). Shown on hover / focus-within where the pointer can hover, always on touch. NEW 2026-11-25, not in e-store; see "Row actions"                                             |
+| `linkData`        | `{ [data-*]: string }` | -                            | With `href`: `data-*` on the `<a>`.                                                                                                                                                                                                                                                       |
+| `aria-label`      | `string`               | -                            | The row's name, on its interactive element (the `<a>`, else the `<li>`).                                                                                                                                                                                                                  |
+| `role`            | `string`               | -                            | Overrides the computed role.                                                                                                                                                                                                                                                              |
+| `itemClass`       | `ClassList`            | -                            | Classes on the inner `Item`.                                                                                                                                                                                                                                                              |
+| children          | -                      | -                            | Rendered in the `Item`'s text column (e.g. one `Checkbox` whose label is the whole row).                                                                                                                                                                                                  |
 
 Every other `<li>` attribute is spread onto the `<li>` (`id`, `data-*`, `style`, `draggable`,
 `aria-current`); `onDragStart$` is passed by name.
@@ -82,6 +84,77 @@ Every other `<li>` attribute is spread onto the `<li>` (`id`, `data-*`, `style`,
   with nothing to disclose: no button role, no Tab stop).
 - `List.GroupContent`: a nested `<ul>`, `hidden` while closed; in an `interactive` list it is the
   listbox, named by its header, with its own single Tab stop.
+
+## Row actions (`List.Item actions`, NEW 2026-11-25)
+
+Owner's decision 2026-11-25 (Contacts rows get Google's Star, Edit and More): rows stay LINKS, and
+the row's own controls sit BESIDE the link. HTML forbids interactive content inside an `<a>`, so a
+button in the row's `end` of a link row would be nested in the link; `actions` renders them as the
+`<a>`'s sibling instead.
+
+```tsx
+<List.Root rovingFocus aria-labelledby="t">
+  <List.Item
+    href="/contacts/ada/"
+    headline="Ada Lovelace"
+    aria-label="Open Ada Lovelace"
+    actions={
+      <>
+        <IconButton
+          toggle
+          icon="star"
+          iconSelected="star_filled"
+          label="Star Ada"
+        />
+        <IconButton
+          type="link"
+          href="/contacts/ada/?edit"
+          icon="edit"
+          label="Edit Ada"
+        />
+        <Menu.Root>
+          {/* Menu.Trigger aria-label="More actions for Ada" ... */}
+        </Menu.Root>
+      </>
+    }
+  />
+</List.Root>
+```
+
+- Layout: the `<li>` becomes a two-column grid (`listItemVariants actions`); the row (link or
+  Item) is column 1, the actions (`[data-list-item-actions]`, `listItemActionsVariants`) column 2.
+- Where the pointer can hover (`@media (hover: hover)`): the row spans both columns and the actions
+  lie over its end. They are hidden by OPACITY (never `visibility` / `display`), so they stay in
+  the tab order and the accessibility tree, and show on the row's `:hover` or `:focus-within`.
+  Over the row they paint the row's surface: `--list-actions-bg` (default `surface`; segmented
+  rows set `surface-container`; a selected row's container is inherited) under the row's own state
+  layer (`background-image: inherit`). A host whose list sits on another surface sets
+  `--list-actions-bg`.
+- Touch (`@media (hover: none)`): always shown, in their own column; the row's text ends before
+  them.
+- The strip sits 3px in from the row's end (`--outline-width-focus-ring`), so the row's inward
+  focus ring shows beside it (in Chrome the strip's fill covered the ring before). Pressing a
+  control does not paint the row's pressed layer (`active:not-has-[...]`).
+- Over the row the strip covers its trailing text and `end` while shown (as Gmail's hover
+  actions); put nothing there that must stay readable on hover.
+- Clicks on the actions stop at their wrapper (`stoppropagation:click`): the row's selection or
+  `onClick$` does not run. Enter / Space on a control are the control's (`navigateListItems`).
+- Tab: only the row that holds focus keeps its controls in the tab order (`focusInList` marks the
+  other rows' controls `data-list-actions-off` + `tabindex=-1`), so Tab leaves a long list after
+  one row's controls. Before any row had focus, every control is a Tab stop. Second agent,
+  2026-11-25 (a 200-row Contacts list was 600 Tab stops).
+- Keys: in a `rovingFocus` list the arrows move between ROWS (from a control too). A control's
+  Enter / Space are its own, a link's too (Space on "Edit" does not open the row). A menu button inside the row keeps its keys: ArrowDown /
+  ArrowUp open its menu (Menu), and Home / End no longer take focus to the first / last row
+  (`utils/roving-focus.ts`, from e-store commit 2b8a5bb9c, 2026-11-24, where the same check sits
+  in its `navigateListItems`). A menu button that IS an item (a toolbar's) still moves.
+- Open (owner): on touch three 48dp controls leave a 360px pane about 115px for the name; the
+  second agent suggests only More on touch (Star and Edit inside it). `hover: none` leaves
+  touchscreen laptops on the hover rules (`any-hover: none` / `pointer: coarse` are options).
+  Focus-within keeps the strip shown on the row last clicked with a mouse until focus moves.
+- M3: lists guidelines "List selection modes", multi-action: "Place supplementary actions ... in
+  the trailing position" (read 2026-11-25 for `m3-hierarchy.md` B3). Hover-only reveal is not M3:
+  HOUSE, from Google Contacts (owner).
 
 ## Keyboard
 
@@ -167,6 +240,11 @@ own `onClick$`.
 | `rovingFocus` with controls in rows (each control a Tab stop)                                              | e-store's design; APG has no single pattern for it (grid would be the strict one)                                                                   |
 
 ## Where it differs from e-store
+
+- `actions` (2026-11-25) is NEW: e-store's rows with controls are `onClick$` rows with the
+  control in `end` (a control nested in an interactive row); ours keep the row a link and put the
+  controls beside it. The `[aria-haspopup="menu"]` key rule is e-store's (2b8a5bb9c), moved into
+  the shared `rovingKeys`, where our list's arrows live.
 
 - `look`, `shape` and `indicator` are signals in context: e-store passed plain values, captured
   once, so a host that changed them (our knobs) restyled the `<ul>` but not its rows.

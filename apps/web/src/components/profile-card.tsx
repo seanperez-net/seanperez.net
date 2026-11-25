@@ -3,7 +3,7 @@ import { AvatarPresenceGlyph, Card, List } from "@seanperez/ui";
 import type { AvatarPresence } from "@seanperez/ui";
 import { PRESENCE_WORDS } from "../content/contacts";
 import { RESUME, type ResumeEntry } from "../content/resume";
-import type { Profile, ProfileLink } from "../profile/profile";
+import type { Profile, ProfileLink } from "@seanperez/data/profile/profile";
 import { LinkRows } from "./profile-parts";
 
 /**

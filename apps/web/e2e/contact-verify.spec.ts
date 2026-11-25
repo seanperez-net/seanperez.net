@@ -10,8 +10,21 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * Wide only: below 840px Contact me is a sheet. Every address is `e2e-...@example.com`, and those
  * rows are deleted from the LOCAL D1 first, so runs never fill the site-wide daily caps.
+ *
+ * The inbox is the ADMIN app since 2026-11-25 (`apps/admin`, `pnpm dev:admin` on 5180, which
+ * shares this app's local D1): `admin(path)` visits it; `playwright.config.ts` starts it too.
  */
-test.beforeAll(() => {
+const ADMIN_URL = process.env.E2E_ADMIN_URL ?? "http://[::1]:5180/";
+const admin = (path: string) => new URL(path, ADMIN_URL).href;
+
+/**
+ * Clears the local D1 of this spec's `e2e-...@example.com` rows (messages by address or by their
+ * account, tokens, sessions, accounts). Run before the spec AND after each test: one full run
+ * sends more than `MESSAGES_PER_DAY` (20, site-wide per UTC day), which made the late tests fail
+ * with "Too many messages today". Safe between tests: `workers: 1`, not fully parallel.
+ */
+function clearE2eRows() {
+  const accounts = "SELECT id FROM contact_account WHERE email LIKE 'e2e-%@example.com'";
   execFileSync(
     "pnpm",
     [
@@ -21,14 +34,16 @@ test.beforeAll(() => {
       "seanperez-net",
       "--local",
       "--command",
-      "DELETE FROM message WHERE email LIKE 'e2e-%@example.com'; " +
-        "DELETE FROM verify_token WHERE account_id IN (SELECT id FROM contact_account WHERE email LIKE 'e2e-%@example.com'); " +
-        "DELETE FROM contact_session WHERE account_id IN (SELECT id FROM contact_account WHERE email LIKE 'e2e-%@example.com'); " +
+      `DELETE FROM message WHERE email LIKE 'e2e-%@example.com' OR account_id IN (${accounts}); ` +
+        `DELETE FROM verify_token WHERE account_id IN (${accounts}); ` +
+        `DELETE FROM contact_session WHERE account_id IN (${accounts}); ` +
         "DELETE FROM contact_account WHERE email LIKE 'e2e-%@example.com';",
     ],
     { cwd: new URL("..", import.meta.url), stdio: "ignore" },
   );
-});
+}
+test.beforeAll(clearE2eRows);
+test.afterEach(clearE2eRows);
 
 const address = (tag: string) => `e2e-${tag}-${Date.now()}@example.com`;
 
@@ -74,8 +89,35 @@ async function sendContact(page: Page, email: string, text: string) {
   await aside.getByRole("textbox", { name: "Email" }).fill(email);
   await aside.getByRole("textbox", { name: "Message" }).fill(text);
   await aside.getByRole("button", { name: "Send" }).click();
-  await expect(aside.getByRole("textbox", { name: "Code" })).toBeVisible();
+  // The rate limiter (2026-11-25, `limits/limit.server.ts`): Contact me is ONE route-wide key,
+  // 10 sends a minute, and locally miniflare counts in fixed wall-clock minutes. This file sends
+  // more than 10, so a refusal waits for the next minute and sends again.
+  const code = aside.getByRole("textbox", { name: "Code" });
+  const refused = aside.getByText(TOO_MANY_TEXT);
+  await expect(code.or(refused)).toBeVisible();
+  if (await refused.isVisible()) {
+    await page.waitForTimeout(61_000 - (Date.now() % 60_000));
+    await aside.getByRole("button", { name: "Send" }).click();
+  }
+  await expect(code).toBeVisible();
   return aside;
+}
+
+/** `TOO_MANY` in `@seanperez/data` `src/limits/limit.server.ts`. */
+const TOO_MANY_TEXT = "Too many tries. Try again in a minute.";
+
+/**
+ * Types a code. Six digits submit the form by themselves (2026-11-25, no Confirm press):
+ * Playwright's `fill` fires one `input`, as a paste or iOS AutoFill does.
+ */
+async function enterCode(aside: ReturnType<Page["locator"]>, code: string) {
+  // Wait for the action's answer: the field does not post again while a check is running.
+  await Promise.all([
+    aside
+      .page()
+      .waitForResponse((r) => r.request().method() === "POST" && r.url().includes("qaction=")),
+    aside.getByRole("textbox", { name: "Code" }).fill(code),
+  ]);
 }
 
 test.beforeEach(({ isMobile }) => {
@@ -99,14 +141,11 @@ test("first send makes an unverified session; a wrong code fails; the right code
   expect(text).not.toContain("E2E Visitor");
   expect(text).not.toContain("hello");
 
-  const field = aside.getByRole("textbox", { name: "Code" });
-  await field.fill(code === "000000" ? "111111" : "000000");
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code === "000000" ? "111111" : "000000");
   await expect(aside.getByText("That code did not work")).toBeVisible();
   expect((await me(page))?.verified).toBe(false);
 
-  await field.fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
   expect(await me(page)).toEqual({ name: "E2E Visitor", verified: true });
   await expect(aside.getByRole("textbox", { name: "Code" })).toHaveCount(0);
@@ -124,7 +163,7 @@ test("first send makes an unverified session; a wrong code fails; the right code
   await composer.press("Enter");
   await expect(page.getByRole("log").getByText(later)).toBeVisible();
   await expect(page.locator("aside").getByRole("textbox", { name: "Message" })).not.toHaveValue(later);
-  await page.goto("/admin/messages/?show=verified");
+  await page.goto(admin("/messages/?show=verified"));
   await expect(page.getByRole("main").getByText(later)).toBeVisible();
 });
 
@@ -132,16 +171,20 @@ test("five wrong codes lock the code", async ({ page }) => {
   const email = address("locked");
   const aside = await sendContact(page, email, "locked test");
   const { code } = await mail(page, email);
-  const wrong = code === "000000" ? "111111" : "000000";
-  const field = aside.getByRole("textbox", { name: "Code" });
+  // Five DIFFERENT wrong codes: the field submits each value once by itself.
+  const wrongs = ["000000", "111111", "222222", "333333", "444444", "555555"]
+    .filter((w) => w !== code)
+    .slice(0, 5);
   for (let i = 0; i < 5; i++) {
-    await field.fill(wrong);
-    await aside.getByRole("button", { name: "Confirm" }).click();
-    await expect(aside.getByText(i < 4 ? "That code did not work" : "Too many tries")).toBeVisible();
+    await enterCode(aside, wrongs[i]);
+    // The 5th: the D1 lock (5 tries per token), not the rate limiter (5 a minute per browser).
+    await expect(
+      aside.getByText(i < 4 ? "That code did not work" : "Too many tries. Use “Send the email again”"),
+    ).toBeVisible();
   }
-  await field.fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
-  await expect(aside.getByText("Too many tries")).toBeVisible();
+  // The right code now: refused (the D1 lock, or the limiter's 6th try in this minute).
+  await enterCode(aside, code);
+  await expect(aside.getByText(/Too many tries/)).toBeVisible();
   expect((await me(page))?.verified).toBe(false);
 });
 
@@ -205,7 +248,7 @@ test("an unverified session posts in Sean's thread after the security check, mar
   await expect(page.getByRole("form", { name: "Security check" })).toHaveCount(1);
   await composer.press("Enter");
   await expect(page.getByText("Confirm your email so Sean knows it's you.").first()).toBeVisible();
-  await page.goto("/admin/messages/?show=unverified");
+  await page.goto(admin("/messages/?show=unverified"));
   await expect(page.getByRole("main").getByText(later)).toBeVisible();
 });
 
@@ -230,7 +273,7 @@ test("an unverified session's send in Sean's thread without a security-check tok
   }).toPass();
   await composer.press("Enter");
   await expect(page.getByText("Please complete the security check").first()).toBeVisible();
-  await page.goto("/admin/messages/?show=unverified");
+  await page.goto(admin("/messages/?show=unverified"));
   await expect(page.getByRole("main").getByText(text)).toHaveCount(0);
 });
 
@@ -258,8 +301,7 @@ test("Send the email again: a new code arrives (in the background) and the newes
   await expect(aside.getByText("A new email is on its way.")).toBeVisible();
   const second = await mail(page, email, first.text);
   expect(second.code === first.code && second.link === first.link).toBe(false);
-  await aside.getByRole("textbox", { name: "Code" }).fill(second.code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, second.code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
 });
 
@@ -270,8 +312,7 @@ test("Delete my account on /profile/: confirm, signed out, its messages gone fro
   const text = `delete me ${Date.now()}`;
   const aside = await sendContact(page, email, text);
   const { code } = await mail(page, email);
-  await aside.getByRole("textbox", { name: "Code" }).fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
 
   await page.goto("/profile/");
@@ -293,9 +334,9 @@ test("Delete my account on /profile/: confirm, signed out, its messages gone fro
   const cookies = await page.context().cookies();
   expect(cookies.find((c) => c.name === "spn_session")).toBeUndefined();
 
-  await page.goto("/admin/messages/");
+  await page.goto(admin("/messages/"));
   await expect(page.getByRole("main").getByText(text)).toHaveCount(0);
-  await page.goto("/admin/accounts/");
+  await page.goto(admin("/accounts/"));
   await expect(page.getByRole("main").getByText(email)).toHaveCount(0);
 });
 
@@ -306,8 +347,7 @@ test("Delete my account: an unverified browser gets no Delete and no name (the s
   const email = address("delete-verified");
   const aside = await sendContact(page, email, "the real owner");
   const { code } = await mail(page, email);
-  await aside.getByRole("textbox", { name: "Code" }).fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
 
   // A stranger types the same address in another browser: an unverified session on it. It is
@@ -323,7 +363,7 @@ test("Delete my account: an unverified browser gets no Delete and no name (the s
   await expect(main.getByRole("button", { name: "Delete my account" })).toHaveCount(0);
   await other.close();
   expect((await me(page))?.verified).toBe(true);
-  await page.goto("/admin/accounts/");
+  await page.goto(admin("/accounts/"));
   await expect(page.getByRole("main").getByText(email)).toBeVisible();
 });
 
@@ -360,16 +400,15 @@ test("confirming confirms only this browser's messages: a stranger's, same addre
   const stranger = await other.newPage();
   await sendContact(stranger, email, theirs);
 
-  await aside.getByRole("textbox", { name: "Code" }).fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
   expect((await me(stranger))?.verified).toBe(false);
   await other.close();
 
-  await page.goto("/admin/messages/?show=verified");
+  await page.goto(admin("/messages/?show=verified"));
   await expect(page.getByRole("main").getByText(mine)).toBeVisible();
   await expect(page.getByRole("main").getByText(theirs)).toHaveCount(0);
-  await page.goto("/admin/messages/?show=unverified");
+  await page.goto(admin("/messages/?show=unverified"));
   await expect(page.getByRole("main").getByText(theirs)).toBeVisible();
 });
 
@@ -422,13 +461,12 @@ test("Delete my account also deletes the address's messages from before accounts
   localSql(
     `INSERT INTO message (name, email, body, created_at, confirmed_at) VALUES ('Old', '${email.toUpperCase()}', '${old}', '2026-11-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z');`,
   );
-  await page.goto("/admin/messages/");
+  await page.goto(admin("/messages/"));
   await expect(page.getByRole("main").getByText(old)).toBeVisible();
 
   const aside = await sendContact(page, email, "now with an account");
   const { code } = await mail(page, email);
-  await aside.getByRole("textbox", { name: "Code" }).fill(code);
-  await aside.getByRole("button", { name: "Confirm" }).click();
+  await enterCode(aside, code);
   await expect(page.getByText("Email confirmed").first()).toBeVisible();
 
   await page.goto("/profile/");
@@ -439,6 +477,54 @@ test("Delete my account also deletes the address's messages from before accounts
     .getByRole("button", { name: "Delete" })
     .click();
   await expect(page.getByText("Account deleted").first()).toBeVisible();
-  await page.goto("/admin/messages/");
+  await page.goto(admin("/messages/"));
   await expect(page.getByRole("main").getByText(old)).toHaveCount(0);
+});
+
+// --- 2026-11-25: code auto-submit, subject, rate limit -------------------------------------------
+
+test("the verification email's subject leads with the code", async ({ page }) => {
+  const email = address("subject");
+  await sendContact(page, email, "subject test");
+  const { code } = await mail(page, email);
+  const res = await page.request.get(`/api/dev-mail?to=${encodeURIComponent(email)}`);
+  const body = (await res.json()) as { subject: string; text: string };
+  expect(body.subject).toBe(`${code} is your seanperez.net code`);
+  expect(body.text).toContain(`code: ${code}`);
+});
+
+test("the Code field submits by itself at six digits, once per value; AutoFill hints kept", async ({
+  page,
+}) => {
+  const email = address("auto");
+  const aside = await sendContact(page, email, "auto-submit test");
+  const { code } = await mail(page, email);
+  const field = aside.getByRole("textbox", { name: "Code" });
+  await expect(field).toHaveAttribute("autocomplete", "one-time-code");
+  await expect(field).toHaveAttribute("inputmode", "numeric");
+
+  // Five digits: nothing is posted.
+  let posts = 0;
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("qaction=")) posts++;
+  });
+  await field.fill(code.slice(0, 5));
+  await page.waitForTimeout(500);
+  expect(posts).toBe(0);
+
+  // A wrong six: posted once by itself; the same value typed again is not posted again.
+  const wrong = code === "000000" ? "111111" : "000000";
+  await field.fill(wrong);
+  await expect(aside.getByText("That code did not work")).toBeVisible();
+  expect(posts).toBe(1);
+  await field.fill("");
+  await field.fill(wrong);
+  await page.waitForTimeout(500);
+  expect(posts).toBe(1);
+
+  // Typed key by key (the last digit completes it): posted, verified, no Confirm press.
+  await field.fill("");
+  await field.pressSequentially(code);
+  await expect(page.getByText("Email confirmed").first()).toBeVisible();
+  expect(posts).toBe(2);
 });

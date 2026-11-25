@@ -1,8 +1,8 @@
 import { $, component$, useSignal } from "@qwik.dev/core";
 import { Avatar, Button, Modal, TextField, useSnackbar } from "@seanperez/ui";
 import { GUEST_ACCOUNT } from "../content/accounts";
-import { PROFILE_MAX } from "../profile/limits";
-import type { Profile } from "../profile/profile";
+import { PROFILE_MAX } from "@seanperez/data/profile/limits";
+import type { Profile } from "@seanperez/data/profile/profile";
 import { diffProfile, type ProfileFields } from "../profile/profile-local";
 import {
   replaceProfile,

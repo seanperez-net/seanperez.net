@@ -10,12 +10,21 @@ import {
   Button,
   Card,
   EmptyState,
+  Icon,
   IconButton,
   List,
+  Menu,
 } from "@seanperez/ui";
 import type { IconName } from "@seanperez/ui";
 import { forgetCounts } from "../contacts/frequency";
-import { commit, plural, useContactsSnackbar } from "../contacts/local-actions";
+import {
+  baseRecord,
+  commit,
+  exportContacts,
+  plural,
+  targetsOf,
+  useContactsSnackbar,
+} from "../contacts/local-actions";
 import {
   TRASH_DAYS,
   findDuplicates,
@@ -24,9 +33,13 @@ import {
   recoverContacts,
   restoreContacts,
   restoreSite,
+  setStarred,
+  siteOverride,
+  trashContacts,
   trashDaysLeft,
   trashedContacts,
   type LocalContact,
+  type SiteBase,
 } from "../contacts/local-book";
 import {
   localBookId,
@@ -301,5 +314,103 @@ export const ContactsMerge = component$(() => {
         );
       })}
     </div>
+  );
+});
+
+/**
+ * A contact row's own actions (owner 2026-11-25, Google Contacts' row hover actions): Star
+ * ("Add to favorites", a toggle), Edit (a link to the person page's `?edit`) and More (Export as
+ * vCard / CSV, Delete). They are `List.Item actions`: BESIDE the row's link, never inside it, shown
+ * on hover or focus-within and always on touch (`list.md` "Row actions"). Every write is the same
+ * local one as the person page's (`commit`; a site contact gets its override first, `targetsOf`).
+ *
+ * `rowKey` is the list's key (a site id or `local/<id>`); `site` the site contact's base when the
+ * row is one of the site's.
+ */
+export const ContactRowActions = component$<{
+  rowKey: string;
+  name: string;
+  href: string;
+  starred: boolean;
+  site?: SiteBase;
+}>(({ rowKey, name, href, starred, site }) => {
+  const state = useContext(localBookId);
+  const { showSnackbar$ } = useContactsSnackbar();
+
+  /** The local record ids this row's change applies to (a site contact's override made first). */
+  const star$ = $(async (on: boolean) => {
+    const key = rowKey;
+    const bases = site ? [site] : [];
+    await commit(state, (book, now) => {
+      const t = targetsOf(book, [key], bases, now);
+      return { book: setStarred(t.book, t.ids[0], on, now) };
+    });
+    await showSnackbar$({
+      message: on
+        ? `${name} added to favorites`
+        : `${name} removed from favorites`,
+    });
+  });
+
+  const delete$ = $(async () => {
+    const key = rowKey;
+    const bases = site ? [site] : [];
+    const change = await commit(state, (book, now) => {
+      const t = targetsOf(book, [key], bases, now);
+      return { book: trashContacts(t.book, t.ids, now), result: t.ids };
+    });
+    const ids = change.result;
+    await showSnackbar$({
+      message: `${name} moved to Trash`,
+      action: "Undo",
+      showClose: true,
+      onAction$: $(async () => {
+        await commit(state, (book, now) => ({
+          book: recoverContacts(book, ids, now),
+        }));
+      }),
+    });
+  });
+
+  const export$ = $((format: "vcard" | "csv") => {
+    const book = state.book.value;
+    const record = rowKey.startsWith("local/")
+      ? book.contacts.find((c) => c.id === rowKey.slice(6))
+      : site
+        ? (siteOverride(book, site.siteId) ?? baseRecord(site))
+        : undefined;
+    if (record) exportContacts([record], book, format);
+  });
+
+  return (
+    <>
+      <IconButton
+        toggle
+        selected={starred}
+        icon="star"
+        iconSelected="star_filled"
+        label={`Add ${name} to favorites`}
+        labelSelected={`Remove ${name} from favorites`}
+        onSelectedChange$={star$}
+      />
+      <IconButton
+        type="link"
+        href={`${href}?edit`}
+        icon="edit"
+        label={`Edit ${name}`}
+      />
+      <Menu.Root>
+        <Menu.Trigger look="plain" aria-label={`More actions for ${name}`}>
+          <Icon name="more_vert" size="sm" />
+        </Menu.Trigger>
+        <Menu.Content align="end">
+          <Menu.Item onClick$={() => export$("vcard")}>
+            Export as vCard (.vcf)
+          </Menu.Item>
+          <Menu.Item onClick$={() => export$("csv")}>Export as CSV</Menu.Item>
+          <Menu.Item onClick$={delete$}>Delete</Menu.Item>
+        </Menu.Content>
+      </Menu.Root>
+    </>
   );
 });

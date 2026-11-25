@@ -31,10 +31,20 @@ export default defineConfig({
     },
     { name: "iphone", use: { ...devices["iPhone 17 Pro"] } },
   ],
-  webServer: {
-    command: "pnpm dev",
-    url: baseURL,
-    reuseExistingServer: true,
-    timeout: 180_000,
-  },
+  webServer: [
+    {
+      command: "pnpm dev",
+      url: baseURL,
+      reuseExistingServer: true,
+      timeout: 180_000,
+    },
+    // The admin app (2026-11-25): `contact-verify.spec.ts` reads the inbox there. Its dev server
+    // shares this app's local D1 (`apps/admin/vite.config.ts`).
+    {
+      command: "pnpm --dir ../admin dev",
+      url: process.env.E2E_ADMIN_URL ?? "http://[::1]:5180/",
+      reuseExistingServer: true,
+      timeout: 180_000,
+    },
+  ],
 });

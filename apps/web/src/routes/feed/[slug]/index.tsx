@@ -1,9 +1,9 @@
 import { component$ } from "@qwik.dev/core";
 import { routeLoader$, type DocumentHead } from "@qwik.dev/router";
 import { Layout } from "@seanperez/ui";
-import { ARTICLE_CLASS, formatDate } from "../../../feed/format";
-import { excerpt, renderMarkdown } from "../../../feed/markdown.server";
-import { getPublished } from "../../../feed/posts.server";
+import { ARTICLE_CLASS, formatDate } from "@seanperez/data/feed/format";
+import { excerpt, renderMarkdown } from "@seanperez/data/feed/markdown.server";
+import { getPublished } from "@seanperez/data/feed/posts.server";
 import { seoHead } from "../../../seo";
 
 /**

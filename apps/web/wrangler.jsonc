@@ -23,13 +23,17 @@
     { "pattern": "seanperez.net", "custom_domain": true },
     { "pattern": "www.seanperez.net", "custom_domain": true },
   ],
-  // No `*.workers.dev` URL: it would reach this Worker with no Cloudflare Access app in front
-  // of /admin (wrangler's default is true). The site is only served on the custom domains.
+  // No `*.workers.dev` URL (wrangler's default is true): the site is only served on the custom
+  // domains. (The reason was /admin outside Access; /admin left for apps/admin 2026-11-25.)
   "workers_dev": false,
+  // No workers.dev Preview URLs either (QWIK-DEFAULTS.md 2026-11-25).
+  "preview_urls": false,
   /**
    * The feed's posts (`migrations/`, table `post`), the profile (`profile`) and the contact
    * form's messages (`message`, the only table a visitor writes to). The database existed, empty, since
-   * 2026-11-21. Migrations are applied by hand, never by the deploy:
+   * 2026-11-21. The migrations live in `packages/data/migrations` (`@seanperez/data` owns them since
+   * 2026-11-25; apps/admin points at the same folder). Applied by hand, never by the deploy, from
+   * THIS folder (the admin's `pnpm dev:admin` shares this app's local state):
    * `pnpm wrangler d1 migrations apply seanperez-net --local` (dev) / `--remote` (the owner).
    * An identifier, not a credential.
    */
@@ -38,7 +42,7 @@
       "binding": "DB",
       "database_name": "seanperez-net",
       "database_id": "bd51b663-f4bf-4dab-96fc-42b4d1f8e3d4",
-      "migrations_dir": "migrations",
+      "migrations_dir": "../../packages/data/migrations",
     },
   ],
   "observability": {
@@ -77,7 +81,7 @@
    * verified Email Routing destination; free on any plan, no Email Sending onboarding needed:
    * developers.cloudflare.com/email-service/configuration/destination-addresses/). No
    * `destination_address` here: it would publish that address in this public repo. Mail to
-   * visitors goes through Resend (`src/mail/mail.server.ts`, secret `RESEND_API_KEY`). Other
+   * visitors goes through Resend (`@seanperez/data` `src/mail/mail.server.ts`, secret `RESEND_API_KEY`). Other
    * secrets: `AUTH_SECRET` (HMAC key for the 6-digit codes). All three: `wrangler secret put`.
    */
   "send_email": [
@@ -94,6 +98,23 @@
     "bindings": [{ "name": "NODE_HUB", "class_name": "NodeHub" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["NodeHub"] }],
+  /**
+   * Rate limiting (2026-11-25, `.claude/notes/rate-limiting-research-2026-11-25.md`, approved by
+   * the owner): a cheap, approximate, per-location gate in front of D1 / Turnstile Siteverify /
+   * Resend (`@seanperez/data` `src/limits/limit.server.ts` `allow`). The hard limits are the D1 caps. Keys are route
+   * names or SHA-256 session hashes, never IPs. Periods can only be 10 or 60 s
+   * (developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). ONE binding at 60 per
+   * 60 s per key; each endpoint weights its calls with `delta` (`WEIGHT` in limit.server.ts), so
+   * e.g. a contact send counts 6 (10 a minute) and a search 1 (60 a minute). namespace_id: any
+   * integer unique in this account (not secret).
+   */
+  "ratelimits": [
+    {
+      "name": "LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
   /**
    * Service Bindings (communicate between multiple Workers)
    * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

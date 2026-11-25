@@ -46,7 +46,7 @@ import {
   type ImportedContact,
   type LabelledValue,
 } from "./imported";
-import { safeLinkHref } from "../profile/profile";
+import { safeLinkHref } from "@seanperez/data/profile/profile";
 
 /** Trash retention, as Google's (30 days, its help article S1). */
 export const TRASH_DAYS = 30;
@@ -103,11 +103,18 @@ export interface LocalContact {
   profile?: LinkedProfile;
   /**
    * Milliseconds since the epoch. `updatedAt` is the SYNC clock: every change moves it (an edit,
-   * a star, a label, a photo, the Trash), as Google's `metadata.sources[].updateTime`; "Last
-   * edited" on the person page is this time.
+   * a star, a label, a photo, the Trash), as Google's `metadata.sources[].updateTime`.
    */
   createdAt: number;
   updatedAt: number;
+  /**
+   * When the contact ITSELF was last edited: its fields, photo or linked profile, a merge, its
+   * creation. A star, a label or the Trash do not set it. The person page's "Last edited" (owner,
+   * 2026-11-25: a separate `editedAt`, not Google's `updateTime`). Absent on a site contact's
+   * override made by a star or a label only, and on records saved before 2026-11-25 (then
+   * `createdAt` stands in for the visitor's own contacts: `lastEdited`).
+   */
+  editedAt?: number;
   /** In the Trash since then. */
   deletedAt?: number;
   /** The server confirmed the record as it was at this `updatedAt` (admin app only). */
@@ -184,6 +191,7 @@ const contactSchema = z.object({
     .optional(),
   createdAt: time,
   updatedAt: time,
+  editedAt: time.optional(),
   deletedAt: time.optional(),
   syncedAt: time.optional(),
 });
@@ -305,6 +313,14 @@ export function ensureSiteOverrides(
   }
   return add.length ? { ...book, contacts: [...book.contacts, ...add] } : book;
 }
+
+/**
+ * The person page's "Last edited" (`editedAt`): when the contact itself last changed. A star, a
+ * label or the Trash do not count. The visitor's own contacts saved before `editedAt` existed fall
+ * back to `createdAt`; a site contact's override with no edit has none (`undefined`).
+ */
+export const lastEdited = (c: LocalContact): number | undefined =>
+  c.editedAt ?? (c.source === "site" ? undefined : c.createdAt || undefined);
 
 /** Shows site contacts deleted forever again ("Restore"). */
 export const restoreSite = (book: LocalBook, siteIds: string[]): LocalBook => ({
@@ -500,6 +516,7 @@ export function createContact(
     source: "created",
     createdAt: now,
     updatedAt: now,
+    editedAt: now,
   };
   return { book: { ...book, contacts: [...book.contacts, contact] }, contact };
 }
@@ -521,6 +538,7 @@ export function updateContact(
     ...clean,
     labels: clean.labels ?? current.labels,
     updatedAt: now,
+    editedAt: now,
   };
   return {
     book: {
@@ -734,7 +752,7 @@ export function setPhoto(
   return touch(book, new Set([id]), (c) =>
     c.deletedAt !== undefined || c.photo === photo
       ? null
-      : { ...c, photo, updatedAt: now },
+      : { ...c, photo, updatedAt: now, editedAt: now },
   );
 }
 
@@ -761,8 +779,8 @@ export function setProfile(
     c.deletedAt !== undefined || same(c.profile, next)
       ? null
       : next
-        ? { ...c, profile: next, updatedAt: now }
-        : { ...withoutProfile(c), updatedAt: now },
+        ? { ...c, profile: next, updatedAt: now, editedAt: now }
+        : { ...withoutProfile(c), updatedAt: now, editedAt: now },
   );
 }
 
@@ -848,6 +866,7 @@ export function addImportedContacts(
       source: "import",
       createdAt: Number.isNaN(at) ? now : at,
       updatedAt: now,
+      editedAt: Number.isNaN(at) ? now : at,
     });
     added++;
   }
@@ -954,6 +973,7 @@ export function mergeContacts(
     starred: group.some((c) => c.starred) || undefined,
     photo: group.find((c) => c.photo)?.photo,
     updatedAt: now,
+    editedAt: now,
   };
   const restIds = new Set(rest.map((c) => c.id));
   return {

@@ -1,7 +1,7 @@
 import { component$, useComputed$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import { useLocation } from "@qwik.dev/router";
-import { Avatar, EmptyState, FAB, Layout, List } from "../../index";
+import { Avatar, EmptyState, FAB, IconButton, Layout, List } from "../../index";
 
 const PEOPLE = [
   { id: "ada", name: "Ada Lovelace", line: "Mathematician" },
@@ -44,11 +44,26 @@ export default component$(() => {
       <Layout.DetailPane>
         {person.value ? (
           <>
+            {/* `leading` and `subtitle` (NEW 2026-11-25, M3 app bar subtitle): the avatar after
+                Back, the line under the name. Narrow the pane: the title keeps 6rem and ends in
+                an ellipsis. */}
             <Layout.PaneHeader
               title={person.value.name}
+              subtitle={person.value.line}
+              leading={
+                <Avatar
+                  name={person.value.name}
+                  seed={person.value.id}
+                  size="md"
+                  decorative
+                />
+              }
               backHref="/list-detail/"
               backLabel="Back to the list"
-            />
+            >
+              <IconButton icon="star" label="Star" />
+              <IconButton icon="edit" label="Edit" />
+            </Layout.PaneHeader>
             <p class="text-body-large text-on-surface-variant">
               {person.value.line}
             </p>

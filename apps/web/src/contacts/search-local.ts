@@ -41,6 +41,8 @@ export interface BookRow {
   labels: string[];
   /** Imported into this browser (the Imported label's members). */
   imported?: boolean;
+  /** Starred ("Add to favorites"): the row's star action shows it (2026-11-25). */
+  starred?: boolean;
 }
 
 /** A visitor's contact as a row. */
@@ -60,6 +62,7 @@ export const localRow = (c: LocalContact): BookRow => {
     localId: c.id,
     labels: c.labels,
     imported: c.source === "import",
+    starred: !!c.starred,
   };
 };
 
@@ -102,6 +105,7 @@ export function siteRow(row: SiteContactBase, book: LocalBook): BookRow | null {
     digits: (o?.phones ?? []).map((p) => phoneDigits(p.value)).join(" "),
     siteId: row.id,
     labels: o?.labels ?? row.labels,
+    starred: !!o?.starred,
   };
 }
 

@@ -2,14 +2,19 @@ import {
   $,
   component$,
   createContextId,
+  useComputed$,
   useContext,
+  useSignal,
   type QRL,
   type Signal,
 } from "@qwik.dev/core";
 import {
   Button,
   FullscreenButton,
+  Icon,
   IconButton,
+  Layout,
+  Menu,
   layoutContextId,
   openCompanion,
   useSnackbar,
@@ -22,10 +27,7 @@ import {
 } from "@seanperez/chat";
 import { useMyApps } from "../apps/use-my-apps";
 import { OWNER_ACCOUNT } from "../content/accounts";
-import {
-  MESSAGES_SEARCH_NOTICE,
-  findThread,
-} from "../content/conversations";
+import { MESSAGES_SEARCH_NOTICE, findThread } from "../content/conversations";
 import { DEMO } from "../demo/demo";
 import { usePresence } from "../presence/use-presence";
 import {
@@ -78,7 +80,8 @@ export const MessagesReadContext =
  * this conversation (a demo notice: not built, PLAN.md; a filter would rewrite the ARIA log),
  * Conversation details (the `messages-details` companion; a device member links to the map),
  * Full screen (`FullscreenButton` on the primary pane's `<main>`, the target `Layout.PaneHeader
- * fullscreen` uses; our header is not a PaneHeader because it needs Back, avatar and subtitle).
+ * fullscreen` uses). Since 2026-11-25 the header IS `Layout.PaneHeader` (its `leading` avatar and
+ * `subtitle`, owner); what does not fit a narrow pane goes into a More menu (see the JSX).
  * The owner's thread (2026-11-25; was the self thread while the site looked signed in as him) has
  * "Contact me" (opens the Contact me companion, the real way to reach him), unless the visitor
  * removed that app. Each message has Delete (local, confirmed, with Undo: `use-demo-thread.ts`). Google's pop-out,
@@ -119,84 +122,158 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
     openCompanion(layout, MESSAGES_DETAILS_COMPANION.id, el);
   });
   const search$ = $(() => showSnackbar$({ message: MESSAGES_SEARCH_NOTICE }));
+  // DEMO: Contact me in Sean's thread, unless the visitor removed that app.
+  const contactMe = useComputed$(
+    () =>
+      DEMO &&
+      thread.person.id === OWNER_ACCOUNT.id &&
+      !apps.removed.includes("contact"),
+  );
+  // The pane is narrower than 20rem: More holds Contact me and the details too.
+  const tiny = useSignal(false);
+  const measure$ = $((_: Event, el: HTMLElement) => {
+    const pane = el.closest("section");
+    if (pane) tiny.value = pane.clientWidth < 20 * 16;
+  });
+  // From the menu, focus goes back to the More button when the panel closes. The button is
+  // looked up inside each handler (a plain function captured by a `$` is not serializable).
+  const contactFromMenu$ = $(() =>
+    openCompanion(
+      layout,
+      CONTACT_COMPANION_ID,
+      document.querySelector<HTMLElement>(
+        '[data-thread-more] [aria-haspopup="menu"]',
+      ),
+    ),
+  );
+  const detailsFromMenu$ = $(async () => {
+    if (document.fullscreenElement)
+      await document.exitFullscreen().catch(() => {});
+    openCompanion(
+      layout,
+      MESSAGES_DETAILS_COMPANION.id,
+      document.querySelector<HTMLElement>(
+        '[data-thread-more] [aria-haspopup="menu"]',
+      ),
+    );
+  });
+  // Full screen from the menu: the primary pane, as `FullscreenButton` (Escape leaves it).
+  const fullscreen$ = $(() => {
+    const main = document.getElementById(layout.mainId);
+    if (!document.fullscreenEnabled) {
+      showSnackbar$({ message: "Full screen isn't available in this browser" });
+      return;
+    }
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void main?.requestFullscreen?.().catch(() => {});
+  });
 
   return (
     <section
       aria-labelledby={HEADING_ID}
-      class="layout-pane-rulers h-full min-h-0 [--layout-pane-rulers-body:minmax(0,1fr)]"
+      // `@container/thread`: the header's actions follow the PANE's width, not the window's (at
+      // 1000px with the drawer docked and the side panel open the pane is about 270px wide).
+      class="@container/thread layout-pane-rulers h-full min-h-0 [--layout-pane-rulers-body:minmax(0,1fr)]"
     >
-      {/* The detail's ONE body element: header, transcript, typing line, composer. */}
-      <div class="flex min-h-0 flex-col gap-2">
-        <header class="flex items-center gap-3">
-          {/* Single-pane only (M3): back to the list, a link so it works from a deep link.
-              `data-pane-header-back`: `Layout.ListDetail` hides it in two-pane (layout.md). */}
-          <div data-pane-header-back="">
-            <IconButton
-              type="link"
-              href="/messages/"
-              icon="arrow_back"
-              label="Back to messages"
-              flipIconInRtl
+      {/* M3's app bar inside the pane (rule H5, 2026-11-25): Back (single-pane only, the part
+          hides it in two-pane), the avatar, the name and what it is (`subtitle`), then the
+          actions. Actions that do not fit the pane go into More (M3 app bars: an overflow menu),
+          so the title keeps its readable minimum:
+          - from 32rem: Contact me (labelled), Search, Conversation details, Full screen;
+          - 20 to 32rem: Contact me (icon), Conversation details, More (Search, Full screen);
+            the avatar from 24rem;
+          - below 20rem: More holds them all. */}
+      <Layout.PaneHeader
+        title={ownThreadTitle(thread, own.fields)}
+        titleId={HEADING_ID}
+        subtitle={thread.subtitle}
+        backHref="/messages/"
+        backLabel="Back to messages"
+        leading={
+          // Placement only: no room for the avatar below 24rem.
+          <span class="@max-sm/thread:hidden">
+            <ChatAvatar
+              person={withOwnAccount(thread.person, presence.shown, own.fields)}
             />
-          </div>
-          <ChatAvatar
-            person={withOwnAccount(thread.person, presence.shown, own.fields)}
-          />
-          <div class="min-w-0 flex-1">
-            <h2
-              id={HEADING_ID}
-              class="truncate text-title-large text-on-surface"
-            >
-              {ownThreadTitle(thread, own.fields)}
-            </h2>
-            <p class="truncate text-body-medium text-on-surface-variant">
-              {thread.subtitle}
-            </p>
-          </div>
-          {/* DEMO: Contact me opens the Contact me companion, which only the layer has. */}
-          {DEMO &&
-            thread.person.id === OWNER_ACCOUNT.id &&
-            !apps.removed.includes("contact") && (
-              <>
-                {/* Placement only: the labelled button from 600px; below, an icon button, so the
-                    conversation's name keeps its room at 390px (seen in Chrome 2026-11-25). */}
-                <div class="max-sm:hidden">
-                  <Button
-                    look="tonal"
-                    label="Contact me"
-                    leadingIcon="waving_hand"
-                    onClick$={contact$}
-                  />
-                </div>
-                <div class="sm:hidden">
-                  <IconButton
-                    look="tonal"
-                    icon="waving_hand"
-                    label="Contact me"
-                    onClick$={contact$}
-                  />
-                </div>
-              </>
-            )}
-          {/* Placement only: the actions keep their size when the title is cut short. */}
-          <div class="flex shrink-0 items-center">
-            {/* DEMO: Search only says "not built yet"; off, no button. */}
-            {DEMO && (
-              <IconButton
-                icon="search"
-                label="Search in this conversation"
-                onClick$={search$}
+          </span>
+        }
+      >
+        {/* DEMO: Contact me opens the Contact me companion, which only the layer has. */}
+        {contactMe.value && (
+          <>
+            <div class="hidden @lg/thread:block">
+              <Button
+                look="tonal"
+                label="Contact me"
+                leadingIcon="waving_hand"
+                onClick$={contact$}
               />
-            )}
+            </div>
+            <div class="hidden @xs/thread:block @lg/thread:hidden">
+              <IconButton
+                look="tonal"
+                icon="waving_hand"
+                label="Contact me"
+                onClick$={contact$}
+              />
+            </div>
+          </>
+        )}
+        {/* DEMO: Search only says "not built yet"; off, no button. */}
+        {DEMO && (
+          <div class="hidden @lg/thread:block">
             <IconButton
-              icon={MESSAGES_DETAILS_COMPANION.icon}
-              label={MESSAGES_DETAILS_COMPANION.label}
-              onClick$={details$}
+              icon="search"
+              label="Search in this conversation"
+              onClick$={search$}
             />
-            <FullscreenButton targetId={layout.mainId} />
           </div>
-        </header>
+        )}
+        <div class="hidden @xs/thread:block">
+          <IconButton
+            icon={MESSAGES_DETAILS_COMPANION.icon}
+            label={MESSAGES_DETAILS_COMPANION.label}
+            onClick$={details$}
+          />
+        </div>
+        <div class="hidden @lg/thread:block">
+          <FullscreenButton targetId={layout.mainId} />
+        </div>
+        {/* The overflow menu for what did not fit (none from 32rem). Which rows it holds is read
+            from the pane's width when the pointer or focus reaches it, before it opens (a
+            handler, never render: rule L19), so its rows are only what is not on show. */}
+        <div
+          class="@lg/thread:hidden"
+          data-thread-more=""
+          onPointerEnter$={measure$}
+          onFocusIn$={measure$}
+        >
+          <Menu.Root>
+            <Menu.Trigger look="plain" aria-label="More actions">
+              <Icon name="more_vert" size="sm" />
+            </Menu.Trigger>
+            <Menu.Content align="end">
+              {contactMe.value && tiny.value && (
+                <Menu.Item onClick$={contactFromMenu$}>Contact me</Menu.Item>
+              )}
+              {DEMO && (
+                <Menu.Item onClick$={search$}>
+                  Search in this conversation
+                </Menu.Item>
+              )}
+              {tiny.value && (
+                <Menu.Item onClick$={detailsFromMenu$}>
+                  {MESSAGES_DETAILS_COMPANION.label}
+                </Menu.Item>
+              )}
+              <Menu.Item onClick$={fullscreen$}>Full screen</Menu.Item>
+            </Menu.Content>
+          </Menu.Root>
+        </div>
+      </Layout.PaneHeader>
 
+      {/* The detail's ONE body element: transcript, typing line, composer. */}
+      <div class="flex min-h-0 flex-col gap-2">
         {/* A new log per conversation: this component is the `[id]` route's, keyed by it. */}
         <MessageList
           messages={messages.value}

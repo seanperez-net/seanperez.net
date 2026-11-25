@@ -7,7 +7,7 @@ import {
   XIcon,
   YoutubeIcon,
 } from "@seanperez/ui";
-import type { SocialBrand } from "../profile/profile";
+import type { SocialBrand } from "@seanperez/data/profile/profile";
 
 const MARKS = {
   github: GithubIcon,

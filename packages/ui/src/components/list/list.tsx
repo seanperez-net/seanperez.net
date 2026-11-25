@@ -146,6 +146,7 @@ export const listItemVariants = tv({
       standard: "",
       segmented: [
         "bg-surface-container",
+        "[--list-actions-bg:var(--color-surface-container)]",
         // M3 Expressive: 4dp inner corners, 16dp outer, 16dp all round when selected.
         "rounded-xs",
         "first:rounded-t-lg",
@@ -176,7 +177,8 @@ export const listItemVariants = tv({
         "focus-visible:bg-linear-to-r focus-visible:from-on-surface/12 focus-visible:to-on-surface/12",
         // A control INSIDE the row with keyboard focus lights the row too.
         "has-focus-visible:bg-linear-to-r has-focus-visible:from-on-surface/12 has-focus-visible:to-on-surface/12",
-        "active:bg-linear-to-r active:from-on-surface/12 active:to-on-surface/12",
+        // Not while a control in the row's `actions` is pressed (`:active` reaches ancestors).
+        "active:not-has-[[data-list-item-actions]_:active]:bg-linear-to-r active:not-has-[[data-list-item-actions]_:active]:from-on-surface/12 active:not-has-[[data-list-item-actions]_:active]:to-on-surface/12",
         // M3 list item: the inward focus ring (material-web md-list-item).
         "focus-ring-inward",
         // Group header disclosure
@@ -188,6 +190,11 @@ export const listItemVariants = tv({
         "data-qds-list-group-header:data-disabled:opacity-100",
         "data-qds-list-group-header:data-disabled:pointer-events-auto",
       ],
+      false: "",
+    },
+    /** A row with `actions`: a grid holding the row and its actions (`listItemActionsVariants`). */
+    actions: {
+      true: "group/list-item grid grid-cols-[minmax(0,1fr)_auto] items-center",
       false: "",
     },
     /** Selected colors: `primary` (an option) or `secondary` (M3 navigation indicator). */
@@ -206,11 +213,52 @@ export const listItemVariants = tv({
     look: "standard",
     shape: "default",
     interactive: false,
+    actions: false,
     indicator: "primary",
   },
 });
 
 export type ListItemVariantProps = VariantProps<typeof listItemVariants>;
+
+/**
+ * `List.Item actions` (NEW 2026-11-25, owner; not in e-store): the row's own controls BESIDE its
+ * link (a sibling of the `<a>`, never inside it: interactive content may not nest in an `<a>`,
+ * HTML). The `<li>` becomes a two-column grid: the row (link or Item) and the actions share the
+ * first row.
+ *
+ * - Where the pointer can hover (`@media (hover: hover)`): the row spans both columns and the
+ *   actions lie over its end, shown on the row's hover or focus-within, hidden by OPACITY (never
+ *   `visibility` / `display`: they stay in the tab order and the accessibility tree). Over the row
+ *   they paint its surface (`--list-actions-bg`, default `surface`; the selected or segmented
+ *   row's own fill) and its state layer (`background-image: inherit`), so no text shows through.
+ * - Touch (`hover: none`): always shown, in their own column; the row's text ends before them.
+ */
+export const listItemActionsVariants = tv({
+  base: [
+    // 3px in from the row's end (`--outline-width-focus-ring`): the row's INWARD focus ring
+    // stays visible beside the strip (measured in Chrome 2026-11-25: the strip's fill covered
+    // it); the icons keep their 12dp end inset.
+    "relative z-1 col-start-2 row-start-1 flex items-center gap-0",
+    "me-(--outline-width-focus-ring) pe-[calc(0.75rem-var(--outline-width-focus-ring))]",
+    // Clicks on the actions never reach the row's own handler (`stoppropagation:click`, set on the
+    // element), and their keys are their own (`navigateListItems`: a control keeps Enter / Space).
+    "[@media(hover:hover)]:opacity-0",
+    "group-hover/list-item:opacity-100",
+    "group-focus-within/list-item:opacity-100",
+    "transition-opacity duration-150 ease-standard motion-reduce:transition-none",
+    "[@media(hover:hover)]:bg-(--list-actions-bg,var(--color-surface))",
+    "[@media(hover:hover)]:[background-image:inherit]",
+    "group-data-selected/list-item:bg-inherit",
+    // The row's corners (rounded / segmented rows).
+    "rounded-e-[inherit]",
+  ],
+});
+
+/** The row (link or Item) of a row with actions: the first column, both where actions overlay it. */
+const ROW_WITH_ACTIONS = [
+  "col-start-1 row-start-1 min-w-0",
+  "[@media(hover:hover)]:col-end-3",
+];
 
 export const listDividerVariants = tv({
   base: ["border-none", "h-px", "bg-outline-variant", "my-0", "shrink-0"],
@@ -245,6 +293,9 @@ export const navigateListItems = sync$((e: KeyboardEvent) => {
     el.closest?.('input, textarea, select, [contenteditable="true"]')
   )
     return;
+  // A control in the row's `actions` (a link too: Space on "Edit" must not open the row) keeps
+  // its own keys. Second agent, 2026-11-25.
+  if (el !== current && el.closest?.("[data-list-item-actions]")) return;
   // A modified key is the app's or the browser's.
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === "Enter" || e.key === " ") {
@@ -271,6 +322,33 @@ export const focusInList = sync$((e: FocusEvent, box: HTMLElement) => {
   const listbox = box.getAttribute("role") === "listbox";
   if (!listbox && !box.hasAttribute("data-roving-focus")) return;
   box.setAttribute("tabindex", "-1");
+  // `List.Item actions` (2026-11-25, second agent): only the row that holds focus keeps its
+  // controls in the tab order, so Tab leaves a long list after one row's controls instead of
+  // walking every row's. The others are marked `data-list-actions-off` and get `tabindex=-1`;
+  // a row that takes focus gets its own back. Controls inside an open menu are left alone.
+  const row = (e.target as HTMLElement).closest?.("[data-list-item]");
+  box
+    .querySelectorAll<HTMLElement>("[data-list-item-actions]")
+    .forEach((strip) => {
+      if (strip.closest("ul") !== box) return;
+      const mine = strip.closest("[data-list-item]") === row;
+      strip
+        .querySelectorAll<HTMLElement>(
+          "a[href], button, [data-list-actions-off]",
+        )
+        .forEach((control) => {
+          if (control.closest('[role="menu"]')) return;
+          if (mine) {
+            if (control.hasAttribute("data-list-actions-off")) {
+              control.removeAttribute("data-list-actions-off");
+              control.removeAttribute("tabindex");
+            }
+          } else if (!control.hasAttribute("data-list-actions-off")) {
+            control.setAttribute("data-list-actions-off", "");
+            control.setAttribute("tabindex", "-1");
+          }
+        });
+    });
   if (e.target !== box) return;
   const own = (selector: string) =>
     Array.from(box.querySelectorAll<HTMLElement>(selector)).find(
@@ -477,6 +555,15 @@ export interface ListItemProps
   externalLabel?: string;
   /** With `href`: `data-*` attributes for the `<a>` itself. */
   linkData?: { [key: `data-${string}`]: string | undefined };
+  /**
+   * The row's own controls (icon buttons, a `Menu`), rendered BESIDE the row's link as its
+   * sibling in the `<li>`, never inside the `<a>`: M3's multi-action row (secondary actions in
+   * the trailing position) with the row still a link. Shown on hover or focus-within where the
+   * pointer can hover, always on touch; hidden by opacity, so always reachable. Use it in a
+   * `List.Root rovingFocus` (the row one arrow stop, each control its own Tab stop). JSX (one
+   * root, e.g. a fragment or a `<div>`). NEW 2026-11-25, not in e-store.
+   */
+  actions?: JSXOutput;
   /** Classes on the `<li>`. */
   class?: ClassList;
   /** Classes on the inner `Item`. */
@@ -500,6 +587,7 @@ const ListItem = component$<ListItemProps>((props) => {
     rel,
     externalLabel = "external link",
     linkData,
+    actions,
     class: className,
     itemClass,
     role: roleProp,
@@ -575,9 +663,14 @@ const ListItem = component$<ListItemProps>((props) => {
     }
   });
 
+  // With actions, the row (link or Item) takes the grid's first column (`ROW_WITH_ACTIONS`).
+  const hasActions = !!actions;
   const itemContent = (
     <Item
-      class={itemClass}
+      class={[
+        itemClass,
+        hasActions && !row.value.link ? ROW_WITH_ACTIONS : undefined,
+      ]}
       density={ctx.density.value}
       selected={row.value.selected}
       selectedFill={false}
@@ -625,6 +718,7 @@ const ListItem = component$<ListItemProps>((props) => {
           shape: ctx.shape.value,
           indicator: ctx.indicator.value,
           interactive: row.value.interactive,
+          actions: hasActions,
         }),
         // No overflow clip: the ripple surface clips itself, and a clipping row cut the focus
         // ring of a control inside it.
@@ -658,7 +752,10 @@ const ListItem = component$<ListItemProps>((props) => {
           reload={reload}
           prefetchBundles={prefetchBundles}
           rel={rel}
-          class="block text-inherit no-underline"
+          class={[
+            "block text-inherit no-underline",
+            hasActions ? ROW_WITH_ACTIONS : undefined,
+          ]}
           tabIndex={ctx.rovingFocus.value ? -1 : undefined}
           aria-label={ariaLabel}
           // The current place, on the link itself where screen readers announce it (ARIA
@@ -669,6 +766,17 @@ const ListItem = component$<ListItemProps>((props) => {
         </UnstyledButton>
       ) : (
         itemContent
+      )}
+      {hasActions && (
+        // A sibling of the link (never inside it). Its clicks stay its own: the row's handler
+        // (selection, `onClick$`) does not run for them.
+        <div
+          data-list-item-actions=""
+          stoppropagation:click
+          class={listItemActionsVariants()}
+        >
+          {freshJsx(actions)}
+        </div>
       )}
     </li>
   );

@@ -34,5 +34,11 @@ const fetch: typeof qwikRouter = async (request, env, ctx) =>
   qwikRouter(request, env, ctx);
 
 export { fetch };
+/**
+ * Departure (QWIK-DEFAULTS.md 2026-11-25, "inbound mail"): the Email Worker handler for
+ * sean@seanperez.net (`src/mail/inbound.server.ts`), on the same default export as `fetch`
+ * (`public/_worker.js`).
+ */
+export { email } from "@seanperez/data/mail/inbound.server";
 // The Durable Object class must be exported from the Worker's main module (`public/_worker.js`).
 export { NodeHub } from "./nodes/node-hub.server";

@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* The UI library's global styles (Material 3 tokens, dark variant, breakpoints), and its
+   source for Tailwind to scan for the classes its components use (as apps/web). */
+@import "@seanperez/ui/global";
+@source "../../../packages/ui/src";
+/* A post's type classes (`ARTICLE_CLASS`, the editor's preview) live in the data package. */
+@source "../../../packages/data/src/feed/format.ts";

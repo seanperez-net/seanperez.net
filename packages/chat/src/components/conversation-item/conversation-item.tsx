@@ -6,14 +6,17 @@ import type { ChatConversation, ChatPerson } from "../../types";
 import { CHAT_LOCALE, CHAT_TIME_ZONE, formatListTime } from "../../utils";
 
 /**
- * The unread count at a row's end. Our `Badge` is placed on an icon only (no inline placement:
- * `packages/ui/CLAUDE.md`), so the count is a small pill of its own here, in M3's large badge
- * colours (`error` / `on-error`, 16dp high, label-small), its words for screen readers.
+ * The row's trailing supporting text (M3 list "Trailing text": a date, a count): the time, and
+ * under it the unread count, both in the list item's own trailing-text style (label-small,
+ * on-surface-variant; the item's typography, not a pill of ours). Owner 2026-11-25: the count is
+ * M3's trailing supporting text, not a hand-drawn badge (it was an error-coloured pill before).
+ * The count is bold (the trailing text keeps its colour, also on a selected row) so an unread row reads at a glance (as the headline's
+ * weight does in Google Chat); its words for screen readers.
  */
 export const conversationItemVariants = tv({
   slots: {
-    unread:
-      "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-label-small text-on-error",
+    trailing: "flex flex-col items-end gap-0.5",
+    unread: "font-bold",
   },
 });
 
@@ -52,7 +55,7 @@ export interface ChatConversationItemProps {
  * One row of the conversation list: avatar, name, the last message ("You: ..." for your own),
  * its date and the unread count. From e-store's conversation row (`chat-workspace.tsx`: a
  * two-line `List.Item` with an avatar `start`, the preview as `supportingText`, the time as
- * `trailingSupportingText`, the unread badge as `end`), but a LINK row (`href`) as the site's
+ * `trailingSupportingText`, the unread badge as `end`; here the count joins the trailing text), but a LINK row (`href`) as the site's
  * Contacts list, not e-store's listbox option with the selection in a client signal. Put it
  * in a `List.Root rovingFocus` (one Tab stop, arrows between rows). The link is named by its
  * content (name, last message, date, unread), as a messenger's row is read.
@@ -83,18 +86,20 @@ export const ChatConversationItem = component$<ChatConversationItemProps>(
         start={<ChatAvatar person={c.person} />}
         headline={name}
         supportingText={preview || undefined}
-        trailingSupportingText={formatListTime(
-          c.lastMessageAt,
-          locale,
-          timeZone,
-        )}
-        end={
+        trailingSupportingText={
           c.unread > 0 ? (
-            <span class={conversationItemVariants().unread()}>
-              <span aria-hidden="true">{c.unread > 99 ? "99+" : c.unread}</span>
-              <span class="sr-only">{unread}</span>
+            <span class={conversationItemVariants().trailing()}>
+              <span>{formatListTime(c.lastMessageAt, locale, timeZone)}</span>
+              <span class={conversationItemVariants().unread()}>
+                <span aria-hidden="true">
+                  {c.unread > 99 ? "99+" : c.unread}
+                </span>
+                <span class="sr-only">{unread}</span>
+              </span>
             </span>
-          ) : undefined
+          ) : (
+            formatListTime(c.lastMessageAt, locale, timeZone)
+          )
         }
       />
     );

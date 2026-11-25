@@ -23,13 +23,13 @@ import { readPref, writePref } from "../local-store";
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { MAX_BODY } from "../messages/messages-local";
 import { storeMessage } from "../messages/messages-store";
-import { saveMessage } from "../messages/messages.server";
+import { saveMessage } from "@seanperez/data/messages/messages.server";
 import {
   normalizeEmail,
   sendAsSession,
   signOut,
   startContact,
-} from "../account/account.server";
+} from "@seanperez/data/account/account.server";
 import {
   accountsOpen,
   checkTurnstile,
@@ -38,9 +38,10 @@ import {
   sendVerificationLater,
   sessionOf,
   setSessionCookie,
-} from "../account/contact.server";
-import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
-import { PROFILE_MAX } from "../profile/limits";
+} from "@seanperez/data/account/contact.server";
+import { TURNSTILE_ACTIONS } from "@seanperez/data/account/turnstile-actions";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
+import { PROFILE_MAX } from "@seanperez/data/profile/limits";
 import { saveProfileChanges, useProfileOverride } from "../profile/use-profile";
 import { SocialLinks } from "./social-links";
 import { useResendVerification, useVerifyCode } from "./contact-actions";
@@ -68,9 +69,9 @@ import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
  * INSERT (bound parameters), refused once the day's cap is reached (`MESSAGES_PER_DAY`). Same-origin only: Qwik Router's `checkOrigin` (on by default, rc.5
  * `request-handler`) refuses a POST whose `Origin` is not the site's own.
  *
- * Rate limiting: Turnstile plus the honeypot to start with. If spam gets through, add a
- * Cloudflare WAF rate-limiting rule on POSTs whose query has `qaction` in the dashboard (no code); noted in
- * PLAN.md.
+ * Rate limiting (2026-11-25): the Workers Rate Limiting binding first (`allow(env, "contact", ...)`,
+ * `limits/limit.server.ts`), then the honeypot, Turnstile and the D1 caps. A WAF rule on
+ * `?qaction=` POSTs cannot be written on the Free plan (path-only, IP-only: rate-limiting note).
  */
 
 /**
@@ -170,11 +171,16 @@ export const useSendMessage = routeAction$(
     // DEMO: with the layer off the panel is gone, but the action is still exported from the root
     // layout and reachable with `?qaction=`: refuse it, so the only visitor write is closed too.
     if (!DEMO) return fail(404, { message: "Not found." });
+    const env = platform.env;
+    // Rate limit FIRST (2026-11-25, `limits/limit.server.ts`): one route-wide key (the visitor
+    // is anonymous; no IP keys), before Siteverify and any D1 write. The D1 caps stay the hard
+    // limit; this cuts a burst off before it spends them.
+    if (!(await allow(env, "contact", WEIGHT.contact)))
+      return fail(429, { message: TOO_MANY });
     // Honeypot: people never see this field (`hidden`); a bot that fills it is told "sent"
     // and nothing is sent, so it learns nothing.
     if (data[HONEYPOT]) return { sent: true, needsCode: false };
 
-    const env = platform.env;
     // Turnstile Siteverify, fail closed (`checkTurnstile`, shared with Sean's thread).
     const check = await checkTurnstile(
       env,
@@ -335,6 +341,8 @@ export const ContactPanel = component$(() => {
   // A submit waiting for the security check's token (`loadOn="interaction"` below): Send shows
   // its spinner from the click, before the action itself runs (`send.isRunning`).
   const checking = useSignal(false);
+  // The last code the Code field submitted by itself (six digits in), so each value goes once.
+  const autoCode = useSignal("");
   // The same for "Send the email again" (its own security check, below).
   const checkingResend = useSignal(false);
   // "Send the email again" sits beside Confirm but submits its OWN form (the `form` attribute),
@@ -526,7 +534,24 @@ export const ContactPanel = component$(() => {
                 To confirm it's you, enter the 6-digit code from the email we
                 sent, or open its link. It works for 30 minutes.
               </p>
-              <Form action={verify} class="grid grid-cols-1 gap-3">
+              <Form
+                action={verify}
+                class="grid grid-cols-1 gap-3"
+                // Six digits in = submit (2026-11-25): typing, a paste and iOS / macOS AutoFill
+                // of the emailed code all fire `input` (it bubbles to the form). Once per value,
+                // so a wrong code is not posted again by itself (Confirm still can), and not
+                // while a check is running. `requestSubmit` goes through the router's submit,
+                // like pressing Confirm.
+                onInput$={(event: Event, form: HTMLFormElement) => {
+                  const field = event.target as HTMLInputElement;
+                  if (field.name !== "code") return;
+                  const code = field.value.trim();
+                  if (!/^\d{6}$/.test(code) || code === autoCode.value) return;
+                  if (verify.isRunning) return;
+                  autoCode.value = code;
+                  form.requestSubmit();
+                }}
+              >
                 <TextField
                   name="code"
                   label="Code"

@@ -2,6 +2,7 @@ import {
   $,
   Slot,
   component$,
+  isServer,
   useComputed$,
   useContextProvider,
   useSignal,
@@ -16,7 +17,6 @@ import type {
   LayoutCompanion,
   LayoutConfig,
   LayoutDrawerItem,
-  LayoutRailItem,
 } from "@seanperez/ui";
 import { useMyAppsProvider } from "../apps/use-my-apps";
 import { AppActionFab, appActionFor } from "../components/app-action";
@@ -110,25 +110,6 @@ const layout: LayoutConfig = {
   // same on every public route (`drawerItems` below); today only Messages has a section.
   drawerType: "floating",
 };
-
-/**
- * /admin is the REAL app (owner, 2026-11-24: "route admin uses a differnt rail and doesnt need the
- * Contact me admin should be the real app remember behind zones"): Cloudflare Access (Zero Trust)
- * fronts it in production (`feed/access.server.ts`). Its own rail, NO showcase companions (no
- * Contact me), no FAB. Same ONE `Layout.Root` (rule L2); the full admin shell (Cloudflare OS
- * ported to Qwik) is a later step (PLAN.md "Open questions").
- */
-const inAdmin = (path: string) =>
-  path === "/admin" || path.startsWith("/admin/");
-const ADMIN_RAIL_ITEMS: LayoutRailItem[] = [
-  { href: "/admin/", label: "Posts", icon: "article" },
-  { href: "/admin/messages/", label: "Messages", icon: "mail" },
-  // Contact accounts (2026-11-25): who wrote, verified or not; delete on request.
-  { href: "/admin/accounts/", label: "Accounts", icon: "groups" },
-  { href: "/admin/profile/", label: "Profile", icon: "person" },
-  // Back to the public site. Last, so the admin's own destinations come first.
-  { href: "/", label: "Site", icon: "home" },
-];
 
 /**
  * Each rail destination's drawer groups (its sub-navigation), by the destination's `href`. A
@@ -237,10 +218,8 @@ export default component$(() => {
   // The rail destination the page is in: the page itself, or the destination it sits under
   // (`/contacts/sean-perez/` is in Contacts). The rail and the drawer mark `href === activeHref`
   // only, so a detail page would otherwise show no current destination.
-  // The rail for the route: the admin's own on /admin (read in JSX via this computed, rule Q12).
-  const railItems = useComputed$(() =>
-    inAdmin(loc.url.pathname) ? ADMIN_RAIL_ITEMS : (layout.railItems ?? []),
-  );
+  // The rail's destinations (the admin and its own rail left for `apps/admin`, 2026-11-25).
+  const railItems = useComputed$(() => layout.railItems ?? []);
   const activeHref = useComputed$(() => {
     const path = loc.url.pathname;
     // A route with drawer items marks its own row in the drawer (`href === activeHref`), and the
@@ -258,7 +237,7 @@ export default component$(() => {
   // (ONE list with the rail, rule L24; the compact modal drawer lists all of it), on EVERY public
   // route (owner, 2026-11-24: hovering Messages floats its sections from any page). The Layout
   // decides the rest: docked on Messages, the rail's menu button disabled elsewhere
-  // (`layout.md`). /admin has its own rail and no drawer.
+  // (`layout.md`).
   // The VISITOR's contact labels (2026-11-24, browser only): the Contacts layout keeps this
   // signal current from their book; on other routes a small cache fills it once the page is
   // idle, so the floating Contacts card lists them too. Empty in the server HTML.
@@ -298,7 +277,6 @@ export default component$(() => {
       : ACCOUNT_ITEMS,
   );
   const drawerItems = useComputed$<LayoutDrawerItem[] | undefined>(() => {
-    if (inAdmin(loc.url.pathname)) return undefined;
     const groups: Record<string, LayoutDrawerItem[]> = {
       ...DRAWER_GROUPS,
       "/contacts/": contactsDrawerGroups(contactLabels.value),
@@ -318,28 +296,45 @@ export default component$(() => {
   const drawerDocked = useSignal(true);
   // The route's key action (`components/app-action.tsx`): the rail's FAB from 600px.
   const action = useComputed$(() => appActionFor(loc.url.pathname));
-  const companions = useComputed$<LayoutCompanion[]>(() =>
-    // The admin has no showcase panels (no Contact me): none of the site's companions.
-    inAdmin(loc.url.pathname)
-      ? []
-      : [
-          ...(loc.url.pathname.startsWith("/maps") ? MAPS_COMPANIONS : []),
-          // A conversation's details (2026-11-24, Google Chat's members panel): on `/messages/<id>/`.
-          ...(isMessagesThreadPath(loc.url.pathname)
-            ? [MESSAGES_DETAILS_COMPANION]
-            : []),
-          // DEMO: Contact me exists only in the showcase layer; off, it is gone everywhere. The
-          // visitor may remove it locally (2026-11-25, `apps/my-apps.ts`); the server HTML has it.
-          ...(contactMeOn.value ? [CONTACT_PANEL] : []),
-        ],
+  const companions = useComputed$<LayoutCompanion[]>(() => [
+    ...(loc.url.pathname.startsWith("/maps") ? MAPS_COMPANIONS : []),
+    // A conversation's details (2026-11-24, Google Chat's members panel): on `/messages/<id>/`.
+    ...(isMessagesThreadPath(loc.url.pathname)
+      ? [MESSAGES_DETAILS_COMPANION]
+      : []),
+    // DEMO: Contact me exists only in the showcase layer; off, it is gone everywhere. The
+    // visitor may remove it locally (2026-11-25, `apps/my-apps.ts`); the server HTML has it.
+    ...(contactMeOn.value ? [CONTACT_PANEL] : []),
+  ],
   );
+  // Contact me removed while its panel was the open one (2026-11-25, `/docs/apps/`): set when it
+  // goes, so that adding it back (Undo, "Add it back", Profile) leaves the pane as it was. Only a
+  // pane ON SHOW beside the page reopens (from 840px); below 840px the pane is a modal sheet,
+  // which the visitor had closed to reach the button, so it stays closed.
+  const contactRestore = useSignal<{ expanded: boolean } | null>(null);
   // Client navigation with the pane open on a panel the new route does not have (a Maps panel
   // when leaving /maps/): it switches to the new route's first panel. Contact stays open across
   // routes; a closed pane stays closed.
   useTask$(({ track }) => {
     const ids = track(() => companions.value.map((c) => c.id));
     const active = activeCompanion.value;
+    const restore = contactRestore.value;
+    if (restore && ids.includes(CONTACT_PANEL.id)) {
+      contactRestore.value = null;
+      // Not over a panel the visitor opened meanwhile: only from a closed pane or the task's own
+      // fallback below (the route's first panel).
+      if (restore.expanded && (active === null || active === ids[0])) {
+        activeCompanion.value = CONTACT_PANEL.id;
+        supportExpanded.value = true;
+      }
+      return;
+    }
     if (active === null || ids.includes(active)) return;
+    if (active === CONTACT_PANEL.id && !isServer)
+      contactRestore.value = {
+        expanded:
+          supportExpanded.value && matchMedia("(min-width: 840px)").matches,
+      };
     activeCompanion.value = ids[0] ?? null;
     // DEMO: only with the layer off can a route have no panels (no Contact me): close the pane
     // rather than leave it open and empty.
@@ -424,8 +419,8 @@ export default component$(() => {
         </Layout.AppBar>
         <Slot />
         {/* The floating Messages window: nothing until a page opens one; then a
-          `popover="manual"` in the top layer, outside the scaffold grid. Not on /admin. */}
-        {!inAdmin(loc.url.pathname) && <MessagesWindowHost />}
+          `popover="manual"` in the top layer, outside the scaffold grid. */}
+        <MessagesWindowHost />
         {/* Always mounted (see the task above). No `header`: the pane titles itself with the open
           companion's label. The body is the open companion's panel, nothing while closed (so
           Turnstile's script loads only once Contact is opened). */}

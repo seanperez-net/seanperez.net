@@ -46,11 +46,20 @@ test("owner's page: Profile card, Recent interactions, History", async ({
     recent.getByRole("link", { name: /welcome/i }).first(),
   ).toHaveAttribute("href", "/messages/sean-perez/");
 
-  // History: a site contact comes with the site; no "Last edited" until the visitor changes it.
+  // History: a site contact comes with the site; no "Last edited" until the visitor EDITS it.
+  // A star is not an edit (`editedAt`, owner 2026-11-25), an edit is.
   const history = article.locator("[data-contact-history]");
   await expect(history).toContainText("Added to contacts");
   await expect(history).not.toContainText("Last edited");
   await page.getByRole("button", { name: "Add to favorites" }).click();
+  await expect(
+    page.getByRole("button", { name: "Remove from favorites" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(history).not.toContainText("Last edited");
+  await page.getByRole("link", { name: "Edit", exact: true }).click();
+  await page.getByRole("textbox", { name: "Company" }).fill("Edited Co");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page).not.toHaveURL(/\?edit/);
   await expect(history).toContainText("Last edited · Today");
 });
 

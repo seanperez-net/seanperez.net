@@ -45,6 +45,13 @@ export const textFieldInputVariants = tv({
     "placeholder:duration-spring-fast-effects",
     "placeholder:ease-spring-fast-effects",
     "motion-reduce:placeholder:transition-none",
+    // ONE line, cut with an ellipsis (owner 2026-11-25: Messages' "Message Sean Perez" wrapped
+    // and overflowed its one-row textarea at 390px). A placeholder is a short hint; in a textarea
+    // it would otherwise wrap past the rows it was given. Where a browser does not draw the
+    // ellipsis on a placeholder it clips (`overflow: hidden`).
+    "placeholder:whitespace-nowrap",
+    "placeholder:overflow-hidden",
+    "placeholder:text-ellipsis",
     "-webkit-tap-highlight-color-transparent",
   ],
   variants: {

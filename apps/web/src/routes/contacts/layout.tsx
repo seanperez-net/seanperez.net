@@ -31,6 +31,7 @@ import {
   ManageLabelsDialog,
 } from "../../components/contacts-dialogs";
 import {
+  ContactRowActions,
   ContactsMerge,
   ContactsTrash,
   mergeGroups,
@@ -87,7 +88,7 @@ import {
   IMPORTED_LABEL_ID,
   listForPath,
 } from "../../content/contacts";
-import { getProfile } from "../../profile/profile.server";
+import { getProfile } from "@seanperez/data/profile/profile.server";
 import { cleanQuery } from "../../search/types";
 
 /**
@@ -791,6 +792,19 @@ export default component$(() => {
                             headline={row.name}
                             supportingText={row.supporting || undefined}
                             aria-label={`Open ${row.name}`}
+                            // Google's row actions (owner 2026-11-25): Star, Edit, More, beside
+                            // the link (`List.Item actions`), on hover / focus, always on touch.
+                            actions={
+                              <ContactRowActions
+                                rowKey={row.key}
+                                name={row.name}
+                                href={row.href}
+                                starred={!!row.starred}
+                                site={siteBases.value.find(
+                                  (b) => b.siteId === row.siteId,
+                                )}
+                              />
+                            }
                           />
                         ))}
                       </List.Root>

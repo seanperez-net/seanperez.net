@@ -22,8 +22,8 @@
  * OG images or JSON-LD: those always show the real owner (memory `contact-me-pitch-idea`).
  */
 import { z } from "zod";
-import { PROFILE_MAX } from "./limits";
-import { describeLink, safeLinkHref, type Profile } from "./profile";
+import { PROFILE_MAX } from "@seanperez/data/profile/limits";
+import { describeLink, safeLinkHref, type Profile } from "@seanperez/data/profile/profile";
 
 export const PROFILE_DOC = "profile.local";
 

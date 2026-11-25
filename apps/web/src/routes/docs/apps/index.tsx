@@ -1,7 +1,11 @@
 import { $, component$, useComputed$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import { Button, Layout, useSnackbar } from "@seanperez/ui";
-import { setAppRemovedIn, useMyApps } from "../../../apps/use-my-apps";
+import {
+  setAppRemovedIn,
+  showAppsNotice,
+  useMyApps,
+} from "../../../apps/use-my-apps";
 import {
   CONTACT_ADDED_NOTICE,
   CONTACT_REMOVED_NOTICE,
@@ -26,14 +30,17 @@ const LINK = "text-primary underline underline-offset-4";
 
 export default component$(() => {
   const apps = useMyApps();
-  const { showSnackbar$ } = useSnackbar();
+  const snackbar = useSnackbar();
   const busy = useSignal(false);
   const removed = useComputed$(() => apps.removed.includes("contact"));
   const set$ = $(async (remove: boolean) => {
     busy.value = true;
     const saved = await setAppRemovedIn(apps, "contact", remove);
     busy.value = false;
-    await showSnackbar$(
+    // In place of the previous apps snackbar: "is back" never queues behind "removed".
+    await showAppsNotice(
+      apps,
+      snackbar,
       !saved
         ? { message: NOT_KEPT_NOTICE }
         : remove

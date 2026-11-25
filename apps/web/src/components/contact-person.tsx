@@ -34,6 +34,7 @@ import {
   TRASH_DAYS,
   createLabel,
   labelNameTaken,
+  lastEdited,
   purgeContacts,
   recoverContacts,
   resetSite,
@@ -786,8 +787,9 @@ export const ContactPerson = component$<ContactPersonProps>(
                     1069522). Drawn in the browser only (`ready`): "Today" and the time zone
                     are the visitor's, never the server's. A site contact was added by the
                     site (`addedAt`) and is "edited" once the visitor changed it (their local
-                    override). "Last edited" is `updatedAt`, which every change moves (a star,
-                    a label too), as Google's `updateTime`. */}
+                    override). "Last edited" is `editedAt` (`lastEdited`, owner 2026-11-25): an
+                    edit, a photo, a linked profile, a merge; a star or a label does not move
+                    it (`updatedAt`, every change, stays the sync clock). */}
                 {state.ready.value && (
                   <section
                     aria-labelledby="person-history"
@@ -800,11 +802,11 @@ export const ContactPerson = component$<ContactPersonProps>(
                     >
                       History
                     </h3>
-                    {(!site || overridden) && record.updatedAt > 0 && (
+                    {(!site || overridden) && lastEdited(record) && (
                       <p class="text-body-medium text-on-surface">
                         Last edited{" "}
                         <span class="text-body-small text-on-surface-variant">
-                          · {formatWhen(record.updatedAt)}
+                          · {formatWhen(lastEdited(record)!)}
                         </span>
                       </p>
                     )}

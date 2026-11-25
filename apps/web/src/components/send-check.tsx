@@ -1,6 +1,6 @@
 import { component$, type Signal } from "@qwik.dev/core";
 import { Turnstile } from "@seanperez/ui";
-import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
+import { TURNSTILE_ACTIONS } from "@seanperez/data/account/turnstile-actions";
 import { useContactSetup } from "./contact-panel";
 
 /**

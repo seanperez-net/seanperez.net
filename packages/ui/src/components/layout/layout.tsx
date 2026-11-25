@@ -413,7 +413,25 @@ export const layoutVariants = tv({
     ],
     paneHeader: ["pane-header-bleed", "bg-surface"],
     paneHeaderRow: ["flex", "min-w-0", "items-center", "gap-2"],
-    paneTitle: ["min-w-0", "flex-1", "truncate", "text-title-large"],
+    // The title truncates with an ellipsis but keeps a readable minimum (6rem, about seven
+    // characters of title-large): actions that do not fit are the host's to move into an overflow
+    // menu (M3 app bars), never the title's to absorb down to one letter (2026-11-25, owner).
+    paneTitle: [
+      "min-w-24",
+      "flex-1",
+      "truncate",
+      "text-title-large",
+      "text-on-surface",
+    ],
+    // `Layout.PaneHeader leading` (an avatar or image after Back; M3 app bar "image").
+    // `display: contents` (second agent, 2026-11-25): the caller's element is the flex item, so
+    // when the caller hides it (by a container query) no empty item leaves an extra gap.
+    paneLeading: ["contents", "*:shrink-0"],
+    // Title over subtitle (M3 small app bar with subtitle: still 64dp).
+    paneTitleBlock: ["flex", "min-w-24", "flex-1", "flex-col"],
+    paneTitleInBlock: ["truncate", "text-title-large", "text-on-surface"],
+    // M3 app bar subtitle: label-medium (12/16, 500, 0.5 tracking), on-surface-variant.
+    paneSubtitle: ["truncate", "text-label-medium", "text-on-surface-variant"],
 
     // The supporting pane is ONE `<aside popover="auto">` (e-store's sheet, `layout.tsx`
     // `[data-qds-support-sheet]`): from 840px a pane in the support track, below 840px a modal
@@ -1812,6 +1830,18 @@ export type LayoutPaneHeaderProps = PropsOf<"header"> & {
    * NEW 2026-11-24 (owner: match Google Contacts).
    */
   hideTitle?: boolean;
+  /**
+   * A line under the title (M3 app bar SUBTITLE: label-medium, on-surface-variant; the small app
+   * bar keeps its 64dp height). Read with `hideTitle` too (sr-only). NEW 2026-11-25, not in
+   * e-store; PROOFED m3.material.io/components/app-bars/specs (read in Chrome 2026-11-25: anatomy
+   * "Subtitle", token `md.comp.app-bar.small.subtitle.font` 12/16 weight 500, color roles).
+   */
+  subtitle?: string;
+  /**
+   * Content between Back and the title: an avatar or a logo (M3 app bar: "An image or logo" may
+   * be added). JSX, decorative or labelled by the caller. NEW 2026-11-25, not in e-store.
+   */
+  leading?: JSXOutput;
 };
 
 /** A pane's own header: its title, then its actions (the default slot). Sticks while the pane scrolls. */
@@ -1826,6 +1856,8 @@ const LayoutPaneHeader = component$<LayoutPaneHeaderProps>(
     backLabel = "Back",
     backIcon = "arrow_back",
     hideTitle = false,
+    subtitle,
+    leading,
     class: className,
     ...rest
   }) => {
@@ -1845,12 +1877,26 @@ const LayoutPaneHeader = component$<LayoutPaneHeaderProps>(
               data-pane-header-back=""
             />
           )}
-          <Heading
-            id={titleId}
-            class={hideTitle ? "sr-only" : styles.paneTitle()}
-          >
-            {title}
-          </Heading>
+          {leading && (
+            <div data-pane-header-leading="" class={styles.paneLeading()}>
+              {freshJsx(leading)}
+            </div>
+          )}
+          {subtitle ? (
+            <div class={hideTitle ? "sr-only" : styles.paneTitleBlock()}>
+              <Heading id={titleId} class={styles.paneTitleInBlock()}>
+                {title}
+              </Heading>
+              <p class={styles.paneSubtitle()}>{subtitle}</p>
+            </div>
+          ) : (
+            <Heading
+              id={titleId}
+              class={hideTitle ? "sr-only" : styles.paneTitle()}
+            >
+              {title}
+            </Heading>
+          )}
           {/* The hidden title's place: the actions stay at the end. */}
           {hideTitle && <span class="flex-1" />}
           <Slot />

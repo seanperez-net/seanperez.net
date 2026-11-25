@@ -11,14 +11,15 @@ import {
 } from "@qwik.dev/router";
 import { Button, Layout } from "@seanperez/ui";
 import { ME_CHANGED_EVENT } from "../../account/me";
-import { peekLink, verifyLink } from "../../account/account.server";
+import { peekLink, verifyLink } from "@seanperez/data/account/account.server";
 import {
   accountsOpen,
   notifyOwnerLater,
   readSessionCookie,
   sessionOf,
   setSessionCookie,
-} from "../../account/contact.server";
+} from "@seanperez/data/account/contact.server";
+import { TOO_MANY, WEIGHT, allow } from "@seanperez/data/limits/limit.server";
 
 /**
  * `/verify/?t=<link token>`: the link in the verification email (plan 1.2). The GET only SHOWS a
@@ -64,6 +65,10 @@ export const useLink = routeLoader$(
 export const useConfirmLink = routeAction$(
   async (data, { platform, cookie, url, fail }) => {
     const env = platform.env;
+    // Rate limit FIRST (2026-11-25, `limits/limit.server.ts`): one route-wide key. A 32-byte
+    // token is out of reach of guessing; this only shields D1 from a flood.
+    if (!(await allow(env, "link", WEIGHT.link)))
+      return fail(429, { message: TOO_MANY });
     if (!accountsOpen(env)) return fail(503, { message: "Not open yet." });
     const current = await sessionOf(env, cookie, url);
     const result = await verifyLink(env.DB, data.t, current);
@@ -107,7 +112,8 @@ export default component$(() => {
   // asking for the code (found in Chrome, 2026-11-25).
   useTask$(({ track }) => {
     const done = track(() => confirm.value?.verified);
-    if (isBrowser && done) document.dispatchEvent(new CustomEvent(ME_CHANGED_EVENT));
+    if (isBrowser && done)
+      document.dispatchEvent(new CustomEvent(ME_CHANGED_EVENT));
   });
   // The token from the address (the loader keeps it out of its JSON).
   const loc = useLocation();
@@ -136,7 +142,11 @@ export default component$(() => {
               Confirm that the message to Sean was sent by {link.value.masked}.
             </p>
             <Form action={confirm}>
-              <input type="hidden" name="t" value={loc.url.searchParams.get("t") ?? ""} />
+              <input
+                type="hidden"
+                name="t"
+                value={loc.url.searchParams.get("t") ?? ""}
+              />
               <Button
                 type="submit"
                 label="Confirm"

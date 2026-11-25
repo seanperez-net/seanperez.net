@@ -3,9 +3,11 @@ import type { DocumentHead } from "@qwik.dev/router";
 import {
   Avatar,
   Checkbox,
+  Icon,
   IconButton,
   Layout,
   List,
+  Menu,
   Switch,
 } from "../../index";
 import { Knobs, knob, useKnobs } from "../../components/knobs";
@@ -15,6 +17,7 @@ const heading = "text-title-small text-on-surface-variant";
 export default component$(() => {
   const chosen = useSignal("wifi");
   const clicked = useSignal("nothing yet");
+  const starred = useSignal<string[]>(["grace"]);
   const sound = useSignal(true);
   const openGroups = useSignal<string[]>(["settings"]);
   const knobs = useKnobs({
@@ -203,6 +206,87 @@ export default component$(() => {
                   <Checkbox label="A checkbox row: its label is the whole text" />
                 }
               />
+            </List.Root>
+          </section>
+
+          <section class="grid gap-2">
+            {/* `List.Item actions` (NEW 2026-11-25): link rows with their own controls BESIDE the
+                link. Hover or focus a row to show them; on touch they always show. */}
+            <h2 class={heading} id="list-actions-label">
+              Link rows with actions (rovingFocus + actions). Last action:{" "}
+              {clicked.value}
+            </h2>
+            <List.Root
+              rovingFocus
+              aria-labelledby="list-actions-label"
+              look={v.look}
+              shape={v.shape}
+              padding={v.padding}
+              inset={v.inset}
+              density={v.density}
+            >
+              {[
+                { id: "ada", name: "Ada Lovelace", line: "Mathematician" },
+                { id: "alan", name: "Alan Turing", line: "Computer scientist" },
+                {
+                  id: "grace",
+                  name: "Grace Brewster Murray Hopper, a long name that runs under the actions",
+                  line: "Rear admiral",
+                },
+              ].map((p) => (
+                <List.Item
+                  key={p.id}
+                  href={`/list/?person=${p.id}`}
+                  start={<Avatar name={p.name} seed={p.id} decorative />}
+                  headline={p.name}
+                  supportingText={p.line}
+                  aria-label={`Open ${p.name}`}
+                  actions={
+                    <>
+                      <IconButton
+                        toggle
+                        selected={starred.value.includes(p.id)}
+                        icon="star"
+                        iconSelected="star_filled"
+                        label={`Star ${p.name}`}
+                        labelSelected={`Unstar ${p.name}`}
+                        onSelectedChange$={(on) => {
+                          const id = p.id;
+                          starred.value = on
+                            ? [...starred.value, id]
+                            : starred.value.filter((x) => x !== id);
+                          clicked.value = `${on ? "starred" : "unstarred"} ${id}`;
+                        }}
+                      />
+                      <IconButton
+                        icon="edit"
+                        label={`Edit ${p.name}`}
+                        onClick$={() => (clicked.value = `edit ${p.id}`)}
+                      />
+                      <Menu.Root>
+                        <Menu.Trigger
+                          look="plain"
+                          aria-label={`More actions for ${p.name}`}
+                        >
+                          <Icon name="more_vert" size="sm" />
+                        </Menu.Trigger>
+                        <Menu.Content align="end">
+                          <Menu.Item
+                            onClick$={() => (clicked.value = `export ${p.id}`)}
+                          >
+                            Export
+                          </Menu.Item>
+                          <Menu.Item
+                            onClick$={() => (clicked.value = `delete ${p.id}`)}
+                          >
+                            Delete
+                          </Menu.Item>
+                        </Menu.Content>
+                      </Menu.Root>
+                    </>
+                  }
+                />
+              ))}
             </List.Root>
           </section>
 

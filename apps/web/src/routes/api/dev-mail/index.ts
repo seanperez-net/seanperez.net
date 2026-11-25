@@ -1,5 +1,5 @@
 import type { RequestHandler } from "@qwik.dev/router";
-import { devMail } from "../../../mail/mail.server";
+import { devMail } from "@seanperez/data/mail/mail.server";
 
 /**
  * `GET /api/dev-mail?to=<address>`: `pnpm dev` ONLY. The last mail the dev console sender

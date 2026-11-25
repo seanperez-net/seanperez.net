@@ -31,7 +31,7 @@ import { $, sync$ } from "@qwik.dev/core";
  * imports included (Qwik rc.5 API, `sync$`), so the body is self-contained.
  *
  * Left alone: keys typed in a text field, keys inside a popup within the group (an open menu, a
- * select's list), keys with Alt / Ctrl / Meta (Alt+Left is the browser's Back), and keys an
+ * select's list), keys on a menu button inside an item (a row's "More"), keys with Alt / Ctrl / Meta (Alt+Left is the browser's Back), and keys an
  * inner handler already cancelled. Items inside such a popup, `inert` or hidden are skipped.
  */
 export const rovingKeys = sync$(
@@ -86,6 +86,19 @@ export const rovingKeys = sync$(
     const selector =
       container.getAttribute("data-roving-items") ||
       'a[href], button, [tabindex]:not([tabindex="-1"])';
+    // A menu button INSIDE an item (a list row's "More", `List.Item actions`) owns its keys: its
+    // arrows open the menu, and Home / End must not take focus to another row while it is the
+    // one in use. From e-store commit 2b8a5bb9c (2026-11-24, its `navigateListItems`: keys from
+    // `[aria-haspopup="menu"]` are left to the menu). A menu button that IS an item (a toolbar's)
+    // still moves with the arrows.
+    const menuButton = target.closest?.('[aria-haspopup="menu"]');
+    if (
+      menuButton &&
+      menuButton !== container &&
+      container.contains(menuButton) &&
+      !menuButton.matches(selector)
+    )
+      return;
     const items = Array.from(
       container.querySelectorAll<HTMLElement>(selector),
     ).filter(

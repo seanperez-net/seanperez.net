@@ -11,7 +11,7 @@ import {
 import type { AvatarPresence } from "@seanperez/ui";
 import { GUEST_ACCOUNT } from "../content/accounts";
 import { changeLocalDoc, onLocalDocChange, readLocalDoc } from "../local-store";
-import type { Profile } from "./profile";
+import type { Profile } from "@seanperez/data/profile/profile";
 import {
   PROFILE_DOC,
   applyProfileOverride,

@@ -1,0 +1,19 @@
+# Copy to .dev.vars (gitignored) for `pnpm dev:admin` / `wrangler dev`. NAMES ONLY here: this
+# repo is public. In production these are secrets on the `seanperez-net-admin` Worker
+# (`wrangler secret put <NAME>` from apps/admin), never `vars` in wrangler.jsonc.
+# Read by the Access gate once it moves here from apps/web (`.claude/rules/admin.md`). With any
+# of them unset, every build answers 403 (fails closed); only `vite dev`
+# (`import.meta.env.DEV`) skips the check, because Access cannot front localhost.
+
+# The Zero Trust team domain: https://<team-name>.cloudflareaccess.com
+ACCESS_TEAM_DOMAIN=
+# The Access application's Application Audience (AUD) tag
+ACCESS_POLICY_AUD=
+# The one email allowed in
+ACCESS_ALLOWED_EMAIL=
+
+# Contact accounts (the inbox's "Resend verification" and Reply). AUTH_SECRET must be the SAME
+# value as the site's (apps/web): the site checks the codes this app's resend makes. With no
+# RESEND_API_KEY, `pnpm dev:admin` prints mail to its console; a build sends nothing.
+AUTH_SECRET=
+RESEND_API_KEY=

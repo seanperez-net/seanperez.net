@@ -86,6 +86,11 @@ PROOFED 2026-11-23 against the material-web token files above, ARIA in HTML, Chr
 - Filled: line `on-surface-variant` (e-store `outline`), hover state layer, hover label stays
   `on-surface-variant`; error hover `on-error-container` for the label too.
 - The placeholder appears on focus (e-store hid it always).
+- The placeholder is ONE line, cut with an ellipsis (`::placeholder` `white-space: nowrap`,
+  `overflow: hidden`, `text-overflow: ellipsis`), in an `<input>` and a `<textarea>` alike
+  (2026-11-25, owner: Messages' "Message Sean Perez" wrapped and overflowed its one-row textarea
+  at 390px). Keep placeholders short hints; a textarea's longer guidance belongs in
+  `supportingText`. Where a browser draws no ellipsis on a textarea's placeholder it clips.
 - The trailing icon is always shown (e-store showed it only on focus or input; M3 does not hide it).
   Icons are centred in filled too, and are icon NAMES, not JSX.
 - The input fills the field and carries the padding; e-store's `[textarea]:` classes are not valid

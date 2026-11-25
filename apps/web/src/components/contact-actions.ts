@@ -3,7 +3,7 @@ import {
   createToken,
   sendAsSession,
   verifyCode,
-} from "../account/account.server";
+} from "@seanperez/data/account/account.server";
 import {
   accountsOpen,
   checkTurnstile,
@@ -12,10 +12,11 @@ import {
   sendVerificationLater,
   sessionOf,
   setSessionCookie,
-} from "../account/contact.server";
+} from "@seanperez/data/account/contact.server";
 import { DEMO } from "../demo/demo";
 import { MAX_BODY } from "../messages/messages-local";
-import { TURNSTILE_ACTIONS } from "../account/turnstile-actions";
+import { TURNSTILE_ACTIONS } from "@seanperez/data/account/turnstile-actions";
+import { TOO_MANY, WEIGHT, allow, sessionKey } from "@seanperez/data/limits/limit.server";
 
 /**
  * The contact account's actions besides the first send (`useSendMessage` in `contact-panel.tsx`):
@@ -40,6 +41,11 @@ export const useVerifyCode = routeAction$(
   async (data, { platform, cookie, url, fail }) => {
     if (!DEMO) return fail(404, { message: "Not found." });
     const env = platform.env;
+    // Rate limit FIRST (2026-11-25, `limits/limit.server.ts`), keyed by this browser's session
+    // hash (no D1 read). `WEIGHT.verify`: 5 tries a minute per browser, so wrong codes across tokens cannot hammer D1 (the 5 tries per token stay in D1).
+    const key = await sessionKey("verify", readSessionCookie(cookie, url));
+    if (!(await allow(env, key, WEIGHT.verify)))
+      return fail(429, { message: TOO_MANY });
     if (!accountsOpen(env)) return fail(503, { message: "Not open yet." });
     const session = await sessionOf(env, cookie, url);
     if (!session) {
@@ -108,7 +114,13 @@ export const useResendVerification = routeAction$(
       });
     }
     // After the response, as the first email (owner, 2026-11-25): a failure shows in /admin.
-    void sendVerificationLater(env, platform.ctx, url.origin, session.email, token);
+    void sendVerificationLater(
+      env,
+      platform.ctx,
+      url.origin,
+      session.email,
+      token,
+    );
     return { resent: true, verified: false };
   },
   {
@@ -128,6 +140,12 @@ export const useSendToSean = routeAction$(
   async (data, { platform, request, cookie, url, fail }) => {
     if (!DEMO) return fail(404, { message: "Not found.", noSession: false });
     const env = platform.env;
+    // Rate limit FIRST (2026-11-25, `limits/limit.server.ts`): this browser's session hash, no
+    // D1 read; before Siteverify and the send.
+    const key = await sessionKey("send", readSessionCookie(cookie, url));
+    if (!(await allow(env, key, WEIGHT.send))) {
+      return fail(429, { message: TOO_MANY, noSession: false });
+    }
     const session = accountsOpen(env)
       ? await sessionOf(env, cookie, url)
       : null;
