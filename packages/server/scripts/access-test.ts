@@ -59,6 +59,17 @@ test("the email is compared without case and the team domain is normalised", asy
   assert.equal((await verifyAccessToken(token, loose, keys)).ok, true);
 });
 
+test("several allowed addresses: each passes, anyone else is refused", async () => {
+  const two = { ...config, allowedEmail: ` ${EMAIL} , Second@Example.com ` };
+  for (const email of [EMAIL, "second@example.com"]) {
+    assert.deepEqual(await verifyAccessToken(await sign({ email }), two, keys), { ok: true });
+  }
+  const other = await verifyAccessToken(await sign({ email: "third@example.com" }), two, keys);
+  assert.deepEqual(other, { ok: false, reason: "email not allowed" });
+  const none = await verifyAccessToken(await sign({ email: EMAIL }), { ...config, allowedEmail: " , " }, keys);
+  assert.deepEqual(none, { ok: false, reason: "not configured" });
+});
+
 test("a missing token is refused", async () => {
   assert.equal((await verifyAccessToken(null, config, keys)).ok, false);
   assert.equal((await verifyAccessToken("", config, keys)).ok, false);

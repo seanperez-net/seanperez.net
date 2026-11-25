@@ -31,7 +31,10 @@ export interface AccessConfig {
   teamDomain?: string;
   /** The Access application's AUD tag. */
   audience?: string;
-  /** The one address allowed in. */
+  /**
+   * The addresses allowed in: one, or several separated by commas (owner 2026-11-25: both of his
+   * accounts). Compared case-insensitively; an empty list allows nobody.
+   */
   allowedEmail?: string;
 }
 
@@ -70,8 +73,11 @@ export async function verifyAccessToken(
 ): Promise<AccessResult> {
   const teamDomain = normalizeTeamDomain(config.teamDomain ?? "");
   const audience = config.audience?.trim();
-  const allowedEmail = config.allowedEmail?.trim().toLowerCase();
-  if (!teamDomain || !audience || !allowedEmail) {
+  const allowed = (config.allowedEmail ?? "")
+    .split(",")
+    .map((address) => address.trim().toLowerCase())
+    .filter(Boolean);
+  if (!teamDomain || !audience || allowed.length === 0) {
     return { ok: false, reason: "not configured" };
   }
   if (!token) return { ok: false, reason: "no token" };
@@ -82,7 +88,7 @@ export async function verifyAccessToken(
       algorithms: ALGORITHMS,
     });
     const email = typeof payload.email === "string" ? payload.email : "";
-    if (email.toLowerCase() !== allowedEmail) {
+    if (!email || !allowed.includes(email.toLowerCase())) {
       return { ok: false, reason: "email not allowed" };
     }
     return { ok: true };
