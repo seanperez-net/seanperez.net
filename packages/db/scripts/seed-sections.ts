@@ -8,7 +8,7 @@
  *
  * LOCAL ONLY: it opens apps/web's local D1 state (the one `pnpm dev` and `pnpm dev:admin` share,
  * rule A13) through wrangler's `getPlatformProxy`, with the admin's `wrangler.jsonc` (only `DB`).
- * There is no remote mode: production text is entered in the admin app (Profile > Résumé, or its
+ * There is no remote mode: production text is entered in the admin app (Profile > Sections, or its
  * Import JSON). Apply the migrations locally first; restart running dev servers after (rule D21).
  */
 import { readFile } from "node:fs/promises";
