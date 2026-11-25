@@ -105,13 +105,13 @@ export function toMapNode(report: IngestReport, now: number): MapNode {
     ...(report.snr !== undefined ? { snr: report.snr } : {}),
     ...(report.status ? { status: report.status } : {}),
     ts,
-    program: { label: "Live: reported by the device", status: "running" },
+    program: { label: "Live: reported by the device" },
   };
 }
 
 /**
  * What the hub sends a browser over `/api/nodes/live`, and what `GET /api/nodes` answers. Every
- * message is the WHOLE fleet (a few KB for ten nodes): no diffs to get out of step. `trails`
+ * message is EVERY real node (a few KB for ten nodes): no diffs to get out of step. `trails`
  * (the last positions of each moving node) comes with the first message and the snapshot only.
  */
 export type NodesMessage = {
@@ -119,8 +119,6 @@ export type NodesMessage = {
   type: "nodes";
   /** The hub's clock when it was sent (ms since the epoch). */
   at: number;
-  /** How often the hub ticks while someone watches (the client glides across it). */
-  tickMs: number;
   nodes: MapNode[];
   trails?: Record<string, LngLat[]>;
 };

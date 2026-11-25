@@ -1,12 +1,13 @@
 import type { NodesMessage } from "../nodes/node-schema";
 import { STALE_MS } from "./map-nodes";
 import type { MapNode, NodeSource } from "./map-nodes";
-import { createDummyNodeSource } from "./map-nodes-dummy";
 import type { LngLat } from "./map-url";
 
 /**
- * The LIVE node source (2026-11-24): the `NodeHub` Durable Object, the same fleet for every
- * visitor (PLAN.md "Maps NODES layer: live backend"). Browser only. Roles:
+ * The LIVE node source (2026-11-24): the `NodeHub` Durable Object, the same REAL devices for
+ * every visitor (PLAN.md "Maps NODES layer: live backend"). Browser only. Since 2026-11-25 there
+ * is no demo fleet behind it: with no real device reporting it has no nodes, and the map shows
+ * only this device (`this-device.ts`, `withThisDevice`). Roles:
  *
  * - THIS PAGE holds the stream: one WebSocket to `/api/nodes/live` while the tab is visible. A
  *   service worker cannot (the WebSocket spec opens connections with service-workers mode
@@ -19,12 +20,11 @@ import type { LngLat } from "./map-url";
  * `/api/nodes` snapshot (from the network, or the service worker's copy when offline); when the
  * socket is down, the last data it had, with nodes not heard from in `STALE_MS` shown offline;
  * when there is no data at all (`pnpm dev`, whose Vite server has no Durable Object; offline
- * before any visit), the in-browser dummy fleet. Live data replaces the dummy as soon as it
- * arrives.
+ * before any visit), no nodes.
  *
  * Reconnects with backoff (2 s doubling to 60 s, with jitter, so a hub restart does not bring
  * every tab back at once); closes the socket while the tab is hidden and opens it again when it
- * is shown (a hidden tab costs the free plan nothing). Messages from the hub are whole fleets;
+ * is shown (a hidden tab costs the free plan nothing). Messages from the hub carry every node;
  * this source never sends any (the hub closes a socket that does).
  */
 
@@ -55,7 +55,6 @@ export function createLiveNodeSource(): NodeSource {
   let firstTimer: ReturnType<typeof setTimeout> | undefined;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let attempts = 0;
-  let dummy: { source: NodeSource; stop: () => void } | null = null;
   let snapshotAsked = false;
 
   const emit = (nodes: MapNode[]) => {
@@ -68,30 +67,15 @@ export function createLiveNodeSource(): NodeSource {
     if (isLive) {
       live = true;
       attempts = 0;
-      stopDummy();
       emit(message.nodes);
     } else if (!live) {
-      stopDummy();
       emit(aged(message.nodes, Date.now()));
     }
   };
 
-  function startDummy() {
-    if (dummy) return;
-    const source = createDummyNodeSource();
-    dummy = { source, stop: source.subscribe(emit) };
-  }
-
-  function stopDummy() {
-    dummy?.stop();
-    dummy = null;
-  }
-
-  /** No live stream: the last data we had (aged), or the dummy when there is none. */
+  /** No live stream: the last data we had (aged), or no nodes. */
   function noStream() {
-    if (dummy) return;
-    if (reports.length) emit(aged(reports, Date.now()));
-    else startDummy();
+    emit(aged(reports, Date.now()));
   }
 
   async function askSnapshot() {
@@ -206,7 +190,6 @@ export function createLiveNodeSource(): NodeSource {
         if (listeners.size) return;
         document.removeEventListener("visibilitychange", onVisibility);
         disconnect();
-        stopDummy();
       };
     },
   };

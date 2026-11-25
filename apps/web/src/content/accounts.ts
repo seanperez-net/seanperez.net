@@ -151,41 +151,10 @@ export const ASSISTANT_ACCOUNT: Account = {
     "The site's assistant, an app with its own account. Today it is a placeholder: no AI is connected, its replies are canned and stay in your browser. Later it gets only the permissions it is granted, fewer than a person's.",
 };
 
-/**
- * Devices: accounts that post to a space (Truck 4 and Air sensor 7 in Devices). Their ids ARE
- * their map node ids (`/maps/?node=<id>`). Not in Contacts (PLAN.md: devices live in Devices and
- * Maps; Google Contacts lists people, not machines).
- */
-export const TRUCK_ACCOUNT: Account = {
-  id: "truck-4",
-  kind: "device",
-  name: "Truck 4",
-  icon: "local_shipping",
-  headline: "Device",
-  isApp: false,
-  role: "device",
-  scopes: ["spaces:post"],
-  grantedBy: OWNER_ACCOUNT.id,
-};
-
-export const SENSOR_ACCOUNT: Account = {
-  id: "sensor-7",
-  kind: "device",
-  name: "Air sensor 7",
-  icon: "sensors",
-  headline: "Device",
-  isApp: false,
-  role: "device",
-  scopes: ["spaces:post"],
-  grantedBy: OWNER_ACCOUNT.id,
-};
-
 export const ACCOUNTS: Account[] = [
   GUEST_ACCOUNT,
   OWNER_ACCOUNT,
   ASSISTANT_ACCOUNT,
-  TRUCK_ACCOUNT,
-  SENSOR_ACCOUNT,
 ];
 
 export const findAccount = (id: string) => ACCOUNTS.find((a) => a.id === id);

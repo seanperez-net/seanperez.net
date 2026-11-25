@@ -2,17 +2,18 @@ import type { IconName } from "@seanperez/ui";
 import type { LngLat } from "./map-url";
 
 /**
- * The Maps app's NODES layer (owner, 2026-11-24: devices "like lora nodes or wifi nodes ... like a
- * car or drone driving around ... gps fleet management"; later "one truck one drone one base
- * station one sensor etc"): what a node is, and the source the map reads live reports from.
- * New, not in e-store (its maps app has no device layer).
+ * The Maps app's NODES layer (owner, 2026-11-24: devices "like lora nodes or wifi nodes ... gps
+ * fleet management"): what a node is, and the source the map reads reports from. New, not in
+ * e-store (its maps app has no device layer).
  *
- * A source is anything with `snapshot()` and `subscribe()`: the LIVE one (`map-nodes-live.ts`,
- * the `NodeHub` Durable Object over a WebSocket, 2026-11-24) and the DUMMY one it falls back to
- * (`map-nodes-dummy.ts`, the same demo fleet simulated in the browser, each node driven by its
- * own PROGRAM, `map-nodes-programs.ts`). An external driver (a Node-RED / FlowFuse flow, a WebSocket from a
- * Durable Object, manual control) would be another `NodeSource`, or replace one node's reports
- * inside a merged source; the map does not change. Design note: `PLAN.md` "Maps NODES layer".
+ * Since 2026-11-25 (owner: "there should be no dummy device the only device that should be there
+ * is this device") there are NO made-up nodes. A node is either:
+ * - THIS DEVICE, the visitor's own browser (`this-device.ts`), placed from the connection's
+ *   approximate location (`/api/here`, Cloudflare's `request.cf`) or, if the visitor turns it on in
+ *   Devices, the browser's Geolocation;
+ * - a REAL device that reports to the live hub (`map-nodes-live.ts`, `POST /api/nodes/ingest`).
+ * A source is anything with `snapshot()` and `subscribe()`; `withThisDevice()` puts this device
+ * in front of the live source's nodes, and the map does not care which is which.
  *
  * Plain JSON only (it goes into the Qwik store): no class instances, no functions, no Dates.
  */
@@ -26,7 +27,10 @@ export type NodeKind =
   | "boat"
   | "printer"
   | "printer3d"
-  | "cnc";
+  | "cnc"
+  /** This device (`this-device.ts`), from the browser's user agent. */
+  | "phone"
+  | "computer";
 
 /**
  * A machine's own status (owner, 2026-11-24: "another device type printers ... 3d printers ...
@@ -65,12 +69,10 @@ export type MachineStatus =
       secondsLeft: number | null;
     };
 
-/** What drives a node now, for the detail card (JSON; the program itself is not stored). */
+/** Where a node's position comes from, for the detail card and the Devices rows. */
 export type NodeProgramInfo = {
-  /** "Road loop: 4 stops by OSRM", "Fixed: uplink every 15 s". */
+  /** "Live: reported by the device", "Approximate (from your network)". */
   label: string;
-  /** `loading`: waiting for its route; `fallback`: on the bundled path instead. */
-  status: "running" | "loading" | "fallback";
 };
 
 /** One node as the map and the panel see it (its latest report). */
@@ -110,8 +112,8 @@ export type NodeSource = {
   /** The latest report of every node. */
   snapshot(): MapNode[];
   /**
-   * Called with every node's latest report each time anything changes (the dummy: once a
-   * second). Returns the unsubscribe; the dummy stops its timer when no one listens.
+   * Called with every node's latest report each time anything changes. Returns the
+   * unsubscribe; the live source closes its socket when no one listens.
    */
   subscribe(callback: (nodes: MapNode[]) => void): () => void;
   /** Where each moving node has been, when the source knows (the live hub sends it). */
@@ -123,14 +125,14 @@ export type NodeSource = {
  * GPS-tracked vehicle, `drone`, `machine`: a printer or CNC machine).
  */
 // Labels name the DEVICE that reports, not what it rides on (owner, 2026-11-24: "is a car a
-// device"): the truck's and the boat's device is a GPS tracker (Traccar's model); the name
-// ("Truck 4") says what it is on.
+// device"): a truck's or a boat's device is a GPS tracker (Traccar's model); the node's name
+// says what it is on.
 export const NODE_KINDS: Record<
   NodeKind,
   {
     label: string;
     icon: IconName;
-    group: "radio" | "wifi" | "tracker" | "drone" | "machine";
+    group: "radio" | "wifi" | "tracker" | "drone" | "machine" | "self";
   }
 > = {
   gateway: {
@@ -150,7 +152,13 @@ export const NODE_KINDS: Record<
     icon: "precision_manufacturing",
     group: "machine",
   },
+  phone: { label: "Phone", icon: "smartphone", group: "self" },
+  computer: { label: "Computer", icon: "computer", group: "self" },
 };
+
+/** Smallest difference between two headings, -180..180 (the map's glide turns by it). */
+export const turn = (from: number, to: number) =>
+  ((to - from + 540) % 360) - 180;
 
 /** "18 min left", "40 s left". */
 const formatLeft = (s: number) =>

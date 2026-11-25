@@ -123,12 +123,12 @@ const toPlace = (f: PhotonFeature): MapPlace => {
   };
 };
 
-/** Photon layers that ARE a town (Havana comes back as a `district` with `lang=en`). */
+/** Photon layers that ARE a town (a city can come back as a `district` with `lang=en`, seen 2026-11-24). */
 const TOWN_LAYERS = new Set(["city", "locality", "district"]);
 
 /** Options a caller may add to a Photon request. */
 export type PhotonOptions = {
-  /** Photon's `lang` (`default`, `en`, `de`, `fr`): names in that language ("Havana", not "La Habana"). */
+  /** Photon's `lang` (`default`, `en`, `de`, `fr`): names in that language ("Mexico City", not "Ciudad de México"). */
   lang?: string;
 };
 

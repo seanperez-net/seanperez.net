@@ -11,8 +11,10 @@
  * - Direct messages: `sean-perez`, the owner's direct thread with the visitor (his ONE welcome
  *   message, which the visitor may delete in their browser), then `you`, the visitor's own
  *   "(you)" thread ("notes to self", empty).
- * - Spaces: `devices` (Truck 4 and Air sensor 7, two of the Maps / Devices nodes in
- *   `components/map-nodes-fleet.ts`, post their alerts) and `site-updates`.
+ * - Spaces: `site-updates`. (The `devices` space, where made-up devices posted alerts, was
+ *   dropped 2026-11-25 with the demo devices: the visitor's only device is their own browser,
+ *   `components/this-device.ts`, which has nothing to post, and the owner wants it to have
+ *   nothing to do with him.)
  * - Apps: `assistant` (listed ONCE, under Apps, since 2026-11-24: an app is not a person).
  * Since 2026-11-24 these sections are the scaffold's DRAWER (`MESSAGES_DRAWER_GROUPS`, owner:
  * "the shortcuts etc are in the drawer why are you not using our drawer for this"); the list
@@ -38,8 +40,6 @@ import {
   ASSISTANT_ACCOUNT,
   GUEST_ACCOUNT,
   OWNER_ACCOUNT,
-  SENSOR_ACCOUNT,
-  TRUCK_ACCOUNT,
   findAccount,
   toChatPerson,
 } from "./accounts";
@@ -50,14 +50,7 @@ export const ME: ChatPerson = toChatPerson(GUEST_ACCOUNT);
 /** The site's owner, a separate person (his welcome message, his posts in the spaces). */
 const SEAN = toChatPerson(OWNER_ACCOUNT);
 
-// Device accounts' ids ARE their map node ids (`/maps/?node=<id>`, `nodeOf`).
-const TRUCK = toChatPerson(TRUCK_ACCOUNT);
-const SENSOR = toChatPerson(SENSOR_ACCOUNT);
 const ASSISTANT = toChatPerson(ASSISTANT_ACCOUNT);
-
-/** A member's map node, if its account is a device. */
-export const nodeOf = (person: ChatPerson) =>
-  findAccount(person.id)?.kind === "device" ? person.id : null;
 
 /** A member's Contacts page, if its account has one (the owner, the assistant). */
 export const contactOf = (person: ChatPerson) =>
@@ -103,8 +96,9 @@ const said = (
 /**
  * Embeds in the demo (2026-11-24, owner: "our chat also should have links able to be embedded
  * like for useContact in the message"): a person chip (`<@id>`) is an ACCOUNT with its Contacts
- * page; a place chip (`<#id>`) opens the map there (`?at=<lat>,<lng>,<zoom>z`,
- * `components/map-url.ts`). Link cards are static data: nothing is fetched.
+ * page; a place chip (`<#id>`) would open the map there (`?at=<lat>,<lng>,<zoom>z`,
+ * `components/map-url.ts`; none in the demo since 2026-11-25). Link cards are static data:
+ * nothing is fetched.
  */
 const personRef = (person: ChatPerson): ChatRef => {
   const contact = findAccount(person.id)?.contactId;
@@ -115,14 +109,6 @@ const personRef = (person: ChatPerson): ChatRef => {
     href: contact ? `/contacts/${contact}/` : null,
   };
 };
-const PARQUE_CENTRAL: ChatRef = {
-  kind: "place",
-  id: "parque-central",
-  label: "Parque Central",
-  // The truck's first stop (`components/map-nodes-fleet.ts`), lat / lng.
-  href: "/maps/?at=23.1378,-82.3577,17z",
-};
-
 export const THREADS: DemoThread[] = [
   {
     id: "assistant",
@@ -138,62 +124,6 @@ export const THREADS: DemoThread[] = [
         "a1",
         "2026-11-24T15:00:00Z",
         "Hi! I'm the assistant's placeholder. No AI is connected to this demo yet: my replies are canned, and nothing you type here leaves this page.",
-      ),
-    ],
-  },
-  {
-    id: "devices",
-    kind: "space",
-    person: { id: "devices", name: "Devices", icon: "groups" },
-    title: "Devices",
-    subtitle: "Space · 3 members",
-    // No Sean (2026-11-25): the admin account only sends messages to everyone, it does not chat.
-    members: [ME, TRUCK, SENSOR],
-    unread: 2,
-    mentionsMe: true,
-    messages: [
-      said(
-        SENSOR,
-        "d1",
-        "2026-11-22T09:00:00Z",
-        "Daily report: air quality good, 26 °C, humidity 71%.",
-      ),
-      said(
-        TRUCK,
-        "d2",
-        "2026-11-23T13:10:00Z",
-        "Route started: 4 stops, <#parque-central> first.",
-        undefined,
-        { refs: [PARQUE_CENTRAL] },
-      ),
-      said(
-        TRUCK,
-        "d4",
-        "2026-11-23T13:31:00Z",
-        "Stop 1 of 4: <#parque-central>. On time.",
-        undefined,
-        { refs: [PARQUE_CENTRAL] },
-      ),
-      said(
-        SENSOR,
-        "d5",
-        "2026-11-24T09:00:00Z",
-        "Daily report: humidity 88%, above the 85% alert level.",
-      ),
-      said(
-        TRUCK,
-        "d6",
-        "2026-11-24T14:02:00Z",
-        "Stop 3 of 4: Plaza de la Revolución. 6 min behind.",
-      ),
-      said(
-        TRUCK,
-        "d7",
-        "2026-11-24T14:03:00Z",
-        // Names the viewer (Shortcuts > Mentions): the guest, whoever they are.
-        `<@${GUEST_ACCOUNT.id}> battery at 18%. Heading back to base after the last stop.`,
-        undefined,
-        { refs: [personRef(ME)] },
       ),
     ],
   },
@@ -273,7 +203,7 @@ export const THREADS: DemoThread[] = [
         SEAN,
         "w1",
         "2026-11-25T12:00:00Z",
-        "Hi, and welcome! I'm Sean, I built this site.\n\nEverything here is a working app, and this copy is yours: your profile, contacts, messages and status are saved in this browser only, and nothing you change is sent to me or to anyone else.\n\nReplies in this chat stay on your device too. To really reach me, use the Contact me app: that one comes straight to me.\n\nYou can delete this message whenever you like. Enjoy looking around!",
+        "Hi, and welcome! I'm Sean, I built this site.\n\nEverything here is a working app, and this copy is yours: your profile, contacts, messages and status are saved in this browser only, and nothing you change is sent to me or to anyone else.\n\nWant to reach me? Write here and press Send: Contact me opens with your message, add your name and email, and it comes straight to me.\n\nYou can delete this message whenever you like. Enjoy looking around!",
       ),
     ],
   },
@@ -306,7 +236,7 @@ export const MESSAGES_SECTIONS: {
     label: "Direct messages",
     threads: [OWNER_ACCOUNT.chatId!, GUEST_ACCOUNT.chatId!],
   },
-  { id: "spaces", label: "Spaces", threads: ["devices", "site-updates"] },
+  { id: "spaces", label: "Spaces", threads: ["site-updates"] },
   { id: "apps", label: "Apps", threads: ["assistant"] },
 ];
 
@@ -402,7 +332,7 @@ export function toConversation(
     members: t.members,
     lastMessage: last
       ? {
-          // A space's preview says who wrote it ("Truck 4: ..."); "You: " is the row's own.
+          // A space's preview says who wrote it ("Sean Perez: ..."); "You: " is the row's own.
           // Tokens as names (`<@id>` -> "@Name"), never raw.
           body:
             t.kind === "space" && !last.mine

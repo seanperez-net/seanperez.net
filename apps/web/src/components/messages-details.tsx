@@ -15,7 +15,6 @@ import {
   contactOf,
   findThread,
   isShortcut,
-  nodeOf,
 } from "../content/conversations";
 
 /**
@@ -26,9 +25,8 @@ import {
  * inert and focus return), only on a conversation's route (`isMessagesThreadPath`). Second agent,
  * 2026-11-24: a Modal is not M3's supporting pane, and the pane has no width for a third column.
  *
- * Content: what the conversation is, then its members; a device member is a link to its node on
- * the map (`/maps/?node=<id>`; this replaces the old per-device "Show on map" header button,
- * which a space with two devices cannot have).
+ * Content: what the conversation is, then its members; a member with a Contacts page links to
+ * it. (Device members, linked to their map node, went with the demo devices on 2026-11-25.)
  */
 export const MESSAGES_DETAILS_COMPANION = {
   id: "messages-details",
@@ -82,7 +80,6 @@ export const MessagesDetailsPanel = component$(() => {
             </h3>
             <List.Root padding="none">
               {thread.value.members.map((person) => {
-                const node = nodeOf(person);
                 // An app's account has a Contacts page (accounts, 2026-11-24); the viewer's own
                 // row stays plain.
                 const contact = person.id === ME.id ? null : contactOf(person);
@@ -99,23 +96,13 @@ export const MessagesDetailsPanel = component$(() => {
                       person.id === ME.id ? ownLabel(own.fields) : person.name
                     }
                     supportingText={
-                      node
-                        ? "Device · show on map"
-                        : contact
-                          ? findAccount(person.id)?.isApp
-                            ? "App · view contact"
-                            : "View contact"
-                          : undefined
+                      contact
+                        ? findAccount(person.id)?.isApp
+                          ? "App · view contact"
+                          : "View contact"
+                        : undefined
                     }
-                    href={
-                      node
-                        ? `/maps/?node=${node}`
-                        : contact
-                          ? `/contacts/${contact}/`
-                          : undefined
-                    }
-                    // Not on sight: the Maps route carries MapLibre (perf audit, 2026-11-24).
-                    prefetchBundles="intent"
+                    href={contact ? `/contacts/${contact}/` : undefined}
                   />
                 );
               })}

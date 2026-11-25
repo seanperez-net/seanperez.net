@@ -1,6 +1,6 @@
 # ChatTypingIndicator
 
-"Truck 4 is typing…" / "Assistant is replying…" under the transcript. e-store's typing line
+"Ada is typing…" / "Assistant is replying…" under the transcript. e-store's typing line
 (`chat-workspace.tsx`: an `aria-live="polite"` paragraph), plus three decorative dots (new).
 
 Props: `name` (`string | null`: nothing shows or is announced without it), `kind`

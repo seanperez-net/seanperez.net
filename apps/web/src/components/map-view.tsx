@@ -27,9 +27,14 @@ import {
 } from "./map-services";
 import { readPref, writePref } from "../local-store";
 import { createLiveNodeSource } from "./map-nodes-live";
-import { NODE_KINDS } from "./map-nodes";
+import { NODE_KINDS, turn } from "./map-nodes";
 import type { MapNode } from "./map-nodes";
-import { turn } from "./map-nodes-geo";
+import {
+  THIS_DEVICE_NODE_ID,
+  devicePoint,
+  loadThisDevice,
+  withThisDevice,
+} from "./this-device";
 import {
   MAPS_CAMERA_KEY,
   MAPS_PREFS_KEY,
@@ -95,16 +100,36 @@ const STYLE_LIGHT = "https://tiles.openfreemap.org/styles/positron";
 const STYLE_DARK = "https://tiles.openfreemap.org/styles/dark";
 
 /**
- * Where the map opens with nothing in the URL or storage: Cuba (owner, 2026-11-24: "open maps on
- * cuba"), the whole island fitted to the map (`bounds`, so a phone gets a lower zoom than a
- * desktop). The dummy nodes live in Havana. `DEFAULT_CAMERA` is only the store's first value
- * until the map reports its fitted camera.
+ * Where the map opens with nothing in the URL or storage (owner, 2026-11-25: the map loads
+ * where THIS device is): this device's last known point (`this-device.ts`: precise if the
+ * visitor turned it on, else the approximate one from `/api/here`) at `DEVICE_ZOOM` /
+ * `PRECISE_ZOOM`; then, when `/api/here` answers, the map flies there. With no point at all
+ * (first visit offline, Tor, no `request.cf` location): the whole world (`WORLD_BOUNDS`, fitted,
+ * so a phone gets a lower zoom than a desktop), and the Devices panel says "Location unknown".
+ * Replaces the 2026-11-24 opening view and its demo nodes.
  */
-const CUBA_BOUNDS: [LngLat, LngLat] = [
-  [-85.0, 19.8],
-  [-74.1, 23.3],
+const WORLD_BOUNDS: [LngLat, LngLat] = [
+  [-170, -58],
+  [170, 75],
 ];
-const DEFAULT_CAMERA: MapCamera = { center: [-79.55, 21.55], zoom: 5.5 };
+const WORLD_CAMERA: MapCamera = { center: [0, 20], zoom: 1.5 };
+/** City level: the approximate point is a city at best. */
+const DEVICE_ZOOM = 11;
+const PRECISE_ZOOM = 15;
+/**
+ * `follow` is set by the map task when the map opened on this device's default view (no `?at=`, saved
+ * camera, `?q=` or `?node=`): the nodes task then flies to this device's newest point once.
+ * Module scope, browser only (one map on the page; `redrawNodes` below does the same).
+ */
+// An object, not `let`s: the optimizer moves each task into its own module, which IMPORTS
+// module-scope bindings (read-only there); a property can still be set (seen in WebKit
+// 2026-11-25: "Attempted to assign to readonly property").
+const follow: {
+  /** Fly to this device once. */
+  once: boolean;
+  /** The point (`"lng,lat"`) the map opened on, or null: no flight to the same place. */
+  start: string | null;
+} = { once: false, start: null };
 
 const CREDITS = [
   '<a href="https://photon.komoot.io/" target="_blank" rel="noopener">Search: Photon by komoot</a>',
@@ -163,8 +188,8 @@ const NODE_ARROW = "maps-node-arrow";
 /** Positions kept per moving node for its trail. */
 const TRAIL_LENGTH = 30;
 /**
- * Motion is drawn across the time between two reports, measured (the live hub ticks every 3 s,
- * the in-browser dummy every second), within these bounds.
+ * Motion is drawn across the time between two reports, measured (a real device reports at
+ * most every 5 s through the hub), within these bounds.
  */
 const NODE_GLIDE_MIN_MS = 500;
 const NODE_GLIDE_MAX_MS = 5000;
@@ -315,6 +340,9 @@ function nodeLayers(state: MapsState, font?: string[]): LayerSpecification[] {
     // tone, apart from the trackers' `primary` and Wi-Fi's neutral fallback.
     "machine",
     role("on-primary-container"),
+    // This device (2026-11-25): `primary`, the usual "you are here" colour.
+    "self",
+    role("primary"),
     role("on-surface-variant"),
   ];
   const layers: LayerSpecification[] = [
@@ -562,7 +590,15 @@ export const MapView = component$<MapViewProps>(
         support.value = true;
       }
       const saved = initial.camera ?? prefs.camera;
-      const camera = saved ?? DEFAULT_CAMERA;
+      // No `?at=` and no saved camera: this device's last known point, else the world.
+      const device = loadThisDevice();
+      const point = devicePoint(device);
+      const start: MapCamera | null = point
+        ? { center: point, zoom: device.precise ? PRECISE_ZOOM : DEVICE_ZOOM }
+        : null;
+      follow.once = !saved && !initial.query && !initial.node;
+      follow.start = point ? point.join(",") : null;
+      const camera = saved ?? start ?? WORLD_CAMERA;
       state.camera = camera;
       state.ready = true;
 
@@ -578,10 +614,10 @@ export const MapView = component$<MapViewProps>(
         style: current,
         center: camera.center,
         zoom: camera.zoom,
-        // No `?at=` and no saved camera: fit Cuba (overrides center / zoom, MapLibre's docs).
-        ...(saved
+        // Nothing known at all: fit the world (overrides center / zoom, MapLibre's docs).
+        ...(saved || start
           ? {}
-          : { bounds: CUBA_BOUNDS, fitBoundsOptions: { padding: 24 } }),
+          : { bounds: WORLD_BOUNDS, fitBoundsOptions: { padding: 24 } }),
         // Every style the map loads: the overrides written in, our layers added (MapLibre reuses
         // this transform for later `setStyle` calls).
         transformStyle: (_previous, next) => {
@@ -614,7 +650,7 @@ export const MapView = component$<MapViewProps>(
         state.camera = { center: [c.lng, c.lat], zoom: map.getZoom() };
       };
       map.on("moveend", keepCamera);
-      // The Cuba fit happens in the constructor (no `moveend`): record the fitted view.
+      // The world fit happens in the constructor (no `moveend`): record the fitted view.
       if (!saved) keepCamera();
       // The heading arrow, made on first use and again after each style swap drops it.
       map.setMissingStyleImageResolver((id) => {
@@ -712,20 +748,20 @@ export const MapView = component$<MapViewProps>(
       if (map && map.isStyleLoaded()) syncData(map, state);
     });
 
-    // The Nodes layer: one source (the live hub, `map-nodes-live.ts`, which falls back to the
-    // in-browser dummy), its reports into the
+    // The Nodes layer: one source (this device, `this-device.ts`, in front of the live hub's
+    // real devices, `map-nodes-live.ts`), its reports into the
     // store once a tick (the panel), the trails once a tick, and the points drawn GLIDING from
     // where they are to the new report across one tick (a requestAnimationFrame loop, at most
     // ~30 fps; the browser pauses it in a hidden tab). Under prefers-reduced-motion there is no
     // loop: the points jump once a tick. MapLibre keeps one worker update in flight and drops the
     // waiting ones, so frames never pile up (reviewed in maplibre-gl 6.19's `setData`).
     // Started with the map, stopped with it: leaving /maps/ unmounts this component; the cleanup
-    // cancels the frame, unsubscribes (which stops the dummy's timer and its route requests).
+    // cancels the frame, unsubscribes (which closes the hub's socket).
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track, cleanup }) => {
       const map = track(() => mapRef.value);
       if (!map) return;
-      const source = createLiveNodeSource();
+      const source = withThisDevice(createLiveNodeSource());
       const trails = new Map<string, LngLat[]>();
       /** The hub's trails are taken once, so a new visitor sees where vehicles have been. */
       let trailsSeeded = false;
@@ -786,14 +822,36 @@ export const MapView = component$<MapViewProps>(
         if (frame) settled = false;
         else draw(to);
       };
-      // `?node=<id>`: fly to it once, on its first report (not over a `?at=` view).
+      // `?node=<id>`: fly to it once, on the first report that has it (not over a `?at=` view).
       let flewToNode = !initial.node || !!initial.camera;
       const unsubscribe = source.subscribe((nodes: MapNode[]) => {
         if (!flewToNode) {
-          flewToNode = true;
           const node = nodes.find((n) => n.id === initial.node);
-          if (node)
-            state.flyTo = { center: node.lngLat, zoom: 15, seq: Date.now() };
+          if (node) {
+            flewToNode = true;
+            // This device's approximate point is a city at best: city zoom for it.
+            const approximate =
+              node.id === THIS_DEVICE_NODE_ID &&
+              node.program.label.startsWith("Approximate");
+            state.flyTo = {
+              center: node.lngLat,
+              zoom: approximate ? DEVICE_ZOOM : 15,
+              seq: Date.now(),
+            };
+          }
+        }
+        // The default view follows this device once, when its point is new (the fresh
+        // `/api/here` answer, or the first one ever).
+        const own = follow.once
+          ? nodes.find((n) => n.id === THIS_DEVICE_NODE_ID)
+          : undefined;
+        if (own && own.lngLat.join(",") !== follow.start) {
+          follow.once = false;
+          state.flyTo = {
+            center: own.lngLat,
+            zoom: Math.max(map.getZoom(), DEVICE_ZOOM),
+            seq: Date.now(),
+          };
         }
         if (!trailsSeeded) {
           const known = source.trails?.() ?? {};

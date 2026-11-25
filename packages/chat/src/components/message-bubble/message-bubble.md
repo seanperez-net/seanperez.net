@@ -39,7 +39,7 @@ Status (outgoing only): `sending` (schedule), `sent` (check), `delivered` / `rea
 
 ## ARIA
 
-- The sender and time are said in words in every bubble (an sr-only "Truck 4, 2:03 PM:" before
+- The sender and time are said in words in every bubble (an sr-only "Ada, 2:03 PM:" before
   the body): side and colour say nothing to a screen reader, and a grouped bubble shows no name.
   The visual header line is `aria-hidden` (it would repeat them).
 - `<time datetime>` in the header. `aria-busy="true"` while `streaming`.

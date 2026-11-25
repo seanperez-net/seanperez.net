@@ -43,7 +43,7 @@ function searchLater(
 
 /**
  * The same place search outside the Maps app (no map, so no bias): the Location fields
- * (`place-field.tsx`). Photon names in `lang` ("Havana", not "La Habana").
+ * (`place-field.tsx`). Photon names in `lang` ("Mexico City", not "Ciudad de México").
  */
 export const usePlaceSuggestions = (
   query: Signal<string>,

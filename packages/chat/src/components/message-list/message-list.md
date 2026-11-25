@@ -11,7 +11,7 @@ log, the day headings and bubbles (not flat rows; Google Chat's DM anatomy, see
 | Prop              | Type                  | Default   |                                                        |
 | ----------------- | --------------------- | --------- | ------------------------------------------------------ |
 | `messages`        | `ChatMessage[]`       | required  | Oldest first                                           |
-| `label`           | `string`              | required  | The log's name: "Messages with Truck 4"                |
+| `label`           | `string`              | required  | The log's name: "Messages with Ada"                |
 | `streaming`       | `ChatMessage \| null` | -         | A reply still arriving, drawn after the log (see ARIA) |
 | `labels`          | `Partial<ChatLabels>` | English   | Passed to the bubbles                                  |
 | `onDelete$`       | `QRL<(id) => void>`   | -         | Each message gets an actions menu with Delete (2026-11-25); the host confirms and deletes |

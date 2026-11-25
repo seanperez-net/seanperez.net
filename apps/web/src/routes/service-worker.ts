@@ -27,7 +27,8 @@
 //   every id; per-id copies would fill the cache with identical pages. The page corrects its URL
 //   when the shell was another id's (`routes/contacts/local/[id]/index.tsx`).
 // - LIVE NODES: the `/api/nodes` snapshot network first into the pages cache (offline: the last
-//   known fleet, shown with stale nodes offline by `map-nodes-live.ts`). The live WebSocket and
+//   known real devices, shown with stale nodes offline by `map-nodes-live.ts`; `/api/here` is
+//   NEVER stored, it is one visitor's location). The live WebSocket and
 //   the ingest POST are never handled here.
 // - MAP TILES from OpenFreeMap: tiles, fonts and sprites cache first (their URLs are versioned),
 //   style and TileJSON network first; `spn-tiles`, capped, kept across builds.
@@ -287,7 +288,7 @@ self.addEventListener("fetch", (event) => {
     // Loader JSON is `private` by Qwik's default only (see `storable`).
     event.respondWith(networkFirst(request, PAGES, PAGES_MAX, true));
   } else if (path === "/api/nodes") {
-    // The live nodes' snapshot (2026-11-24): offline, the map shows the last known fleet.
+    // The live nodes' snapshot (2026-11-24): offline, the map shows the last known devices.
     // Its WebSocket (`/api/nodes/live`) never reaches a service worker (the WebSocket spec opens
     // it with service-workers mode "none"), and device POSTs are not GETs.
     event.respondWith(networkFirst(request, PAGES, PAGES_MAX));

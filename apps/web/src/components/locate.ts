@@ -51,3 +51,53 @@ export function locateOnce(): Promise<LngLat> {
     );
   });
 }
+
+/** What Devices says when precise location fails (no "type the place": there is no field). */
+export const PRECISE_TEXT = {
+  denied:
+    "Location permission was not given. This device stays on its approximate location.",
+  unavailable:
+    "Your precise location is not available. This device stays on its approximate location.",
+  timeout: "Finding your precise location took too long. Try again.",
+  insecure: "Precise location needs a secure (https) page.",
+} as const;
+
+/** A fresh, precise position and its accuracy (metres, 95% confidence per the spec). */
+export type PrecisePosition = { lngLat: LngLat; accuracy: number };
+
+/**
+ * Devices' "Use precise location" (2026-11-25): ONE fresh, high-accuracy position, only from that
+ * click (never on load). Same MDN reading as `locateOnce` (above); here `enableHighAccuracy: true`
+ * (GPS where there is one) and `maximumAge: 0` (MDN: forces a fresh reading), and the
+ * `coords.accuracy` in metres. Rejects with a `LocateError` carrying a `PRECISE_TEXT` message.
+ */
+export function locatePrecise(): Promise<PrecisePosition> {
+  return new Promise((resolve, reject) => {
+    if (!window.isSecureContext) {
+      reject(new LocateError(PRECISE_TEXT.insecure));
+      return;
+    }
+    if (!("geolocation" in navigator)) {
+      reject(new LocateError(PRECISE_TEXT.unavailable));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          lngLat: [position.coords.longitude, position.coords.latitude],
+          accuracy: position.coords.accuracy,
+        }),
+      (error) =>
+        reject(
+          new LocateError(
+            error.code === 1
+              ? PRECISE_TEXT.denied
+              : error.code === 3
+                ? PRECISE_TEXT.timeout
+                : PRECISE_TEXT.unavailable,
+          ),
+        ),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
+  });
+}

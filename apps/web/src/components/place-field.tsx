@@ -31,7 +31,7 @@ export type PlaceFieldProps = {
   error?: string;
 };
 
-/** Photon's language for the names: the site is English ("Havana", not "La Habana"). */
+/** Photon's language for the names: the site is English ("Mexico City", not "Ciudad de México"). */
 const LANG = "en";
 
 const SUPPORTING =

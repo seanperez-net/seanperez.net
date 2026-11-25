@@ -12,7 +12,7 @@ import type { NodesMessage } from "./node-schema";
  * device's POST. Read in the installed `@qwik.dev/router` 2.0.0-rc.5
  * (`middleware/cloudflare-pages`, `chunks/user-response.mjs` `checkCSRF`).
  *
- * - `GET /api/nodes`: the whole fleet as JSON (`NodesMessage` with trails), kept 5 s in this
+ * - `GET /api/nodes`: every real node as JSON (`NodesMessage` with trails), kept 5 s in this
  *   data centre's cache (Cache API) so page loads do not each wake the hub.
  * - `GET /api/nodes/live`: a WebSocket to the hub (read-only for visitors).
  * - `POST /api/nodes/ingest`: a device's report (`node-schema.ts`), behind the secret
@@ -20,10 +20,10 @@ import type { NodesMessage } from "./node-schema";
  *
  * Anything else: `null`, for the Qwik router. Not served under `pnpm dev` (Vite runs the Qwik
  * router only, and `getPlatformProxy` cannot run a Durable Object of this Worker): the page then
- * falls back to the in-browser dummy (`map-nodes-live.ts`).
+ * shows no real devices, only this device (`map-nodes-live.ts`, `this-device.ts`).
  */
 
-const HUB = "fleet";
+const HUB = "nodes";
 const SNAPSHOT_TTL_S = 5;
 const MIN_TOKEN_LENGTH = 32;
 

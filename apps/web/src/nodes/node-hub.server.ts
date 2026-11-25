@@ -1,33 +1,27 @@
 import { DurableObject } from "cloudflare:workers";
 import type { MapNode } from "../components/map-nodes";
 import { NODE_KINDS, STALE_MS } from "../components/map-nodes";
-import { createFleet } from "../components/map-nodes-fleet";
-import type { Fleet } from "../components/map-nodes-fleet";
 import type { LngLat } from "../components/map-url";
 import type { NodesMessage } from "./node-schema";
 
 /**
- * `NodeHub`: ONE Durable Object (`getByName("fleet")`, `node-api.ts`) that every visitor's map
- * reads, so all of them see the SAME nodes moving (2026-11-24; design and cost math: PLAN.md
- * "Maps NODES layer: live backend"). SQLite-backed (`new_sqlite_classes`, the only kind on
- * Workers Free).
+ * `NodeHub`: ONE Durable Object (`getByName("nodes")`, `node-api.server.ts`) that relays REAL
+ * devices to every visitor's map (2026-11-24; design and cost math: PLAN.md "Maps NODES layer:
+ * live backend"). SQLite-backed (`new_sqlite_classes`, the only kind on Workers Free).
  *
- * - The DEMO fleet runs HERE, in memory (`createFleet()`, the same programs as the browser's
- *   dummy). The truck drives the bundled copy of its OSRM route: the hub never calls OSRM.
- *   Lost when the object is evicted (nobody watching for a while); it starts again from its
- *   first positions. Nothing of it is stored.
- * - REAL nodes (from `ingest()`) are stored, one row each, so they survive eviction; a real node
- *   with a demo node's id replaces it on the map. At most `MAX_REAL` real nodes; rows older
+ * - 2026-11-25 (owner: "there should be no dummy device"): the demo fleet and its 3 s alarm are
+ *   GONE. The hub only stores and broadcasts what devices report through `ingest()`. With no real
+ *   devices it does nothing: no alarm, no writes. The visitor's own device is never sent here (it
+ *   lives in their browser, `components/this-device.ts`), so no visitor sees another's location.
+ * - REAL nodes are stored, one row each, so they survive eviction. At most `MAX_REAL`; rows older
  *   than `REAL_TTL_MS` are dropped.
  * - Browsers connect with the WebSocket HIBERNATION API (`ctx.acceptWebSocket`): the object is
  *   not billed for duration while it waits between events. They only listen: any message from
- *   a browser closes its socket (the demo is read-only).
- * - TIME is ONE alarm, every `TICK_MS`, armed when a socket connects and re-armed by each tick
- *   only while a socket is still open. No sockets: no alarm, the object goes idle, then away.
+ *   a browser closes its socket (the site is read-only).
+ * - Sockets older than `SOCKET_LIFETIME_MS` are closed (1000, "reconnect") whenever the hub wakes
+ *   for a new socket or a report; the page opens a new one.
  */
 
-/** One tick every 3 s while someone watches (the map glides between ticks; cost: PLAN.md). */
-export const TICK_MS = 3000;
 const TRAIL_LENGTH = 30;
 const MAX_SOCKETS = 500;
 /** Sockets per visitor IP (`CF-Connecting-IP`, a tag in memory only, never stored). */
@@ -56,7 +50,6 @@ export type IngestResult =
 type RealRow = { id: string; report: string; trail: string; at: number };
 
 export class NodeHub extends DurableObject<Env> {
-  private fleet: Fleet;
   private real = new Map<string, MapNode>();
   private trails = new Map<string, LngLat[]>();
   private lastIngest = new Map<string, number>();
@@ -64,9 +57,6 @@ export class NodeHub extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.fleet = createFleet();
-    // No route context: the truck keeps its bundled road line (`roadLoop`'s fallback).
-    this.fleet.start({ route: () => Promise.resolve(null) });
     const sql = ctx.storage.sql;
     // Schema only (synchronous SQL; nothing to await).
     sql.exec(
@@ -94,23 +84,13 @@ export class NodeHub extends DurableObject<Env> {
       }
   }
 
-  /** Every node now: the demo fleet with the real nodes over it (same id) or after it. */
+  /** Every real node now (stale ones offline), sorted by id. */
   private nodes(now: number): MapNode[] {
-    const real = [...this.real.values()].map((n) =>
-      n.online && now - n.ts >= STALE_MS ? { ...n, online: false } : n,
-    );
-    const byId = new Map(real.map((n) => [n.id, n]));
-    const demo = this.fleet
-      .reports()
-      .map((n) => byId.get(n.id) ?? n)
-      .filter((n) => !this.real.has(n.id) || byId.get(n.id) === n);
-    const demoIds = new Set(demo.map((n) => n.id));
-    return [
-      ...demo,
-      ...real
-        .filter((n) => !demoIds.has(n.id))
-        .sort((a, b) => a.id.localeCompare(b.id)),
-    ];
+    return [...this.real.values()]
+      .map((n) =>
+        n.online && now - n.ts >= STALE_MS ? { ...n, online: false } : n,
+      )
+      .sort((a, b) => a.id.localeCompare(b.id));
   }
 
   private message(now: number, withTrails: boolean): string {
@@ -118,7 +98,6 @@ export class NodeHub extends DurableObject<Env> {
       v: 1,
       type: "nodes",
       at: now,
-      tickMs: TICK_MS,
       nodes: this.nodes(now),
       ...(withTrails ? { trails: Object.fromEntries(this.trails) } : {}),
     };
@@ -135,7 +114,18 @@ export class NodeHub extends DurableObject<Env> {
     this.trails.set(node.id, points);
   }
 
+  /** Closes sockets older than an hour (stuck or half-open ones; a visible page reconnects). */
+  private closeOld(now: number) {
+    for (const ws of this.ctx.getWebSockets()) {
+      const since = (ws.deserializeAttachment() as { since?: number } | null)
+        ?.since;
+      if (since !== undefined && now - since > SOCKET_LIFETIME_MS)
+        ws.close(1000, "reconnect");
+    }
+  }
+
   private broadcast(text: string) {
+    this.closeOld(Date.now());
     for (const ws of this.ctx.getWebSockets()) {
       try {
         ws.send(text);
@@ -145,7 +135,7 @@ export class NodeHub extends DurableObject<Env> {
     }
   }
 
-  /** `GET /api/nodes`: the fleet now, with trails (first paint, no-JS, the offline copy). */
+  /** `GET /api/nodes`: every real node now, with trails (first paint, no-JS, the offline copy). */
   snapshot(): string {
     return this.message(Date.now(), true);
   }
@@ -182,7 +172,8 @@ export class NodeHub extends DurableObject<Env> {
   }
 
   /** `GET /api/nodes/live` (the Worker checked the upgrade and the origin). */
-  async fetch(request: Request): Promise<Response> {
+  fetch(request: Request): Response {
+    this.closeOld(Date.now());
     const ip = `ip:${request.headers.get("CF-Connecting-IP") ?? "unknown"}`;
     if (
       this.ctx.getWebSockets().length >= MAX_SOCKETS ||
@@ -193,34 +184,7 @@ export class NodeHub extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server, [ip]);
     server.serializeAttachment({ since: Date.now() });
     server.send(this.message(Date.now(), true));
-    if ((await this.ctx.storage.getAlarm()) === null) {
-      await this.ctx.storage.setAlarm(Date.now() + TICK_MS);
-      console.log("node-hub: ticking (a viewer connected)");
-    }
     return new Response(null, { status: 101, webSocket: client });
-  }
-
-  async alarm(): Promise<void> {
-    if (this.ctx.getWebSockets().length === 0) {
-      console.log("node-hub: stopped ticking (no viewers)");
-      return;
-    }
-    const now = Date.now();
-    try {
-      // Sockets older than an hour are closed (a visible page reconnects at once): stuck or
-      // half-open connections, and clients that never close, do not keep the hub ticking.
-      for (const ws of this.ctx.getWebSockets()) {
-        const since = (ws.deserializeAttachment() as { since?: number } | null)
-          ?.since;
-        if (since !== undefined && now - since > SOCKET_LIFETIME_MS)
-          ws.close(1000, "reconnect");
-      }
-      for (const node of this.fleet.step(now)) this.remember(node);
-      this.broadcast(this.message(now, false));
-    } finally {
-      // Re-armed even if a step threw: an alarm that throws is retried, a missing one stops.
-      await this.ctx.storage.setAlarm(now + TICK_MS);
-    }
   }
 
   /** Visitors only listen: anything they send closes their socket. */

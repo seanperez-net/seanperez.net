@@ -19,6 +19,9 @@ import {
 } from "@seanperez/ui";
 import { DEMO } from "../demo/demo";
 import { readPref, writePref } from "../local-store";
+import { OWNER_ACCOUNT } from "../content/accounts";
+import { MAX_BODY } from "../messages/messages-local";
+import { storeMessage } from "../messages/messages-store";
 import { saveMessage } from "../messages/messages.server";
 import { PROFILE_MAX } from "../profile/limits";
 import {
@@ -121,6 +124,28 @@ const parseDraft = (raw: unknown): ContactDraft | null => {
   );
   return ok ? (raw as ContactDraft) : null;
 };
+
+/** Tells an open Contact me panel that its draft changed (`draftContactMessage`). */
+const CONTACT_DRAFT_EVENT = "spn:contact-draft";
+
+/**
+ * Puts `text` in Contact me's Message field (after anything already drafted; Name and Email kept)
+ * and tells an open panel to read it and focus Name. Used by Sean's thread (2026-11-25): a message
+ * to him is sent through Contact me until the visitor has an account. Browser only.
+ */
+export function draftContactMessage(text: string) {
+  const saved = readPref(DRAFT_KEY, parseDraft) ?? {
+    name: "",
+    email: "",
+    message: "",
+  };
+  const message = (saved.message ? `${saved.message}\n\n${text}` : text).slice(
+    0,
+    MAX.message,
+  );
+  writePref(DRAFT_KEY, { ...saved, message });
+  document.dispatchEvent(new CustomEvent(CONTACT_DRAFT_EVENT));
+}
 
 /** One line, no control characters: the name is shown as one line in the admin inbox. */
 const oneLine = /^[^\p{Cc}]*$/u;
@@ -294,6 +319,8 @@ export const ContactPanel = component$(() => {
   });
   // The name typed in a send, saved once the send succeeded.
   const sentName = useSignal("");
+  // The message sent, for Sean's thread (below).
+  const sentText = useSignal("");
   const readOnline = $(() => {
     offline.value = !navigator.onLine;
   });
@@ -307,6 +334,18 @@ export const ContactPanel = component$(() => {
   // Server-rendered panel: read on resume (`qinit`); rendered in the browser (the usual case:
   // the pane opens it): read right away, before the first paint.
   useOnDocument("qinit", wake);
+  // Sean's thread moved a message here while the panel was open: read it, focus Name.
+  useOnDocument(
+    CONTACT_DRAFT_EVENT,
+    $(async () => {
+      await wake();
+      requestAnimationFrame(() =>
+        root.value
+          ?.querySelector<HTMLInputElement>('input[name="name"]:not(:disabled)')
+          ?.focus(),
+      );
+    }),
+  );
   useTask$(() => {
     if (isBrowser) return wake();
   });
@@ -354,6 +393,17 @@ export const ContactPanel = component$(() => {
       message: "",
     });
     writePref(DRAFT_KEY, null);
+    // The same message in Sean's thread in Messages, "Sent" (one conversation with him).
+    const text = sentText.value.trim();
+    sentText.value = "";
+    if (text)
+      void storeMessage(OWNER_ACCOUNT.chatId!, {
+        id: `contact-${Date.now()}`,
+        body: text.slice(0, MAX_BODY),
+        createdAt: new Date().toISOString(),
+        mine: true,
+        status: "sent",
+      });
     confirmed.value = result;
     showSnackbar$({ message: "Message sent" });
     // Focus was on Send (now busy, then idle); a new message starts at Name.
@@ -387,7 +437,9 @@ export const ContactPanel = component$(() => {
             // widget writes meanwhile is sent. No token after 10 s (or a widget error): it is
             // posted anyway and the action answers "Please complete the security check".
             onSubmit$={async (_, form: HTMLFormElement) => {
-              sentName.value = String(new FormData(form).get("name") ?? "");
+              const data = new FormData(form);
+              sentName.value = String(data.get("name") ?? "");
+              sentText.value = String(data.get("message") ?? "");
               checking.value = true;
               try {
                 await waitForTurnstileToken(form);

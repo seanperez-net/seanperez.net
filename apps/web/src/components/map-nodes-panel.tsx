@@ -1,6 +1,5 @@
 import { $, Fragment, component$, useContext } from "@qwik.dev/core";
 import { Button, Card, List, Switch } from "@seanperez/ui";
-import { DEMO } from "../demo/demo";
 import {
   NODE_KINDS,
   formatAgo,
@@ -10,14 +9,16 @@ import {
 } from "./map-nodes";
 import type { MapNode } from "./map-nodes";
 import { mapsContextId } from "./map-state";
+import { THIS_DEVICE_NODE_ID } from "./this-device";
 
 /**
- * The Nodes companion (owner, 2026-11-24: devices "like lora nodes or wifi nodes ... gps fleet
- * management"): the layer's show / hide switch, the chosen node's details, and every node as a
- * selection list (a row flies the map to it). New, not in e-store. Library components through
- * their props only (no `class=` on them).
+ * The Devices companion (owner, 2026-11-24: devices "like lora nodes or wifi nodes"): the layer's
+ * show / hide switch, the chosen device's details, and every device as a selection list (a row
+ * flies the map to it). New, not in e-store. Library components through their props only (no
+ * `class=` on them).
  *
- * The rows re-render once a second with the source's tick (Qwik updates the changed text only).
+ * Since 2026-11-25 the list is THIS device (`this-device.ts`) plus any real device that reports
+ * to the hub; no made-up ones. Precise location is turned on in Devices (`/devices/`), not here.
  */
 
 /** "Online · now" / "Offline · last seen 2 min ago". */
@@ -26,11 +27,26 @@ const statusText = (n: MapNode, now: number) =>
     ? `Online · ${formatAgo(n.ts, now)}`
     : `Offline · last seen ${formatAgo(n.ts, now)}`;
 
+const own = (n: MapNode) => NODE_KINDS[n.kind].group === "self";
+
 const batteryText = (n: MapNode) =>
   n.battery === null ? "Mains power" : `${Math.round(n.battery)}%`;
 
 /** The detail rows for one node (label, value). */
 function details(n: MapNode, now: number): [string, string][] {
+  if (own(n)) {
+    // This device (its location is the card's subhead): the point at the precision it has
+    // (an approximate one is rounded to 2 decimals by `/api/here`; more digits would claim more).
+    const approximate = n.program.label.startsWith("Approximate");
+    const digits = approximate ? 2 : 5;
+    return [
+      ["Kind", NODE_KINDS[n.kind].label],
+      [
+        "Position",
+        `${n.lngLat[1].toFixed(digits)}, ${n.lngLat[0].toFixed(digits)}`,
+      ],
+    ];
+  }
   const rows: [string, string][] = [
     ["Kind", NODE_KINDS[n.kind].label],
     ["Status", statusText(n, now)],
@@ -48,12 +64,7 @@ function details(n: MapNode, now: number): [string, string][] {
     "Position",
     `${n.lngLat[1].toFixed(5)}, ${n.lngLat[0].toFixed(5)}`,
   ]);
-  rows.push([
-    "Program",
-    n.program.status === "loading"
-      ? `${n.program.label} (getting the route)`
-      : n.program.label,
-  ]);
+  rows.push(["Source", n.program.label]);
   return rows;
 }
 
@@ -72,7 +83,7 @@ export const NodesPanel = component$(() => {
     };
   });
 
-  // Fits the map to every node (the map opens on Cuba or a saved view; the fleet is in Havana).
+  // Fits the map to every node (one node: flies to it).
   const showAll = $(() => {
     const points = state.nodes.map((n) => n.lngLat);
     if (!points.length) return;
@@ -113,7 +124,9 @@ export const NodesPanel = component$(() => {
           <Card.Root variant="filled">
             <Card.Header>
               <Card.Title>{node.name}</Card.Title>
-              <Card.Description>{statusText(node, now)}</Card.Description>
+              <Card.Description>
+                {own(node) ? node.program.label : statusText(node, now)}
+              </Card.Description>
             </Card.Header>
             <Card.Content>
               {/* A plain description list (label, value): no library component has this
@@ -155,7 +168,9 @@ export const NodesPanel = component$(() => {
             value={n.id}
             headline={n.name}
             supportingText={
-              n.status && n.online
+              own(n)
+                ? `${NODE_KINDS[n.kind].label} · ${n.program.label}`
+                : n.status && n.online
                 ? `${NODE_KINDS[n.kind].label} · ${statusLine(n.status)}`
                 : n.heading !== null && n.online
                   ? `${NODE_KINDS[n.kind].label} · ${formatSpeed(n.speed)}${
@@ -164,15 +179,22 @@ export const NodesPanel = component$(() => {
                   : `${NODE_KINDS[n.kind].label} · ${n.online ? "Online" : "Offline"}`
             }
             startIcon={NODE_KINDS[n.kind].icon}
-            trailingSupportingText={batteryText(n)}
+            // This device: no battery reading (the site does not ask the browser for one).
+            trailingSupportingText={own(n) ? undefined : batteryText(n)}
           />
         ))}
       </List.Root>
-      {/* DEMO: the visitor-facing note on the demo fleet; off, only the offline behaviour. */}
+      {/* No point for this device (Tor, no location in the request, first visit offline). */}
+      {!state.nodes.some((n) => n.id === THIS_DEVICE_NODE_ID) && (
+        <p class="text-body-medium text-on-surface">
+          This device: Location unknown.
+        </p>
+      )}
+      {/* Not DEMO-gated: how this device is placed is true of the real app too. */}
       <p class="text-body-small text-on-surface-variant">
-        {DEMO
-          ? "Demo devices, one of each kind in Havana, shared live by everyone watching (the printers and the CNC machine run made-up jobs in turn). Without a connection the map shows the last known positions, or runs the same demo in this browser."
-          : "Without a connection the map shows the last known positions."}
+        This device is placed from your connection's approximate location
+        (Cloudflare); that guess is not stored on the server. For a precise
+        position, turn it on in Devices.
       </p>
     </div>
   );

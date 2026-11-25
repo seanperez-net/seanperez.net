@@ -46,7 +46,7 @@ export const PAGES = {
   "/devices/": {
     title: "Devices · Sean Perez",
     description:
-      "Demo devices: LoRa, Wi-Fi, a truck, a drone and a boat on the map.",
+      "Your devices: this device on the map, placed from your connection, or precisely if you turn it on.",
     card: "Devices",
   },
   "/contacts/": {

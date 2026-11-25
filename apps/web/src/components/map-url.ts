@@ -106,7 +106,7 @@ export type MapsUrlState = {
   node: string | null;
 };
 
-/** A node id as the fleet writes them (`truck-4`, `drone-a`); anything else is ignored. */
+/** A node id (`this-device`, a real device's `gw-1`); anything else is ignored. */
 export function parseNodeParam(value: string | null | undefined): string | null {
   return value && /^[a-z0-9-]{1,40}$/.test(value) ? value : null;
 }

@@ -16,30 +16,21 @@ import {
   findThread,
 } from "../content/conversations";
 import { DEMO } from "../demo/demo";
-import { changeLocalDoc, onLocalDocChange, readLocalDoc } from "../local-store";
+import { changeLocalDoc, onLocalDocChange } from "../local-store";
 import {
   MESSAGES_DOC,
-  addMessage,
   deleteMessage,
-  parseMessagesDoc,
   restoreMessage,
   type RemovedMessage,
   type StoredMessage,
 } from "../messages/messages-local";
-import { CONTACT_COMPANION_ID } from "./contact-panel";
-
-/** This tab's own saves (the seam's channel only reaches OTHER tabs): the page and the window. */
-const SAME_TAB_EVENT = "spn:messages-local";
-
-const loadDoc = async () => parseMessagesDoc(await readLocalDoc(MESSAGES_DOC));
-
-/** Stores one message for `threadId` and tells this tab's other views. Browser only. */
-async function storeMessage(threadId: string, message: StoredMessage) {
-  await changeLocalDoc(MESSAGES_DOC, loadDoc, (doc, now) => ({
-    doc: addMessage(doc, threadId, message, now),
-  }));
-  document.dispatchEvent(new CustomEvent(SAME_TAB_EVENT));
-}
+import {
+  MESSAGES_SAME_TAB_EVENT,
+  loadMessagesDoc,
+  storeMessage,
+} from "../messages/messages-store";
+import { OWNER_ACCOUNT } from "../content/accounts";
+import { CONTACT_COMPANION_ID, draftContactMessage } from "./contact-panel";
 
 /** Milliseconds between the canned reply's words (the streaming demo). */
 const WORD_MS = 60;
@@ -98,14 +89,14 @@ export function useStoredMessages() {
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ cleanup }) => {
     const read = async () => {
-      const doc = await loadDoc();
+      const doc = await loadMessagesDoc();
       stored.value = { threads: doc.threads, hidden: doc.hidden ?? {} };
     };
     const again = () => void read();
-    document.addEventListener(SAME_TAB_EVENT, again);
+    document.addEventListener(MESSAGES_SAME_TAB_EVENT, again);
     const stop = onLocalDocChange(MESSAGES_DOC, again);
     cleanup(() => {
-      document.removeEventListener(SAME_TAB_EVENT, again);
+      document.removeEventListener(MESSAGES_SAME_TAB_EVENT, again);
       stop();
     });
     void read();
@@ -136,6 +127,20 @@ export function useDemoThread(id: string) {
   });
 
   const send$ = $(async (text: string) => {
+    // Sean's thread (2026-11-25, owner: "when trying to send a message to me and not logged in
+    // ... it should pop that contact me window and ... auto focus the name"): there is no sign-in
+    // yet, so a message to him goes THROUGH Contact me: the text moves into its Message field,
+    // Contact me opens with Name focused, and Send there delivers it (and adds it to this thread,
+    // `contact-panel.tsx`). Later, with an account from Contact me (PLAN.md), it sends directly.
+    if (
+      DEMO &&
+      id === OWNER_ACCOUNT.chatId &&
+      !apps.removed.includes("contact")
+    ) {
+      draftContactMessage(text);
+      openCompanion(layout, CONTACT_COMPANION_ID);
+      return;
+    }
     const assistant = thread.kind === "assistant";
     const self = thread.kind === "self";
     const mine: ChatMessage = {
@@ -209,22 +214,22 @@ export function useDemoThread(id: string) {
   const undo$ = $(async (removed: RemovedMessage) => {
     const messageId =
       removed.kind === "stored" ? removed.message.id : removed.id;
-    await changeLocalDoc(MESSAGES_DOC, loadDoc, (doc, now) => ({
+    await changeLocalDoc(MESSAGES_DOC, loadMessagesDoc, (doc, now) => ({
       doc: restoreMessage(doc, id, removed, now),
     }));
     gone.value = gone.value.filter((g) => g !== messageId);
-    document.dispatchEvent(new CustomEvent(SAME_TAB_EVENT));
+    document.dispatchEvent(new CustomEvent(MESSAGES_SAME_TAB_EVENT));
   });
   const confirmDelete$ = $(async () => {
     const messageId = deleting.value;
     deleting.value = null;
     if (!messageId) return;
     gone.value = [...gone.value, messageId];
-    const change = await changeLocalDoc(MESSAGES_DOC, loadDoc, (doc, now) => {
+    const change = await changeLocalDoc(MESSAGES_DOC, loadMessagesDoc, (doc, now) => {
       const { doc: next, removed } = deleteMessage(doc, id, messageId, now);
       return { doc: next, result: removed };
     });
-    document.dispatchEvent(new CustomEvent(SAME_TAB_EVENT));
+    document.dispatchEvent(new CustomEvent(MESSAGES_SAME_TAB_EVENT));
     const removed = change.result;
     await showSnackbar$({
       message: MESSAGE_DELETED_NOTICE,
