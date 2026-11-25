@@ -31,6 +31,8 @@ import {
 } from "../messages/messages-store";
 import { OWNER_ACCOUNT } from "../content/accounts";
 import { CONTACT_COMPANION_ID, draftContactMessage } from "./contact-panel";
+import { useSendToSean } from "./contact-actions";
+import { fetchMe } from "../account/me";
 
 /** Milliseconds between the canned reply's words (the streaming demo). */
 const WORD_MS = 60;
@@ -108,6 +110,8 @@ export function useDemoThread(id: string) {
   const layout = useContext(layoutContextId);
   const apps = useMyApps();
   const { showSnackbar$ } = useSnackbar();
+  // Sean's thread with a contact account posts here (`contact-actions.ts`, root layout).
+  const sendToSean = useSendToSean();
   const thread = findThread(id)!;
   const local = useSignal<ChatMessage[]>([]);
   const streaming = useSignal<ChatMessage | null>(null);
@@ -132,6 +136,50 @@ export function useDemoThread(id: string) {
     // yet, so a message to him goes THROUGH Contact me: the text moves into its Message field,
     // Contact me opens with Name focused, and Send there delivers it (and adds it to this thread,
     // `contact-panel.tsx`). Later, with an account from Contact me (PLAN.md), it sends directly.
+    // With a contact account in this browser (2026-11-25, plan 1.3; `/api/me`), the message goes
+    // straight to him: no form. Verified: delivered; unverified: delivered marked "Unverified",
+    // at most 3 waiting. No session: Contact me as above.
+    if (DEMO && id === OWNER_ACCOUNT.chatId) {
+      const me = await fetchMe();
+      if (me) {
+        const mine: ChatMessage = {
+          id: `local-${Date.now()}`,
+          author: ME,
+          body: text,
+          createdAt: new Date().toISOString(),
+          mine: true,
+          status: "sending",
+        };
+        local.value = [...local.value, mine];
+        const { value } = await sendToSean.submit({ message: text });
+        const sent = !value.failed;
+        if (!sent && value.noSession && !apps.removed.includes("contact")) {
+          // The session ended meanwhile: Contact me after all.
+          local.value = local.value.filter((m) => m.id !== mine.id);
+          draftContactMessage(text);
+          openCompanion(layout, CONTACT_COMPANION_ID);
+          return;
+        }
+        const status = sent ? "sent" : "failed";
+        local.value = local.value.map((m) =>
+          m.id === mine.id ? { ...m, status } : m,
+        );
+        await storeMessage(id, {
+          id: mine.id,
+          body: text,
+          createdAt: mine.createdAt,
+          mine: true,
+          status,
+        });
+        if (!sent && value.message) await showSnackbar$({ message: value.message });
+        else if (sent && !me.verified) {
+          await showSnackbar$({
+            message: "Sent. Confirm your email so Sean knows it's you.",
+          });
+        }
+        return;
+      }
+    }
     if (
       DEMO &&
       id === OWNER_ACCOUNT.chatId &&

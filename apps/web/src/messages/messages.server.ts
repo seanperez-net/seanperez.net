@@ -11,10 +11,17 @@ export interface Message {
   body: string;
   created_at: string;
   read_at: string | null;
+  /** The sender's contact account (migration 0004); null for older rows or a deleted account. */
+  account_id: string | null;
+  /** NULL: sent before the address was verified ("Unverified" in /admin). */
+  confirmed_at: string | null;
 }
 
 /** A row in the inbox: the start of the body, not all of it. */
 export type MessageSummary = Omit<Message, "body" | "email"> & { preview: string };
+
+/** The inbox filter (`/admin/messages/?show=`). */
+export type MessageFilter = "all" | "verified" | "unverified";
 
 /**
  * At most this many messages are kept per UTC day (owner, 2026-11-24: simple abuse limits, no
@@ -56,11 +63,20 @@ const PREVIEW = 160;
 /** The inbox shows the newest this many. */
 const LIST_LIMIT = 200;
 
-export async function listMessages(db: D1Database): Promise<MessageSummary[]> {
+export async function listMessages(
+  db: D1Database,
+  filter: MessageFilter = "all",
+): Promise<MessageSummary[]> {
+  const where =
+    filter === "verified"
+      ? "WHERE confirmed_at IS NOT NULL"
+      : filter === "unverified"
+        ? "WHERE confirmed_at IS NULL"
+        : "";
   const { results } = await db
     .prepare(
-      `SELECT id, name, substr(body, 1, ?) AS preview, created_at, read_at
-       FROM message ORDER BY created_at DESC, id DESC LIMIT ?`,
+      `SELECT id, name, substr(body, 1, ?) AS preview, created_at, read_at, account_id, confirmed_at
+       FROM message ${where} ORDER BY created_at DESC, id DESC LIMIT ?`,
     )
     .bind(PREVIEW, LIST_LIMIT)
     .all<MessageSummary>();
@@ -88,4 +104,47 @@ export async function markRead(db: D1Database, id: number): Promise<void> {
 
 export async function deleteMessage(db: D1Database, id: number): Promise<void> {
   await db.prepare("DELETE FROM message WHERE id = ?").bind(id).run();
+}
+
+// --- owner replies (migration 0004, table `message_reply`) ----------------------------------
+
+export interface MessageReply {
+  id: number;
+  body: string;
+  created_at: string;
+  send_status: "pending" | "sent" | "failed" | "logged";
+  send_error: string | null;
+}
+
+export async function listReplies(db: D1Database, messageId: number): Promise<MessageReply[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT id, body, created_at, send_status, send_error FROM message_reply WHERE message_id = ? ORDER BY id",
+    )
+    .bind(messageId)
+    .all<MessageReply>();
+  return results;
+}
+
+/** Stores the reply before it is sent (its id is the send's idempotency key). */
+export async function addReply(db: D1Database, messageId: number, body: string): Promise<number> {
+  const row = await db
+    .prepare(
+      "INSERT INTO message_reply (message_id, body, created_at, send_status) VALUES (?, ?, ?, 'pending') RETURNING id",
+    )
+    .bind(messageId, body, new Date().toISOString())
+    .first<{ id: number }>();
+  if (!row) throw new Error("reply not stored");
+  return row.id;
+}
+
+export async function recordReplySend(
+  db: D1Database,
+  id: number,
+  outcome: { status: "sent" | "failed" | "logged"; id?: string; error?: string },
+) {
+  await db
+    .prepare("UPDATE message_reply SET send_status = ?, send_id = ?, send_error = ? WHERE id = ?")
+    .bind(outcome.status, outcome.id ?? null, outcome.error?.slice(0, 120) ?? null, id)
+    .run();
 }

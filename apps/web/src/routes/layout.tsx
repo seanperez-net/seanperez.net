@@ -28,6 +28,11 @@ import {
   useSendMessage,
 } from "../components/contact-panel";
 import {
+  useResendVerification,
+  useSendToSean,
+  useVerifyCode,
+} from "../components/contact-actions";
+import {
   MAPS_COMPANIONS,
   MapPanel,
   isMapsCompanion,
@@ -62,6 +67,9 @@ import { ownName, useProfileOverrideProvider } from "../profile/use-profile";
 // "Re-exporting loaders"). Here, in the ROOT layout, they serve every route: the form in the
 // side pane posts to the page the visitor is on, so there is no /contact/ route.
 export { useContactSetup, useSendMessage };
+// The contact account's code, resend and Sean's-thread send (`components/contact-actions.ts`),
+// re-exported for the same reason: they run on whatever page the visitor is on.
+export { useResendVerification, useSendToSean, useVerifyCode };
 // The owner's profile links for the Contact me companion's icon row (`social-links.tsx`).
 export { useOwnerLinks };
 
@@ -118,6 +126,8 @@ const inAdmin = (path: string) =>
 const ADMIN_RAIL_ITEMS: LayoutRailItem[] = [
   { href: "/admin/", label: "Posts", icon: "article" },
   { href: "/admin/messages/", label: "Messages", icon: "mail" },
+  // Contact accounts (2026-11-25): who wrote, verified or not; delete on request.
+  { href: "/admin/accounts/", label: "Accounts", icon: "groups" },
   { href: "/admin/profile/", label: "Profile", icon: "person" },
   // Back to the public site. Last, so the admin's own destinations come first.
   { href: "/", label: "Site", icon: "home" },
@@ -342,6 +352,9 @@ export default component$(() => {
   // by a conditionally rendered component must be registered in the route boundary).
   useContactSetup();
   useSendMessage();
+  useVerifyCode();
+  useResendVerification();
+  useSendToSean();
   useOwnerLinks();
 
   // The signed-in user's presence: the VISITOR's own activity and chosen status, kept in their

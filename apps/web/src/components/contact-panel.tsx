@@ -23,12 +23,28 @@ import { OWNER_ACCOUNT } from "../content/accounts";
 import { MAX_BODY } from "../messages/messages-local";
 import { storeMessage } from "../messages/messages-store";
 import { saveMessage } from "../messages/messages.server";
+import {
+  normalizeEmail,
+  sendAsSession,
+  signOut,
+  startContact,
+} from "../account/account.server";
+import {
+  accountsOpen,
+  floor,
+  notifyOwnerLater,
+  sendVerification,
+  sessionOf,
+  setSessionCookie,
+} from "../account/contact.server";
 import { PROFILE_MAX } from "../profile/limits";
 import {
   saveProfileChanges,
   useProfileOverride,
 } from "../profile/use-profile";
 import { SocialLinks } from "./social-links";
+import { useResendVerification, useVerifyCode } from "./contact-actions";
+import { ME_CHANGED_EVENT, fetchMe, signOutMe, type Me } from "../account/me";
 
 /**
  * The Contact panel (owner, 2026-11-24): a form instead of any published address (spam). It is
@@ -153,13 +169,13 @@ const oneLine = /^[^\p{Cc}]*$/u;
 // Re-exported from routes/layout.tsx (see the file comment).
 // eslint-disable-next-line qwik/loader-location
 export const useSendMessage = routeAction$(
-  async (data, { platform, request, fail }) => {
+  async (data, { platform, request, cookie, url, fail }) => {
     // DEMO: with the layer off the panel is gone, but the action is still exported from the root
     // layout and reachable with `?qaction=`: refuse it, so the only visitor write is closed too.
     if (!DEMO) return fail(404, { message: "Not found." });
     // Honeypot: people never see this field (`hidden`); a bot that fills it is told "sent"
     // and nothing is sent, so it learns nothing.
-    if (data[HONEYPOT]) return { sent: true };
+    if (data[HONEYPOT]) return { sent: true, needsCode: false, mailFailed: false };
 
     const env = platform.env;
     if (!env.TURNSTILE_SECRET_KEY) {
@@ -221,27 +237,87 @@ export const useSendMessage = routeAction$(
       });
     }
 
-    // Stored, not sent: the owner reads it at /admin/messages/. A database error (such as the
-    // table not created yet, when the code is deployed before migration 0003) is logged and the
-    // visitor is told to try later.
+    const started = Date.now();
+    // Before accounts are set up here (no AUTH_SECRET, or no RESEND_API_KEY in production): as
+    // before them, stored, read at /admin/messages/, nothing said about an account (plan 6).
+    if (!accountsOpen(env)) {
+      try {
+        const saved = await saveMessage(env.DB, {
+          name: data.name,
+          email: data.email,
+          body: data.message,
+        });
+        if (saved === "full") {
+          return fail(429, {
+            message: "Too many messages today. Please try again tomorrow.",
+          });
+        }
+      } catch (error) {
+        console.error("contact: save failed", error);
+        return fail(500, {
+          message: "Your message could not be sent. Please try again later.",
+        });
+      }
+      return { sent: true, needsCode: false, mailFailed: false };
+    }
+
+    // Accounts (owner, 2026-11-25; plan 1.1 to 1.3). A database error (migration 0004 not
+    // applied yet) is logged and the visitor is told to try later.
     try {
-      const saved = await saveMessage(env.DB, {
+      const session = await sessionOf(env, cookie, url);
+      // The address this browser is already signed in with: a later message.
+      if (session && normalizeEmail(data.email) === session.email) {
+        const result = await sendAsSession(env.DB, session, data.message);
+        if (result.kind === "full") {
+          return fail(429, {
+            message: "Too many messages today. Please try again tomorrow.",
+          });
+        }
+        if (result.kind === "capped") {
+          return fail(429, {
+            message: result.verified
+              ? "You've sent 10 messages today. Please try again tomorrow."
+              : "Confirm your email first: enter the code from the email below.",
+          });
+        }
+        if (result.confirmed) {
+          notifyOwnerLater(env, platform.ctx, url.origin, session.accountId, result.messageId);
+        }
+        return { sent: true, needsCode: !session.verified, mailFailed: false };
+      }
+      // A first message from this address in this browser: an unverified account (or the
+      // existing one), the message waiting, a new session, one email. The SAME answer whether the
+      // address is new, known, verified or capped (enumeration, plan 5.3), after the floor.
+      const result = await startContact(env.DB, env.AUTH_SECRET, {
         name: data.name,
         email: data.email,
         body: data.message,
       });
-      if (saved === "full") {
+      if (result.kind === "full") {
+        await floor(started);
         return fail(429, {
           message: "Too many messages today. Please try again tomorrow.",
         });
       }
+      // Another account's session in this browser gives way to this one.
+      if (session) await signOut(env.DB, session.tokenHash);
+      setSessionCookie(cookie, url, result.sessionToken, false);
+      const outcome = result.token
+        ? await sendVerification(env, url.origin, normalizeEmail(data.email), result.token)
+        : null;
+      await floor(started);
+      // Only a send that really failed is told apart (it says nothing about the address).
+      return {
+        sent: true,
+        needsCode: true,
+        mailFailed: outcome?.status === "failed",
+      };
     } catch (error) {
       console.error("contact: save failed", error);
       return fail(500, {
         message: "Your message could not be sent. Please try again later.",
       });
     }
-    return { sent: true };
   },
   {
     invalidate: [],
@@ -290,6 +366,11 @@ export const useSendMessage = routeAction$(
 export const ContactPanel = component$(() => {
   const setup = useContactSetup();
   const send = useSendMessage();
+  const verify = useVerifyCode();
+  const resend = useResendVerification();
+  // This browser's contact account (`/api/me`, plan 1.5): null until read, or with no session.
+  // An unverified one shows the code field and "Send the email again" above the form.
+  const me = useSignal<Me | null>(null);
   // Sending needs the internet (Turnstile and the Worker), unlike the rest of the site, which
   // works offline (`routes/service-worker.ts`). `navigator.onLine === false` is certain;
   // `true` is not proof of a connection, so a failed send still shows the action's own error.
@@ -324,8 +405,12 @@ export const ContactPanel = component$(() => {
   const readOnline = $(() => {
     offline.value = !navigator.onLine;
   });
+  const readMe = $(async () => {
+    me.value = await fetchMe();
+  });
   const wake = $(() => {
     offline.value = !navigator.onLine;
+    void readMe();
     const saved = readPref(DRAFT_KEY, parseDraft);
     if (saved) Object.assign(draft, saved);
     // No name in the draft: the profile's, when the visitor set one.
@@ -334,6 +419,8 @@ export const ContactPanel = component$(() => {
   // Server-rendered panel: read on resume (`qinit`); rendered in the browser (the usual case:
   // the pane opens it): read right away, before the first paint.
   useOnDocument("qinit", wake);
+  // Another view of this tab verified or signed out.
+  useOnDocument(ME_CHANGED_EVENT, readMe);
   // Sean's thread moved a message here while the panel was open: read it, focus Name.
   useOnDocument(
     CONTACT_DRAFT_EVENT,
@@ -405,13 +492,34 @@ export const ContactPanel = component$(() => {
         status: "sent",
       });
     confirmed.value = result;
-    showSnackbar$({ message: "Message sent" });
-    // Focus was on Send (now busy, then idle); a new message starts at Name.
+    // A first message: the account waits for the link or code; the code field is next.
+    if (result.needsCode) {
+      me.value = { name: name.trim() || me.value?.name || "", verified: false };
+      void readMe();
+    }
+    showSnackbar$({
+      message: result.needsCode
+        ? "Message sent. Check your email to confirm it."
+        : "Message sent",
+    });
+    // Focus was on Send (now busy, then idle); next comes the code, else a new message at Name.
     requestAnimationFrame(() =>
       root.value
-        ?.querySelector<HTMLInputElement>('input[name="name"]:not(:disabled)')
+        ?.querySelector<HTMLInputElement>(
+          result.needsCode
+            ? 'input[name="code"]'
+            : 'input[name="name"]:not(:disabled)',
+        )
         ?.focus(),
     );
+  });
+  // Confirmed with the code: the account is verified in this browser.
+  useTask$(({ track }) => {
+    const result = track(() => verify.value);
+    if (!isBrowser || !result || result.failed) return;
+    me.value = me.value ? { ...me.value, verified: true } : null;
+    document.dispatchEvent(new CustomEvent(ME_CHANGED_EVENT));
+    showSnackbar$({ message: "Email confirmed" });
   });
 
   return (
@@ -427,8 +535,61 @@ export const ContactPanel = component$(() => {
       ) : (
         <>
           <p class="text-body-medium text-on-surface-variant">
-            Send a message. Your email address is only used to reply.
+            Send a message. Your email address is only used to confirm it's
+            you and to reply.{" "}
+            <a href="/privacy/" class="text-primary underline underline-offset-4">
+              Privacy
+            </a>
           </p>
+          {/* The account waiting for its link or code (plan 1.1 step 5). No email address is
+            shown, not even the visitor's own (no-email rule). */}
+          {me.value && !me.value.verified && (
+            <div class="grid grid-cols-1 gap-3">
+              <p role="status" class="text-body-medium text-on-surface">
+                {send.value?.mailFailed
+                  ? "Your message is saved, but the email could not be sent. Try “Send the email again”."
+                  : "To confirm it's you, enter the 6-digit code from the email we sent, or open its link. It works for 30 minutes."}
+              </p>
+              <Form action={verify} class="grid grid-cols-1 gap-3">
+                <TextField
+                  name="code"
+                  label="Code"
+                  inputMode="numeric"
+                  autocomplete="one-time-code"
+                  spellcheck={false}
+                  required
+                  maxLength={6}
+                  error={
+                    verify.value?.fieldErrors?.code ??
+                    (verify.value?.failed ? verify.value.message : undefined)
+                  }
+                />
+                <div class="flex flex-wrap gap-2">
+                  <Button
+                    type="submit"
+                    label="Confirm"
+                    isLoading={verify.isRunning}
+                  />
+                  <Button
+                    look="text"
+                    label="Send the email again"
+                    isLoading={resend.isRunning}
+                    onClick$={() => resend.submit()}
+                  />
+                </div>
+              </Form>
+              {resend.value?.failed && resend.value.message && (
+                <p role="alert" class="text-body-medium text-error">
+                  {resend.value.message}
+                </p>
+              )}
+              {resend.value?.resent && (
+                <p role="status" class="text-body-medium text-on-surface-variant">
+                  A new email is on its way. Use the newest code.
+                </p>
+              )}
+            </div>
+          )}
           <Form
             action={send}
             class="grid grid-cols-1 gap-4"
@@ -551,6 +712,24 @@ export const ContactPanel = component$(() => {
             </div>
           </Form>
         </>
+      )}
+      {/* Signed in (a session from Contact me): who, and the way out (a shared computer). */}
+      {me.value && (
+        <div class="flex flex-wrap items-center gap-2">
+          <p class="text-body-medium text-on-surface-variant">
+            {me.value.verified
+              ? `Sending as ${me.value.name}.`
+              : `Sending as ${me.value.name} (unverified).`}
+          </p>
+          <Button
+            look="text"
+            label="Sign out"
+            onClick$={async () => {
+              await signOutMe();
+              me.value = null;
+            }}
+          />
+        </div>
       )}
       <SocialLinks />
     </div>

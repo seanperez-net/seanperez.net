@@ -72,6 +72,18 @@
     "TURNSTILE_HOSTNAMES": "seanperez.net,www.seanperez.net",
   },
   /**
+   * Contact accounts (2026-11-25, `.claude/notes/contact-verify-email-plan-2026-11-25.md`): the
+   * owner's "new verified message" notification ONLY, to the secret `OWNER_NOTIFY_TO` (the owner's
+   * verified Email Routing destination; free on any plan, no Email Sending onboarding needed:
+   * developers.cloudflare.com/email-service/configuration/destination-addresses/). No
+   * `destination_address` here: it would publish that address in this public repo. Mail to
+   * visitors goes through Resend (`src/mail/mail.server.ts`, secret `RESEND_API_KEY`). Other
+   * secrets: `AUTH_SECRET` (HMAC key for the 6-digit codes). All three: `wrangler secret put`.
+   */
+  "send_email": [
+    { "name": "EMAIL", "allowed_sender_addresses": ["noreply@seanperez.net"] },
+  ],
+  /**
    * Live nodes (Maps / Devices, 2026-11-24): ONE Durable Object, `NodeHub` (`src/nodes/node-hub.server.ts`,
    * exported from `public/_worker.js`), that keeps real devices' reports (no demo devices since 2026-11-25)
    * and fans them out to browsers over hibernating WebSockets. SQLite-backed: the only kind on
