@@ -17,11 +17,12 @@
     "directory": "./dist",
   },
   /**
-   * NO routes yet: the owner adds the hostname (e.g. admin.seanperez.net) together with its
-   * Cloudflare Access application (PLAN.md "PLAN: `apps/admin`", owner's steps). No
-   * `*.workers.dev` URL either: it would reach this Worker with no Access in front (wrangler's
-   * default is true). Until the hostname exists a deploy is unreachable, on purpose.
+   * The admin host (2026-11-25). Cloudflare Access fronts the WHOLE host (Zero Trust app
+   * "seanperez.net admin", policy "Owner only"); the Access app came first, then this route.
+   * No `*.workers.dev` URL: it would reach this Worker with no Access in front (wrangler's
+   * default is true).
    */
+  "routes": [{ "pattern": "admin.seanperez.net", "custom_domain": true }],
   "workers_dev": false,
   // Nor version Preview URLs (<version>-<name>.<subdomain>.workers.dev): unset, wrangler 4.165
   // leaves the choice to the API (`wrangler-dist/cli.js` `getSubdomainValues`).
