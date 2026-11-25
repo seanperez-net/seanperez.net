@@ -495,6 +495,7 @@ export const ScrollField = component$<ScrollFieldProps>((props) => {
   // Put the list at the value when it is first seen, when the value changes from outside, and
   // when the field returns from `input` mode (a new list element). In `input` mode, focus the
   // input when Space / Enter asked for it.
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — scroll position and focus need the laid-out element; cannot be rendered on the server (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track }) => {
     const i = track(() => selected.value);

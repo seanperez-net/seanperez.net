@@ -43,3 +43,12 @@ fetched. A token with no matching ref shows `labels.unknownRef` ("Unknown"), nev
   prefix: no nested links, no block content in a paragraph.
 - Body text stays text nodes: never HTML.
 - A streaming reply is plain text until it lands whole.
+
+## Internal link cards (2026-11-25)
+
+`{ kind: "link", internal: true, url: "/feed/<slug>/", title, description, siteName }`: a page
+on the HOST's own site (the Site updates channel's posts). Drawn as `Card.Root as="link"` (the
+router's link, same tab), with no `open_in_new` mark, no `rel="external nofollow ugc"` and no
+picture. The host sets `internal`; it is never inferred from the URL. `url` must be a plain site
+path (`chatSitePath`: `/` then not `/` or a backslash, no spaces): `//host` and `/\host` are read
+as another site by browsers, so they draw no card (RULE 2 review).

@@ -11,7 +11,8 @@
  * - Direct messages: `sean-perez`, the owner's direct thread with the visitor (his ONE welcome
  *   message, which the visitor may delete in their browser), then `you`, the visitor's own
  *   "(you)" thread ("notes to self", empty).
- * - Spaces: `site-updates`. (The `devices` space, where made-up devices posted alerts, was
+ * - Spaces: `site-updates`, the read-only channel of the site's published posts (from D1 since
+ *   2026-11-25, `messages/site-updates.ts`). (The `devices` space, where made-up devices posted alerts, was
  *   dropped 2026-11-25 with the demo devices: the visitor's only device is their own browser,
  *   `components/this-device.ts`, which has nothing to post, and the owner wants it to have
  *   nothing to do with him.)
@@ -33,7 +34,6 @@ import {
   type ChatKind,
   type ChatMessage,
   type ChatPerson,
-  type ChatRef,
 } from "@seanperez/chat";
 import type { IconName, LayoutDrawerItem } from "@seanperez/ui";
 import {
@@ -43,6 +43,7 @@ import {
   findAccount,
   toChatPerson,
 } from "./accounts";
+import { SITE_UPDATES_ID, SITE_UPDATES_NOTE } from "../messages/site-updates";
 
 /** The viewer: the guest account (the account menu's user, same id, so the avatar's tone matches). */
 export const ME: ChatPerson = toChatPerson(GUEST_ACCOUNT);
@@ -73,6 +74,11 @@ export interface DemoThread {
   /** A message in it names the viewer: listed under Shortcuts > Mentions. */
   mentionsMe?: boolean;
   messages: ChatMessage[];
+  /**
+   * A read-only conversation (the Site updates channel): this note replaces the composer, and
+   * its messages come from the server, not from this list (`messages/site-updates.ts`).
+   */
+  readOnly?: string;
 }
 
 /** Each message, with the author and `mine` filled in. */
@@ -93,22 +99,6 @@ const said = (
   ...extra,
 });
 
-/**
- * Embeds in the demo (2026-11-24, owner: "our chat also should have links able to be embedded
- * like for useContact in the message"): a person chip (`<@id>`) is an ACCOUNT with its Contacts
- * page; a place chip (`<#id>`) would open the map there (`?at=<lat>,<lng>,<zoom>z`,
- * `components/map-url.ts`; none in the demo since 2026-11-25). Link cards are static data:
- * nothing is fetched.
- */
-const personRef = (person: ChatPerson): ChatRef => {
-  const contact = findAccount(person.id)?.contactId;
-  return {
-    kind: "person",
-    id: person.id,
-    person,
-    href: contact ? `/contacts/${contact}/` : null,
-  };
-};
 export const THREADS: DemoThread[] = [
   {
     id: "assistant",
@@ -128,61 +118,19 @@ export const THREADS: DemoThread[] = [
     ],
   },
   {
-    id: "site-updates",
+    // The Site updates CHANNEL (2026-11-25, owner: Discord's announcement channel, "see ... but
+    // not reply"): its messages are the site's published posts, read from D1 on every load
+    // (`messages/site-updates.ts`, `useSiteUpdates` in `routes/messages/layout.tsx`), so no seed
+    // messages here. Read-only: the composer is a note; posting is the admin app's Posts.
+    id: SITE_UPDATES_ID,
     kind: "space",
-    person: { id: "site-updates", name: "Site updates", icon: "groups" },
+    person: { id: SITE_UPDATES_ID, name: "Site updates", icon: "groups" },
     title: "Site updates",
-    subtitle: "Space · 3 members",
-    members: [ME, SEAN, ASSISTANT],
+    subtitle: "Announcements · only Sean posts",
+    members: [ME, SEAN],
     unread: 0,
-    messages: [
-      said(
-        SEAN,
-        "u1",
-        "2026-11-23T20:05:00Z",
-        "Contacts is live: list-detail, the résumé in the profile, and a Contact me panel.",
-      ),
-      said(
-        SEAN,
-        "u2",
-        "2026-11-24T16:20:00Z",
-        "Messages now follows Google Chat's layout: shortcuts, direct messages, spaces and apps. The code: https://github.com/seanperez-net/seanperez.net",
-        undefined,
-        {
-          embeds: [
-            {
-              kind: "link",
-              url: "https://github.com/seanperez-net/seanperez.net",
-              title: "seanperez-net/seanperez.net",
-              siteName: "GitHub",
-              description:
-                "The site's monorepo: Qwik v2, Tailwind v4 and Material 3 on Cloudflare Workers.",
-            },
-          ],
-        },
-      ),
-      said(
-        ASSISTANT,
-        "u3",
-        "2026-11-24T16:21:00Z",
-        "Noted. Spaces, apps and shortcuts are demo data for now: no backend yet. Ask <@assistant> for more, or use Contact me to reach Sean. The plain page: https://seanperez-net.github.io",
-        undefined,
-        {
-          refs: [personRef(ASSISTANT)],
-          embeds: [
-            {
-              kind: "link",
-              url: "https://seanperez-net.github.io",
-              title: "Sean Perez: projects and code",
-              siteName: "seanperez-net.github.io",
-              description:
-                "Projects and code. Links to the website and the source on GitHub.",
-              imageUrl: "https://seanperez-net.github.io/og-image.png",
-            },
-          ],
-        },
-      ),
-    ],
+    readOnly: SITE_UPDATES_NOTE,
+    messages: [],
   },
   {
     // The ADMIN account's message to everyone (2026-11-25, owner: "have one message there as an
@@ -236,7 +184,7 @@ export const MESSAGES_SECTIONS: {
     label: "Direct messages",
     threads: [OWNER_ACCOUNT.chatId!, GUEST_ACCOUNT.chatId!],
   },
-  { id: "spaces", label: "Spaces", threads: ["site-updates"] },
+  { id: "spaces", label: "Spaces", threads: [SITE_UPDATES_ID] },
   { id: "apps", label: "Apps", threads: ["assistant"] },
 ];
 

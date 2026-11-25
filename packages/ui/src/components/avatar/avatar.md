@@ -109,7 +109,14 @@ an empty circle).
 
 With a `src`, SSR renders the `<img>` (`data-loading`) and hides the fallback. `onLoad$` /
 `onError$` set `loaded` / `error`. An image that failed before Qwik resumed fired its event into
-nothing, so a `useVisibleTask$` reads `img.complete` and `naturalWidth` once.
+nothing, so an `onQVisible$` on the same `<img>` reads `img.complete` and `naturalWidth` once it
+is in view. No `useVisibleTask$` (2026-11-25, `.claude/notes/use-visible-task-audit-2026-11-25.md`
+#27, #28): an avatar without a `src` renders no `<img>` and registers nothing, so the initials
+avatars load no task and no longer log Qwik's "only works when the component outputs a DOM
+element" warning. `Avatar.Fallback delay` starts its timer from a `document:onQInit$` on the
+fallback's `<span>`, set only when `delay > 0` (none of our call sites passes one). Not
+`onQVisible$` there: a waiting fallback is `hidden` (`display: none`), which an
+IntersectionObserver never reports as intersecting, so the timer would never start.
 
 ## Where it differs from e-store
 

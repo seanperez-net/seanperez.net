@@ -223,6 +223,7 @@ export default component$(() => {
   // Browser only, once the page is ready (the layout ran on the server, so a `useTask$` would
   // not run again here); re-read when another tab changes the book. A visible task because the
   // channel needs `cleanup`.
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — BroadcastChannel subscription needs cleanup; useOnDocument has none; already document-ready (docs /core/tasks/ cleanup)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     ({ cleanup }) => {

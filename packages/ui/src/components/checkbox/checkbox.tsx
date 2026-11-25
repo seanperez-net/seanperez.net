@@ -276,6 +276,7 @@ const IndeterminateSync = component$<{
   input: Signal<HTMLInputElement | undefined>;
   on: boolean;
 }>((props) => {
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — the indeterminate DOM property has no attribute; set at resume, headless so document-ready is right (core.mjs addUseOnEvents)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     ({ track, cleanup }) => {

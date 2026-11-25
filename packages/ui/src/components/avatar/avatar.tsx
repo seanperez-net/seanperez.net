@@ -7,7 +7,6 @@ import {
   useContextProvider,
   useSignal,
   useTask$,
-  useVisibleTask$,
 } from "@qwik.dev/core";
 import type { ClassList, PropsOf, QRL, Signal } from "@qwik.dev/core";
 import { tv } from "tailwind-variants/lite";
@@ -317,7 +316,6 @@ export type AvatarImageProps = Omit<
 const Image = component$<AvatarImageProps>(
   ({ src, alt, onLoadingStatusChange$, class: className, ...rest }) => {
     const ctx = useContext(avatarContextId);
-    const imgRef = useSignal<HTMLImageElement>();
 
     const setStatus$ = $((next: AvatarLoadingStatus) => {
       if (ctx.status.value === next) return;
@@ -333,20 +331,10 @@ const Image = component$<AvatarImageProps>(
       ctx.status.value = current ? "loading" : "idle";
     });
 
-    // An image that failed (or finished) before Qwik resumed fired its event into nothing: read
-    // the outcome off the element once it is visible (HTMLImageElement.complete / naturalWidth).
-    // eslint-disable-next-line qwik/no-use-visible-task
-    useVisibleTask$(() => {
-      const img = imgRef.value;
-      if (!img || !img.complete) return;
-      setStatus$(img.naturalWidth > 0 ? "loaded" : "error");
-    });
-
     if (!src) return null;
     return (
       <img
         {...rest}
-        ref={imgRef}
         src={src}
         alt={alt}
         hidden={ctx.status.value === "error"}
@@ -355,6 +343,14 @@ const Image = component$<AvatarImageProps>(
         data-error={ctx.status.value === "error" ? "" : undefined}
         onLoad$={() => setStatus$("loaded")}
         onError$={() => setStatus$("error")}
+        // An image that failed (or finished) before Qwik resumed fired its event into nothing:
+        // read the outcome off the element once it is visible (HTMLImageElement.complete /
+        // naturalWidth). On the <img> itself, so an avatar without a src registers nothing.
+        // VISIBLE-TASK AUDIT 2026-11-25: DONE 2026-11-25 — useVisibleTask$ replaced by onQVisible$ on the <img> (core.mjs: a q-e:qvisible attribute only when rendered; qwikloader observes it, also after a client render)
+        onQVisible$={(_, img) => {
+          if (!img.complete) return;
+          setStatus$(img.naturalWidth > 0 ? "loaded" : "error");
+        }}
         class={["size-full object-cover", className]}
       />
     );
@@ -378,17 +374,21 @@ const Fallback = component$<AvatarFallbackProps>(
     const ctx = useContext(avatarContextId);
     const ready = useSignal(delay <= 0);
 
-    // eslint-disable-next-line qwik/no-use-visible-task
-    useVisibleTask$(({ cleanup }) => {
-      if (delay <= 0) return;
-      const timer = setTimeout(() => (ready.value = true), delay);
-      cleanup(() => clearTimeout(timer));
-    });
-
     return (
       <span
         {...rest}
         data-qds-avatar-fallback=""
+        // The delay timer, registered only when there is a delay (none at delay 0). At qinit, not
+        // on qvisible: a waiting fallback is `hidden` (display: none), which an
+        // IntersectionObserver never reports as intersecting.
+        // VISIBLE-TASK AUDIT 2026-11-25: DONE 2026-11-25 — useVisibleTask$ replaced by a conditional document:onQInit$ on the span (qwikloader.debug.js processReadyStateChange; core.mjs: no attribute for an undefined handler)
+        document:onQInit$={
+          delay > 0
+            ? $(() => {
+                setTimeout(() => (ready.value = true), delay);
+              })
+            : undefined
+        }
         hidden={
           !(
             ready.value &&

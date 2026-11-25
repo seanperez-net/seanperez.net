@@ -69,6 +69,15 @@ function trimmedEnd(s: string): number {
   return end;
 }
 
+/**
+ * A site path for an internal link card (`ChatLinkEmbed.internal`), or null. Only `/` followed
+ * by something that is not `/` or a backslash: browsers read `//host` and `/\host` as another site.
+ */
+export function chatSitePath(raw: string): string | null {
+  if (!/^\/(?![/\\])/.test(raw) || /[\s\\]/.test(raw)) return null;
+  return raw.length <= URL_MAX ? raw : null;
+}
+
 /** The URL a written link opens, or null when it must stay text. */
 export function chatLinkHref(raw: string): string | null {
   let url: URL;

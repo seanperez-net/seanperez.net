@@ -11,6 +11,12 @@ export const messageComposerVariants = tv({
     // The send button sits on the field's 56dp line, not centred on field + supporting text.
     root: "flex items-start gap-2",
     field: "min-w-0 flex-1",
+    // Read-only (2026-11-25): the note in the composer's place, readable at full contrast (a
+    // disabled field's supporting text is on-surface 38%, too faint for the only explanation).
+    note: [
+      "rounded-md bg-surface-container px-4 py-4 text-body-medium text-on-surface-variant",
+      "focus-ring",
+    ],
   },
 });
 
@@ -29,6 +35,13 @@ export interface MessageComposerProps {
   /** The line under the field; default the key hint. */
   hint?: string;
   disabled?: boolean;
+  /**
+   * A read-only conversation (2026-11-25, the Site updates channel, like a Discord announcement
+   * channel): this NOTE replaces the field and the send button (say who posts and where from).
+   * Nothing can be written or sent; `onSend$` is never called. The note takes `id`, with
+   * `tabindex="-1"`, so a host that focuses the composer on opening a conversation lands on it.
+   */
+  readOnly?: string;
   sendIcon?: IconName;
   labels?: Partial<ChatLabels>;
 }
@@ -55,6 +68,7 @@ export const MessageComposer = component$<MessageComposerProps>(
     placeholder,
     hint,
     disabled = false,
+    readOnly,
     sendIcon = "send",
     labels,
   }) => {
@@ -80,6 +94,18 @@ export const MessageComposer = component$<MessageComposerProps>(
         busy.value = false;
       }
     });
+
+    if (readOnly)
+      return (
+        <p
+          id={id}
+          tabIndex={-1}
+          data-chat-composer="readonly"
+          class={s.note()}
+        >
+          {readOnly}
+        </p>
+      );
 
     return (
       <form

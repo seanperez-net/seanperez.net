@@ -14,10 +14,11 @@
     "format:check": "pnpm -r --parallel run fmt.check",
     "dev:chat": "pnpm --filter @seanperez/chat dev --port 5175",
     "test:e2e": "pnpm --filter @seanperez/web test:e2e",
-    "test:unit": "pnpm --filter @seanperez/data test",
+    "test:unit": "pnpm --filter @seanperez/data --filter @seanperez/ui test",
     "test:e2e:admin": "pnpm --filter @seanperez/admin test:e2e",
     "dev:admin": "pnpm --filter @seanperez/admin dev",
     "build:admin": "pnpm --filter \"@seanperez/admin...\" build",
-    "deploy:admin": "pnpm --filter @seanperez/admin run deploy"
+    "deploy:admin": "pnpm --filter @seanperez/admin run deploy",
+    "test:ui": "pnpm --filter @seanperez/ui test"
   }
 }

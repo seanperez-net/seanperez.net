@@ -502,6 +502,7 @@ export const ContactEditForm = component$<ContactEditFormProps>(
     // Entering the edit view focuses Name (memory focus-first-field-on-open). Not `autofocus`:
     // the browser honours it once per document load, not on a client navigation (HTML spec).
     const formRef = useSignal<HTMLFormElement>();
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — focus needs the rendered input on a client navigation; autofocus is honoured once per document (docs /core/tasks/, HTML autofocus)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(() => {
       formRef.value

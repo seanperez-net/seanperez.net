@@ -526,6 +526,7 @@ const Root = component$<CarouselRootProps>((props) => {
 
   // Contained: lay out now and on every resize; follow `variant` / `maxItemWidth`. Browser-only
   // work (it measures the track), as e-store's.
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — measures the track, ResizeObserver and MutationObserver with cleanup (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track, cleanup }) => {
     const v = track(() => variant.value);
@@ -561,6 +562,7 @@ const Root = component$<CarouselRootProps>((props) => {
   });
 
   // Scrolling layouts: the current item is the one most in view (e-store's IntersectionObserver).
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — IntersectionObserver on the slides with cleanup; no Qwik event gives ratios (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track, cleanup }) => {
     const v = track(() => variant.value);

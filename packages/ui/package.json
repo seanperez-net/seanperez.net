@@ -41,8 +41,9 @@
     "lint": "eslint \"src/**/*.ts*\"",
     "release": "np",
     "start": "vite --open --mode ssr",
-    "test": "echo \"No test specified\" && exit 0",
-    "qwik": "qwik"
+    "test": "vitest run",
+    "qwik": "qwik",
+    "test.unit": "vitest"
   },
   "devDependencies": {
     "@eslint/js": "latest",
@@ -61,7 +62,8 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
     "vite": "8.2.4",
-    "vite-tsconfig-paths": "^4.2.1"
+    "vite-tsconfig-paths": "^4.2.1",
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@material/material-color-utilities": "0.3.0",

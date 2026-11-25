@@ -56,6 +56,7 @@ export const FullscreenButton = component$<FullscreenButtonProps>(
 
     // `document-ready`: the wrapper is `display: contents` (and `hidden` at first), so an
     // IntersectionObserver would never see it (e-store's note).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — requestFullscreen needs a synchronous native click; display:contents root so document-ready (MDN user activation)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(
       ({ cleanup }) => {

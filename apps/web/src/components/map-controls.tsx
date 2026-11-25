@@ -83,6 +83,7 @@ export const MapControls = component$<MapControlsProps>(
 
     // The camera's limits and rotation, from the map's own events (set only on a change, so a
     // pan or zoom does not re-render the toolbar every frame).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — MapLibre's own event emitter (not DOM) with cleanup; a useTask$ + track + isServer would run at the same moment (docs best-practices)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track, cleanup }) => {
       const m = track(() => map.value);
@@ -106,6 +107,7 @@ export const MapControls = component$<MapControlsProps>(
     });
 
     // Full screen: a native click listener and the document's `fullscreenchange`.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — requestFullscreen needs a synchronous native click (user activation); fullscreenchange alone could be useOnDocument (MDN user activation)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track, cleanup }) => {
       const target = track(() => fullscreenTarget.value);

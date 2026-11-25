@@ -229,6 +229,7 @@ export const Turnstile = component$<TurnstileProps>(
     // Browser-only, once the widget scrolls into view (and, with `loadOn="interaction"`, once
     // armed): the third-party script is not loaded for a form nobody reaches or uses. The root is a real element, so the visible strategy holds.
     // A third-party widget needs the DOM element and `window`: no useTask$ / useOn equivalent.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — third-party widget needs the element and window, loaded when in view (docs /core/tasks/ last resort)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(async ({ cleanup, track }) => {
       // Tracked first, so arming re-runs this task (`loadOn="interaction"`).

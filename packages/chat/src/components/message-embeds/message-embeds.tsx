@@ -6,6 +6,7 @@ import {
   chatEmbedHost,
   chatBodyTokens,
   chatLinkHref,
+  chatSitePath,
   chatRefFor,
   chatRefName,
 } from "../../body";
@@ -168,6 +169,31 @@ export const ChatLinkCard = component$<{
 }>(({ embed, labels }) => {
   const L = chatLabels(labels);
   const s = messageEmbedsVariants();
+  // A page on the host's own site (`internal`, 2026-11-25: the Site updates channel's posts):
+  // the router's link, same tab, no external mark or rel; the source line has no icon.
+  if (embed.internal) {
+    const path = chatSitePath(embed.url);
+    if (!path) return null;
+    return (
+      <Card.Root
+        as="link"
+        href={path}
+        variant="outlined"
+        data-chat-embed="internal"
+        aria-label={
+          embed.siteName ? `${embed.title} (${embed.siteName})` : embed.title
+        }
+      >
+        <div class={s.cardContent()}>
+          {embed.siteName && <p class={s.cardSource()}>{embed.siteName}</p>}
+          <p class={s.cardTitle()}>{embed.title}</p>
+          {embed.description && (
+            <p class={s.cardDescription()}>{embed.description}</p>
+          )}
+        </div>
+      </Card.Root>
+    );
+  }
   const href = chatLinkHref(embed.url);
   if (!href) return null;
   const source = embed.siteName || chatEmbedHost(href);

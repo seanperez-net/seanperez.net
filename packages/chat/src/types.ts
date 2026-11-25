@@ -125,8 +125,18 @@ export type ChatRef =
  */
 export interface ChatLinkEmbed {
   kind: "link";
-  /** An `http:` / `https:` address; anything else draws no card. */
+  /**
+   * An `http:` / `https:` address; anything else draws no card. With `internal`, a path on
+   * this site instead (`/feed/<slug>/`).
+   */
   url: string;
+  /**
+   * A page on the HOST's own site (2026-11-25, the Site updates channel's posts): `url` is a
+   * site path, opened in the same tab by the router (`Card.Root as="link"`), with no external
+   * mark and no `rel="external nofollow ugc"`. Set by the host, never inferred from the URL;
+   * a `url` that is not a plain site path (`/...`, not `//` or `/\`) draws no card.
+   */
+  internal?: boolean;
   title: string;
   /** The site's own name (Open Graph `og:site_name`); default the host name. */
   siteName?: string | null;

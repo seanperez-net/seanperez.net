@@ -37,6 +37,10 @@ import {
   storeMessage,
 } from "../messages/messages-store";
 import { OWNER_ACCOUNT } from "../content/accounts";
+import {
+  toSiteUpdateMessages,
+  type SiteUpdate,
+} from "../messages/site-updates";
 import { CONTACT_COMPANION_ID, draftContactMessage } from "./contact-panel";
 import { useSendToSean } from "./contact-actions";
 import { ME_CHANGED_EVENT, fetchMe, type Me } from "../account/me";
@@ -98,6 +102,7 @@ export function useStoredMessages() {
   const stored = useSignal<StoredMessages>({ threads: {}, hidden: {} });
   // Browser only, after the view exists (it may be client-rendered, the window, so `qinit` has
   // passed): no `useTask$` / `useOn` equivalent.
+  // VISIBLE-TASK AUDIT 2026-11-25: STRATEGY — set 'document-ready': headless callers (ThreadWindow, RecentInteractions) already fall back to it with a dev warning; stays a task for the BroadcastChannel cleanup (core.mjs addUseOnEvents, useRegisterTaskEvents)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ cleanup }) => {
     const read = async () => {
@@ -116,7 +121,7 @@ export function useStoredMessages() {
   return stored;
 }
 
-export function useDemoThread(id: string) {
+export function useDemoThread(id: string, updates?: SiteUpdate[]) {
   const layout = useContext(layoutContextId);
   const apps = useMyApps();
   const { showSnackbar$ } = useSnackbar();
@@ -131,7 +136,13 @@ export function useDemoThread(id: string) {
   const stored = useStoredMessages();
   const messages = useComputed$(() => {
     const hidden = stored.value.hidden[id] ?? [];
-    return [...thread.messages, ...local.value].filter(
+    // A read-only channel (Site updates, 2026-11-25): the server's posts only, never the
+    // visitor's own messages (any kept from before it was read-only stay in storage, unshown).
+    // Without `updates` (the floating window, outside /messages/) it shows none.
+    const all = thread.readOnly
+      ? toSiteUpdateMessages(updates ?? [])
+      : [...thread.messages, ...local.value];
+    return all.filter(
       (m) => !hidden.includes(m.id) && !gone.value.includes(m.id),
     );
   });
@@ -161,6 +172,8 @@ export function useDemoThread(id: string) {
   const checking = useSignal(false);
 
   const send$ = $(async (text: string) => {
+    // Read-only: nothing is written (the composer draws no field there anyway).
+    if (thread.readOnly) return false;
     // Sean's thread (2026-11-25, owner: "when trying to send a message to me and not logged in
     // ... it should pop that contact me window and ... auto focus the name"): there is no sign-in
     // yet, so a message to him goes THROUGH Contact me: the text moves into its Message field,

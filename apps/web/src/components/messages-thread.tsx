@@ -10,6 +10,7 @@ import {
 } from "@qwik.dev/core";
 import {
   Button,
+  EmptyState,
   FullscreenButton,
   Icon,
   IconButton,
@@ -40,6 +41,7 @@ import { ConfirmDialog } from "./contacts-dialogs";
 import { MESSAGES_DETAILS_COMPANION } from "./messages-details";
 import { SendCheck } from "./send-check";
 import { useDemoThread } from "./use-demo-thread";
+import type { SiteUpdate } from "../messages/site-updates";
 
 /** The composer's textarea id: the focus target when a conversation is opened. */
 export const COMPOSER_ID = "messages-composer";
@@ -89,7 +91,11 @@ export const MessagesReadContext =
  * goes FIRST in the icon-button row, before Search (Google Chat's order); today only the floating
  * window has it, as a demo notice (`messages-window-host.tsx`).
  */
-export const MessagesThread = component$<{ id: string }>(({ id }) => {
+export const MessagesThread = component$<{
+  id: string;
+  /** A read-only channel's posts from the server (Site updates: `useSiteUpdates`). */
+  updates?: SiteUpdate[];
+}>(({ id, updates }) => {
   const layout = useContext(layoutContextId);
   const { showSnackbar$ } = useSnackbar();
   const presence = usePresence();
@@ -108,7 +114,7 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
     needsCheck,
     checkForm,
     checking,
-  } = useDemoThread(id);
+  } = useDemoThread(id, updates);
   const apps = useMyApps();
 
   const contact$ = $((_: Event, el: HTMLElement) =>
@@ -274,13 +280,26 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
 
       {/* The detail's ONE body element: transcript, typing line, composer. */}
       <div class="flex min-h-0 flex-col gap-2">
-        {/* A new log per conversation: this component is the `[id]` route's, keyed by it. */}
-        <MessageList
-          messages={messages.value}
-          streaming={streaming.value}
-          label={`Messages with ${ownThreadTitle(thread, own.fields)}`}
-          onDelete$={askDelete$}
-        />
+        {/* A new log per conversation: this component is the `[id]` route's, keyed by it. A
+            read-only channel with no posts (none published, or the database unreachable) says
+            so instead of an empty log. */}
+        {thread.readOnly && messages.value.length === 0 ? (
+          <div class="grid flex-1 place-items-center">
+            <EmptyState
+              size="sm"
+              icon="article"
+              headline="No updates yet"
+              live={false}
+            />
+          </div>
+        ) : (
+          <MessageList
+            messages={messages.value}
+            streaming={streaming.value}
+            label={`Messages with ${ownThreadTitle(thread, own.fields)}`}
+            onDelete$={askDelete$}
+          />
+        )}
 
         <ChatTypingIndicator
           name={streaming.value ? thread.person.name : null}
@@ -292,9 +311,11 @@ export const MessagesThread = component$<{ id: string }>(({ id }) => {
           <SendCheck form={checkForm} pending={checking.value} />
         )}
 
+        {/* Read-only (Site updates): a note in the composer's place, nothing to send. */}
         <MessageComposer
           id={COMPOSER_ID}
           onSend$={send$}
+          readOnly={thread.readOnly}
           placeholder={
             thread.kind === "assistant"
               ? "Ask the assistant"

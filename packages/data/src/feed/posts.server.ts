@@ -72,6 +72,42 @@ export async function listPublishedFull(
   }
 }
 
+/** A published post as the Messages app's Site updates channel shows it (apps/web, 2026-11-25). */
+export interface PostUpdate {
+  id: number;
+  slug: string;
+  title: string;
+  /** The start of the body (`UPDATE_HEAD` characters): the caller makes the summary from it. */
+  body_head: string;
+  published_at: string;
+}
+
+/** Characters of the body read for a summary (enough for `excerpt`'s 160 after markdown). */
+const UPDATE_HEAD = 600;
+
+/**
+ * The newest `limit` published posts, newest first, with only the start of each body: the
+ * Site updates channel (a summary per post, never the whole body). Errors as `listPublished`.
+ */
+export async function listUpdates(
+  db: D1Database,
+  limit = 20,
+): Promise<PostUpdate[]> {
+  try {
+    const { results } = await db
+      .prepare(
+        `SELECT id, slug, title, substr(body_md, 1, ${UPDATE_HEAD}) AS body_head, published_at
+         FROM post WHERE ${PUBLISHED} ORDER BY published_at DESC LIMIT ?`,
+      )
+      .bind(limit)
+      .all<PostUpdate>();
+    return results;
+  } catch (error) {
+    console.error("feed: updates failed", error);
+    return [];
+  }
+}
+
 export async function getPublished(
   db: D1Database,
   slug: string,

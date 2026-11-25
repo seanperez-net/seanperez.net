@@ -568,6 +568,7 @@ export const MapView = component$<MapViewProps>(
     const mapRef = useSignal<NoSerialize<MapLibreMap>>();
 
     // The map needs the element and WebGL: browser only, once the element is on screen.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — MapLibre needs the element and WebGL, browser only, gated on view (docs /core/tasks/ last resort)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ cleanup }) => {
       const container = mount.value;
@@ -741,6 +742,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // Route, stops: into the map's sources whenever they change.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);
@@ -757,6 +759,7 @@ export const MapView = component$<MapViewProps>(
     // waiting ones, so frames never pile up (reviewed in maplibre-gl 6.19's `setData`).
     // Started with the map, stopped with it: leaving /maps/ unmounts this component; the cleanup
     // cancels the frame, unsubscribes (which closes the hub's socket).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — owns the live-node socket and frame loop for the map's lifetime, with cleanup (docs /core/tasks/ cleanup)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track, cleanup }) => {
       const map = track(() => mapRef.value);
@@ -906,6 +909,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // The selected node, drawn at once (the next frame, or now under reduced motion).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       track(() => mapRef.value);
@@ -914,6 +918,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // The Nodes layer's show / hide switch.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);
@@ -926,6 +931,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // Style overrides, live.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);
@@ -934,6 +940,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // Reset: reload the style without overrides (the originals come back).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);
@@ -942,6 +949,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // Camera moves the panel asks for (a search result, a new route).
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);
@@ -958,6 +966,7 @@ export const MapView = component$<MapViewProps>(
     });
 
     // "Choose on map": a crosshair while a pick is pending.
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — replaceable by useTask$ + track + isServer guard, but it re-runs as soon as the map exists, so nothing is deferred (docs best-practices useTask$)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(({ track }) => {
       const map = track(() => mapRef.value);

@@ -243,6 +243,7 @@ export default component$(() => {
   // idle, so the floating Contacts card lists them too. Empty in the server HTML.
   const contactLabels = useSignal<DrawerLabel[]>([]);
   useContextProvider(localLabelsId, contactLabels);
+  // VISIBLE-TASK AUDIT 2026-11-25: REPLACE — useOnDocument('qidle', $(...)): the document-idle strategy IS useOnDocument('qidle'), untracked, root layout always SSR (core.mjs useRegisterTaskEvents; docs best-practices)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     () => {

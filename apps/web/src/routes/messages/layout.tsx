@@ -1,13 +1,17 @@
 import {
+  $,
   Slot,
   component$,
   isBrowser,
   useComputed$,
   useContextProvider,
+  useOnDocument,
   useSignal,
   useTask$,
 } from "@qwik.dev/core";
-import { useLocation } from "@qwik.dev/router";
+import { routeLoader$, useLocation, useNavigate } from "@qwik.dev/router";
+import { excerpt } from "@seanperez/data/feed/markdown.server";
+import { listUpdates } from "@seanperez/data/feed/posts.server";
 import {
   toChatMessage,
   useStoredMessages,
@@ -27,6 +31,14 @@ import {
   toConversation,
   type MessagesShortcut,
 } from "../../content/conversations";
+import {
+  SITE_UPDATES_ID,
+  markSiteUpdatesSeen,
+  readSiteUpdatesSeen,
+  toSiteUpdateMessages,
+  unreadSiteUpdates,
+  type SiteUpdate,
+} from "../../messages/site-updates";
 import { usePresence } from "../../presence/use-presence";
 import {
   ownThreadTitle,
@@ -58,6 +70,30 @@ const rowLink = (id: string) => {
   );
 };
 
+/**
+ * The Site updates channel's posts (2026-11-25, `messages/site-updates.ts`): the newest 20
+ * published posts from D1, the same source as Home, newest first. Read on EVERY request (the
+ * default `no-cache` JSON; the service worker is network-first and falls back to its copy only
+ * offline). `serializationStrategy: "always"`: the list's rows are recomputed in the browser
+ * (stored messages, the unread count), and the default `never` would fetch the JSON again on
+ * every resume (rule Q7). `search: []`: no query string changes it. The thread route reads it
+ * too (`[id]/index.tsx`).
+ */
+export const useSiteUpdates = routeLoader$(
+  async ({ platform }): Promise<SiteUpdate[]> =>
+    (await listUpdates(platform.env.DB, 20)).map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      title: p.title,
+      summary: excerpt(p.body_head),
+      publishedAt: p.published_at,
+    })),
+  { serializationStrategy: "always", search: [] },
+);
+
+/** The least time between two refreshes on `visibilitychange` (owner, 2026-11-25: 60 s). */
+const REFRESH_EVERY_MS = 60_000;
+
 /** The list pane's heading id (its section and its list are named by it). */
 const LIST_TITLE_ID = "messages-title";
 
@@ -86,6 +122,10 @@ export default component$(() => {
   const own = useProfileOverride();
   const read = useSignal<string[]>([]);
   const stored = useStoredMessages();
+  const updates = useSiteUpdates();
+  // This device's last-seen post time (`undefined` until read in the browser: the server render
+  // shows no unread count for the channel rather than a guess).
+  const seen = useSignal<string | null | undefined>(undefined);
   useContextProvider(MessagesReadContext, read);
 
   const view = useComputed$(() =>
@@ -99,6 +139,42 @@ export default component$(() => {
   const rows = useComputed$(() =>
     sortConversations(
       shortcutThreads(list.value).map((base) => {
+        // The Site updates channel: the server's posts (minus the ones deleted here), no visitor
+        // messages (read-only); unread = posts newer than this device's last-seen time.
+        if (base.id === SITE_UPDATES_ID) {
+          const hidden = stored.value.hidden[base.id] ?? [];
+          const thread = {
+            ...base,
+            messages: toSiteUpdateMessages(updates.value).filter(
+              (m) => !hidden.includes(m.id),
+            ),
+          };
+          // Not "read this visit" as the other threads: a post that arrives later (the refresh on
+          // `visibilitychange` below) is unread again; while the channel is open it is 0.
+          const unread =
+            seen.value === undefined || selected.value === SITE_UPDATES_ID
+              ? 0
+              : unreadSiteUpdates(updates.value, seen.value, hidden);
+          const row = toConversation(thread, unread);
+          // The preview names the post ("Sean Perez: <title>"), not the message's "New post".
+          const last = thread.messages[thread.messages.length - 1];
+          const title = last?.embeds?.[0]?.title;
+          const conversation =
+            row.lastMessage && title
+              ? {
+                  ...row,
+                  lastMessage: {
+                    ...row.lastMessage,
+                    body: `${last.author.name}: ${title}`,
+                  },
+                }
+              : row;
+          return {
+            thread,
+            conversation,
+            lastMessageAt: conversation.lastMessageAt,
+          };
+        }
         // The visitor's own messages (kept in their browser) count for the preview and order;
         // a message they deleted does not (2026-11-25, `messages-local.ts` `hidden`).
         const mine = stored.value.threads[base.id] ?? [];
@@ -129,6 +205,49 @@ export default component$(() => {
     ),
   );
   const action = useComputed$(() => appActionFor(loc.url.pathname));
+
+  // The channel's last-seen time, in the browser only (localStorage): read it, and save the
+  // newest post shown when the channel is open. On the document's `qinit` (a server-rendered
+  // page) and on each browser-side navigation (a `useTask$` that ran on the server does not run
+  // again on resume, so it alone would never save on a page load: RULE 2 review).
+  const syncSeen$ = $(() => {
+    seen.value =
+      threadId(loc.url.pathname) === SITE_UPDATES_ID
+        ? markSiteUpdatesSeen(updates.value)
+        : readSiteUpdatesSeen();
+  });
+  useOnDocument("qinit", syncSeen$);
+  useTask$(({ track }) => {
+    track(() => loc.url.pathname);
+    if (isBrowser) return syncSeen$();
+  });
+
+  // Kept current when the page comes BACK (owner, 2026-11-25): an installed PWA returning from
+  // the background re-runs this route's loaders, so Site updates shows posts made meanwhile with
+  // no manual reload. `nav()` with no URL is the router's documented refresh (next.qwik.dev/docs/
+  // routing "<Link reload>": every matching routeLoader$ runs again on the server); rc.5's
+  // `beginNavigation` defaults `forceReload` to `path === undefined` and, for the same URL, keeps
+  // no loader request (only `cacheControl: 'immutable'` ones). `scroll: false`: the router does
+  // not restore scroll on a same-path forceReload anyway (`commitNavigation`); said for the reader.
+  // The route's components stay mounted (same modules, the thread keyed by the same id), so a
+  // composer draft and focus are untouched: the router moves no focus, and the focus task below
+  // returns on an unchanged path. At most once a minute (`lastLoad`: `performance.now()` of the
+  // last load, 0 = this page's own load) and only online (offline the service worker would answer
+  // with its copy: nothing new).
+  const nav = useNavigate();
+  const lastLoad = useSignal(() => (isBrowser ? performance.now() : 0));
+  useOnDocument(
+    "visibilitychange",
+    $(async () => {
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      const now = performance.now();
+      if (now - lastLoad.value < REFRESH_EVERY_MS) return;
+      lastLoad.value = now;
+      await nav(undefined, { forceReload: true, scroll: false });
+      // Open on the channel: what just arrived is now seen.
+      await syncSeen$();
+    }),
+  );
 
   // Opening a conversation marks it read (this visit), on the server render too.
   useTask$(({ track }) => {

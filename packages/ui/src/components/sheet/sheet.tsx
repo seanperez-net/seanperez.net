@@ -130,6 +130,7 @@ export const Sheet = component$<SheetProps>(
     // Native listeners: a drag needs synchronous pointer capture and click swallowing, which a
     // lazily loaded `$()` handler cannot give. `document-ready`: a popover is `display: none`
     // to the intersection observer until shown. (e-store's reason, kept: the last resort applies.)
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — drag needs synchronous pointer capture and native listeners; popover is display:none so document-ready (docs best-practices sync$ note)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(
       ({ cleanup }) => {

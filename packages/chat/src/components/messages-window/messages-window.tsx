@@ -166,6 +166,7 @@ export const MessagesWindow = component$<MessagesWindowProps>(
       if (lost && to?.isConnected) to.focus();
     });
 
+    // VISIBLE-TASK AUDIT 2026-11-25: KEEP — opens its popover and moves focus once mounted, restores focus in cleanup (core.mjs; APG dialog)
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(
       ({ cleanup }) => {

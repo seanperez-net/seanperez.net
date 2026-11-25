@@ -14,6 +14,7 @@ port.
 | `placeholder` | `string`                                         | "Message"   |                                             |
 | `hint`        | `string`                                         | key hint    | The supporting line                         |
 | `disabled`    | `boolean`                                        | `false`     |                                             |
+| `readOnly`    | `string`                                         | none        | A note replaces the field (read-only chat)  |
 | `sendIcon`    | `IconName`                                       | `send`      |                                             |
 | `labels`      | `Partial<ChatLabels>`                            | English     | `composerLabel`, `send`, ...                |
 
@@ -34,3 +35,15 @@ port.
 
 Open (owner): on touch keyboards Enter-sends leaves no newline key; e.g. Enter = newline when
 the pointer is coarse (a `matchMedia` check inside the `sync$`). Not done.
+
+## Read-only conversations (2026-11-25)
+
+`readOnly="Only Sean posts here. Updates come from the site's feed."` draws that note in the
+composer's place, for a conversation nobody here can write in (the site's Site updates channel,
+like a Discord announcement channel: the owner posts in the admin app, everyone reads). No field
+and no send button: `onSend$` is never called. Chosen over `disabled` + `hint` after the RULE 2
+review: a disabled textarea is not focusable (keyboard and screen-reader users tabbing through
+never reach its hint) and a disabled field's supporting text is `on-surface` 38%, too faint for
+the only explanation on the screen. The note is `body-medium`, `on-surface-variant`, on
+`surface-container` (a different role from the pane's `surface`, rule S1). It takes `id` and
+`tabindex="-1"`, so a host that focuses the composer when a conversation opens focuses the note.

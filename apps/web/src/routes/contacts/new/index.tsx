@@ -42,6 +42,7 @@ export default component$(() => {
 
   // As Import: a `<dialog>` opens by script only, once it is in the page (a `useTask$` runs
   // before it exists on a client navigation).
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — a <dialog> opens by script after it exists; useTask$ tried (runs before render); later: one open-on-mount option in Modal (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     () => {

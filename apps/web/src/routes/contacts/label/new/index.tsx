@@ -37,6 +37,7 @@ export default component$(() => {
   const { showSnackbar$ } = useContactsSnackbar();
   const after = useSignal("/contacts/");
 
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — a <dialog> opens by script after it exists; useTask$ tried (runs before render); later: one open-on-mount option in Modal (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     () => {

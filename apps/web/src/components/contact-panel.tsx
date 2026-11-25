@@ -431,6 +431,7 @@ export const ContactPanel = component$(() => {
   // `useSignal(isBrowser)`: false when serialized from the server, true when created here.
   const openedHere = useSignal(isBrowser);
   // Focus needs the rendered element: no `useTask$` / `useOn` equivalent.
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — focus needs the rendered input after a client mount; useTask$ runs before render, autofocus is per document load (docs /core/tasks/)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
     if (!openedHere.value) return;

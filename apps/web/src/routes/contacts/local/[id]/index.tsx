@@ -29,6 +29,7 @@ export default component$(() => {
   // (`LOCAL_SHELL`), whose router state is the id it was stored for. The address bar has the right
   // one: navigate there (on the client, the stored loader JSON serves it) so the list, the
   // selection and this page agree. Browser only, and nothing to do online.
+  // VISIBLE-TASK AUDIT 2026-11-25: REPLACE — useOnDocument('qinit', $(...)): acts only on a service-worker-served document load; document-ready IS useOnDocument('qinit') (core.mjs useRegisterTaskEvents)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(
     () => {

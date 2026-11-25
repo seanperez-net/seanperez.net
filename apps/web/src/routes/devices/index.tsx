@@ -85,6 +85,7 @@ export default component$(() => {
   const locating = useSignal(false);
   const { showSnackbar$ } = useSnackbar();
 
+  // VISIBLE-TASK AUDIT 2026-11-25: KEEP — live-node WebSocket subscription with cleanup; the THIS_DEVICE_EVENT listener alone could be useOnDocument (docs best-practices)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ cleanup }) => {
     const reload = () => (device.value = loadThisDevice());
