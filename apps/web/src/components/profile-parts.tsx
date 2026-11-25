@@ -16,7 +16,7 @@ import { usePresence } from "../presence/use-presence";
 import type { Profile, ProfileLink } from "@seanperez/db/profile/profile";
 import { BrandMark } from "./brand-mark";
 import { APPS_DOCS_HREF } from "./contact-me-menu";
-import { ResumeSection, type ResumeSectionVariant } from "./resume-section";
+import { SectionCard, type SectionCardVariant } from "./section-card";
 
 /**
  * The profile's parts, shared by `/profile/` and the Contacts app's profile
@@ -130,11 +130,11 @@ export const LinkRows = component$<{
 export const ProfileLinks = component$<{
   id: string;
   links: ProfileLink[];
-  variant?: ResumeSectionVariant;
+  variant?: SectionCardVariant;
 }>(({ id, links, variant }) => (
-  <ResumeSection id={id} title="Links" full variant={variant}>
+  <SectionCard id={id} title="Links" full variant={variant}>
     <LinkRows links={links} labelledBy={id} />
-  </ResumeSection>
+  </SectionCard>
 ));
 
 /** Said when Contact me is removed or added back (Undo / Add back are the way back). */
@@ -159,7 +159,7 @@ export const YourApps = component$(() => {
   const snackbar = useSnackbar();
   const busy = useSignal(false);
   return (
-    <ResumeSection id={YOUR_APPS_ID} title="Your apps" full>
+    <SectionCard id={YOUR_APPS_ID} title="Your apps" full>
       <List.Root aria-labelledby={YOUR_APPS_ID}>
         <List.Item
           startIcon="waving_hand"
@@ -198,6 +198,6 @@ export const YourApps = component$(() => {
           }
         />
       </List.Root>
-    </ResumeSection>
+    </SectionCard>
   );
 });

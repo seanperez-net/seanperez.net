@@ -59,7 +59,7 @@ const TABLES = [
   "contact_account",
   "post",
   "profile",
-];
+  ];
 
 export interface TestD1 {
   db: D1Database;

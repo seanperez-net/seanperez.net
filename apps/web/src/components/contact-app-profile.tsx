@@ -4,7 +4,7 @@ import { IconButton, List } from "@seanperez/ui";
 import type { LocalContact, SiteBase } from "../contacts/local-book";
 import { SCOPE_WORDS, findAccount, type Account } from "../content/accounts";
 import { ContactPerson } from "./contact-person";
-import { ResumeSection } from "./resume-section";
+import { SectionCard } from "./section-card";
 
 /**
  * An APP's contact page, in Google Contacts' person page since 2026-11-24 (`ContactPerson`).
@@ -64,14 +64,14 @@ export const ContactAppProfile = component$<{
       )}
 
       {account.about && (
-        <ResumeSection id="contact-about" title="About" variant="filled">
+        <SectionCard id="contact-about" title="About" variant="filled">
           <p class="text-body-large whitespace-pre-line text-on-surface-variant">
             {account.about}
           </p>
-        </ResumeSection>
+        </SectionCard>
       )}
 
-      <ResumeSection id="contact-account" title="Account" full variant="filled">
+      <SectionCard id="contact-account" title="Account" full variant="filled">
         <List.Root aria-labelledby="contact-account">
           <List.Item
             startIcon="smart_toy"
@@ -86,9 +86,9 @@ export const ContactAppProfile = component$<{
             />
           )}
         </List.Root>
-      </ResumeSection>
+      </SectionCard>
 
-      <ResumeSection
+      <SectionCard
         id="contact-permissions"
         title="Permissions"
         full
@@ -107,7 +107,7 @@ export const ContactAppProfile = component$<{
           A preview: no permission is checked yet, and an app will only get what
           a person grants it.
         </p>
-      </ResumeSection>
+      </SectionCard>
     </ContactPerson>
   );
 });

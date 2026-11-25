@@ -82,8 +82,15 @@ Every other `<li>` attribute is spread onto the `<li>` (`id`, `data-*`, `style`,
 - `List.GroupHeader`: every `Item` prop, `label` (the headline), `chevronIcon` (`IconName`,
   default `expand_more`, rotated 180deg while open; `null` hides it), `aria-disabled` (a label row
   with nothing to disclose: no button role, no Tab stop).
-- `List.GroupContent`: a nested `<ul>`, `hidden` while closed; in an `interactive` list it is the
-  listbox, named by its header, with its own single Tab stop.
+- `List.GroupContent`: a nested `<ul>`; in an `interactive` list it is the listbox, named by its
+  header, with its own single Tab stop.
+- NATIVE since 2026-11-25 (profile sections, owner: "i guess the native"): the group is a
+  `<details>` in its `<li>`, the header its `<summary>` (no `role="button"`, no click handler: the
+  browser toggles, so it opens WITHOUT JavaScript); `onToggle$` keeps the root's open list in step.
+  `multipleGroups={false}` gives every group of the root one `name` (exclusive, native). Print:
+  every group prints OPEN (Chromium `::details-content` rule, plus a `beforeprint` / `afterprint`
+  `sync$` that opens and restores them in every browser) and its chevron is hidden. NOT built: a
+  list nested INSIDE a row (`Item`'s default slot sits before the headline): OPEN, for the owner.
 
 ## Row actions (`List.Item actions`, NEW 2026-11-25)
 

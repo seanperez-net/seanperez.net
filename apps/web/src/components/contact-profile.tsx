@@ -23,20 +23,20 @@ export interface ContactProfileProps {
 }
 
 /**
- * The OWNER's contact page (owner, 2026-11-24): the résumé, in Google
+ * The OWNER's contact page (owner, 2026-11-24): his profile, in Google
  * Contacts' person page (`ContactPerson`: actions in the pane header, the avatar with its "+",
  * the labels row; owner: "mine is special because it acts like a resume but make it at least look
- * like the contacts"). Its sections have stable ids (`resume-experience`, ...) to link to.
+ * like the contacts"). Its sections have stable ids (`profile-<id>`) to link to.
  *
  * - The `actions` row: Google's round tonal buttons with a caption (`IconButton showLabel`, owner
  *   2026-11-24): Message (owner: email, chat and video live inside Messages, so one action),
- *   GitHub, Copy link. NO address on the site.
+ *   GitHub, Copy link, Print (the profile, 2026-11-25). NO address on the site.
  * - Cards: FILLED (Google's detail cards are filled, observed). Since 2026-11-25 Google's two
  *   SOURCES: "Contact details" (the visitor's emails, phones and notes, editable, with "Add ..."
  *   prompts) and ONE "Profile" card (`profile-card.tsx`: availability, location, About,
- *   Experience, Education, Projects, Links; read-only). The résumé's ids are kept.
+ *   his sections (Work, Education, ...), Projects, Links; read-only).
  * - The visitor's own changes (name, emails, phones, notes, labels, star, photo) are a LOCAL
- *   override (`ContactPerson site`); the résumé and the "Contact me" companion never change.
+ *   override (`ContactPerson site`); his profile and the "Contact me" companion never change.
  */
 export const ContactProfile = component$<ContactProfileProps>(
   ({ id, seed, presence, profile, record, base, overridden }) => {
@@ -79,9 +79,10 @@ export const ContactProfile = component$<ContactProfileProps>(
         accountId={OWNER_ACCOUNT.id}
       >
         {/* Google's quick actions: round tonal buttons, a caption under each (`showLabel`). */}
+        {/* Not on paper (`print:hidden`): a printed page has no buttons. */}
         <div
           q:slot="actions"
-          class="flex flex-wrap items-center gap-1"
+          class="flex flex-wrap items-center gap-1 print:hidden"
           aria-label="Actions"
           role="group"
         >
@@ -117,10 +118,22 @@ export const ContactProfile = component$<ContactProfileProps>(
             showLabel
             onClick$={copyLink$}
           />
+          {/* Print the profile (2026-11-25, owner: "maybe we need a print button"): the
+              browser's own dialog (Save as PDF included). Collapsed sections open for it
+              (`List.Group`'s beforeprint), hidden ones were never sent; the scaffold prints
+              as one column (`layout.css` `@media print`). A Share menu is NOT built: the
+              library has no menu trigger drawn as this row's tonal caption button. */}
+          <IconButton
+            look="tonal"
+            icon="print"
+            label="Print"
+            showLabel
+            onClick$={() => window.print()}
+          />
         </div>
 
         {/* His PROFILE (Google's PROFILE source, 2026-11-25; owner: "put it in the profile
-            card"): availability, location, About, the résumé and his links, read-only here.
+            card"): availability, location, About, his sections and links, read-only here.
             The visitor's own additions (emails, phones, notes) are the "Contact details" card. */}
         <ProfileCard
           id="contact-profile"

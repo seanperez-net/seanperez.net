@@ -1,10 +1,12 @@
 /**
- * The search's static entries: the site's pages, the résumé and the projects. Built from the
- * same content the pages render (`pages.ts`, `content/resume.ts`, `content/repos.json`), so a
+ * The search's static entries: the site's pages, the owner's profile and the projects. Built from
+ * the same content the pages render (`pages.ts`, `content/profile-content.ts`, `content/repos.json`;
+ * his profile sections' rows come from D1 per search, `sectionSearchEntries`), so a
  * change there shows up in search with no index to rebuild. Server-side only in practice (the
  * endpoint and the /search/ loader import it), but holds no secrets.
  */
-import { RESUME } from "../content/resume";
+import type { PublicProfileSection } from "@seanperez/db/profile/profile-sections";
+import { PROFILE_CONTENT } from "../content/profile-content";
 import { PAGES } from "../pages";
 import { DEFAULT_CONTACT_ID, contactHref } from "../content/contacts";
 import type { SearchGroup } from "./types";
@@ -19,7 +21,7 @@ export interface SearchEntry {
   text: string;
 }
 
-/** The owner's contact profile, where the résumé sections live (`ContactProfile`). */
+/** The owner's contact profile, where his profile sections live (`ContactProfile`). */
 const PROFILE = contactHref(DEFAULT_CONTACT_ID);
 
 const pages: SearchEntry[] = Object.entries(PAGES)
@@ -34,30 +36,46 @@ const pages: SearchEntry[] = Object.entries(PAGES)
     text: `${page.title} ${page.description} ${page.card ?? ""}`,
   }));
 
-const resumeRows = (
-  rows: typeof RESUME.experience,
-  anchor: string,
+/**
+ * The owner's profile sections' rows (2026-11-25: `Profile.sections` from `@seanperez/db`
+ * `getProfile`, hidden parts already removed on the server), each linking to its row's anchor on
+ * his page. Called per search by `search.server.ts`, so an admin edit shows within the profile's
+ * minute.
+ */
+export const sectionSearchEntries = (
+  sections: PublicProfileSection[],
 ): SearchEntry[] =>
-  rows.map((row) => ({
-    group: "contacts",
-    label: `${row.title}, ${row.place}`,
-    href: `${PROFILE}#${anchor}`,
-    snippet: [row.dates, row.detail].filter(Boolean).join(" · "),
-    text: `${row.title} ${row.place} ${row.dates} ${row.detail ?? ""}`,
-  }));
+  sections.flatMap((section) =>
+    section.entries.map((entry) => ({
+      group: "contacts" as const,
+      label: entry.where ? `${entry.position}, ${entry.where}` : entry.position,
+      href: `${PROFILE}#profile-${entry.id}`,
+      snippet: [section.title, entry.dates, entry.summary]
+        .filter(Boolean)
+        .join(" · "),
+      text: [
+        section.title,
+        entry.position,
+        entry.where,
+        entry.dates,
+        entry.summary,
+        ...entry.highlights,
+        ...entry.keywords,
+      ].join(" "),
+    })),
+  );
 
 const contacts: SearchEntry[] = [
   {
     group: "contacts",
-    // The résumé is the owner's contact profile now (owner, 2026-11-24: About -> Contacts).
+    // His profile is his contact page (owner, 2026-11-24: About -> Contacts). "cv" / "resume"
+    // stay as search words only: what people type to find it.
     label: "Sean Perez",
     href: PROFILE,
-    snippet: RESUME.summary,
-    text: `about résumé resume cv profile contact sean perez ${RESUME.summary}`,
+    snippet: PROFILE_CONTENT.summary,
+    text: `about résumé resume cv profile contact sean perez ${PROFILE_CONTENT.summary}`,
   },
-  ...resumeRows(RESUME.experience, "resume-experience"),
-  ...resumeRows(RESUME.education, "resume-education"),
-  ...RESUME.links.map(
+  ...PROFILE_CONTENT.links.map(
     (link): SearchEntry => ({
       group: "contacts",
       label: link.label,
@@ -68,7 +86,7 @@ const contacts: SearchEntry[] = [
   ),
 ];
 
-const projects: SearchEntry[] = RESUME.projects.map((repo) => ({
+const projects: SearchEntry[] = PROFILE_CONTENT.projects.map((repo) => ({
   group: "projects",
   label: repo.name,
   href: repo.url,

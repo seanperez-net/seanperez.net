@@ -69,10 +69,10 @@ export interface Account {
  * a user on the client side is disconnected its only a message thats sent to everyone from the sean
  * perez admin account"). On the client he is NEVER a user: not the visitor, not a presence, not a
  * profile, not a member who talks in spaces. He appears as the SENDER of messages to everyone (his
- * welcome, the Site updates announcements) and as a contact (the résumé). The real admin account
+ * welcome, the Site updates announcements) and as a contact (his profile). The real admin account
  * (server side, signed in to /admin) is still to be made: PLAN.md. A PERSON in the visitor's
  * Contacts and Messages, never the visitor (owner decision 2026-11-25, memory `visitor-is-guest-you`: the site no longer looks
- * signed in as him). His contact page is the résumé (`/contacts/sean-perez/`), his direct thread
+ * signed in as him). His contact page is his profile (`/contacts/sean-perez/`), his direct thread
  * holds his welcome message (`/messages/sean-perez/`); "Contact me" is how a visitor really
  * reaches him.
  */

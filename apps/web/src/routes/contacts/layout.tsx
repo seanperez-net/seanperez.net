@@ -96,7 +96,7 @@ import { cleanQuery } from "../../search/types";
  * its child routes too). Each row is an ACCOUNT (`content/accounts.ts`, 2026-11-24): the owner,
  * whose record is the owner's server profile (`getProfile`, as Contact me's links; `/profile/` is
  * the VISITOR's own since 2026-11-25), falling back per
- * field to `content/resume.ts`), and the assistant, an app (its account only, no profile). These
+ * field to its defaults; his sections ride along, hidden parts removed on the server), and the assistant, an app (its account only, no profile). These
  * are READ-ONLY here (second agent and I, 2026-11-24: Google makes profile-sourced details
  * read-only, FEATURES 3.3). The visitor's OWN contacts are the local book, below.
  */

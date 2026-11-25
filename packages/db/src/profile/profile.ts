@@ -15,6 +15,7 @@ export interface ProfileLink {
   /** `rel="me"`: the owner's own profile elsewhere. */
   me?: boolean;
 }
+import type { PublicProfileSection } from "./profile-sections.ts";
 
 export interface Profile {
   name: string;
@@ -25,6 +26,11 @@ export interface Profile {
   /** Plain text (no markdown, no HTML). */
   bio: string;
   links: ProfileLink[];
+  /**
+   * Work, Education, Skills, ... (2026-11-25): the owner's D1 profile only, hidden parts already
+   * removed on the server (`profile.server.ts`). Absent on a visitor's own profile.
+   */
+  sections?: PublicProfileSection[];
 }
 
 /**

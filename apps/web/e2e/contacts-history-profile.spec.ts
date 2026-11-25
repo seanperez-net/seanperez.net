@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The person page's Google parts (2026-11-25): "Recent interactions" (from Messages), "History"
- * (Last edited, Added to contacts), the owner's résumé in ONE "Profile" card, and a PROFILE linked
+ * (Last edited, Added to contacts), the owner's profile in ONE "Profile" card, and a PROFILE linked
  * to the visitor's own contact (More > Add profile: a site account or an address). All local: each
  * test runs in a fresh browser context.
  */
@@ -26,14 +26,14 @@ test("owner's page: Profile card, Recent interactions, History", async ({
 }) => {
   await page.goto("/contacts/sean-perez/");
   const article = page.getByRole("article");
-  // ONE Profile card holding the résumé (h4 sections with stable ids).
+  // ONE Profile card holding his profile (h4 sections with stable ids).
   await expect(
     article.getByRole("heading", { name: "Profile", level: 3 }),
   ).toBeVisible();
   await expect(
     article.getByRole("heading", { name: "Projects", level: 4 }),
-  ).toHaveAttribute("id", "resume-projects");
-  // Experience / Education are not drawn while `content/resume.ts` has none (release 2026-11-25).
+  ).toHaveAttribute("id", "profile-projects");
+  // His Work / Education sections are D1 data (`profile.sections`), not asserted here.
   await expect(article.getByText("To be added.")).toHaveCount(0);
   await expect(
     article.getByRole("heading", { name: "Contact details", level: 3 }),
@@ -107,7 +107,7 @@ test("own contact: History, then link and remove a profile", async ({
     article.getByRole("list", { name: "Profile link" }),
   ).toBeVisible();
 
-  // Change it to the owner's profile on this site: his résumé shows, read-only.
+  // Change it to the owner's profile on this site: his profile shows, read-only.
   await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Change profile" }).click();
   dialog = page.locator("dialog[open]");

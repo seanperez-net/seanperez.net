@@ -9,7 +9,8 @@
  * weighed and NOT used (breaks CJK and partial words, D1 export caveat):
  * `.claude/notes/local-search-orama-opfs-2026-11-25.md` "Round 2".
  *
- * Pages, Contacts and Projects: `STATIC_ENTRIES`, matched here in code the same way.
+ * Pages, Contacts and Projects: `STATIC_ENTRIES` plus the owner's visible profile-section rows
+ * (`sectionSearchEntries`, from D1), matched here in code the same way.
  */
 import {
   fold,
@@ -18,7 +19,8 @@ import {
   searchWords,
 } from "@seanperez/db/search/fold";
 import { searchPublished } from "@seanperez/db/feed/posts.server";
-import { STATIC_ENTRIES } from "./entries";
+import { getProfile } from "@seanperez/db/profile/profile.server";
+import { STATIC_ENTRIES, sectionSearchEntries, type SearchEntry } from "./entries";
 import {
   ALL_GROUP_ROWS,
   GROUP_LABELS,
@@ -64,8 +66,8 @@ async function searchPosts(
   }));
 }
 
-function searchStatic(words: string[]): SearchHit[] {
-  return STATIC_ENTRIES.filter((entry) =>
+function searchStatic(words: string[], entries: SearchEntry[]): SearchHit[] {
+  return entries.filter((entry) =>
     matchesWords(fold(`${entry.label} ${entry.text}`), words),
   ).map(({ group, label, href, snippet }) => ({
     group,
@@ -90,7 +92,15 @@ export async function search(
 
   const wanted = (group: SearchGroup) => scope === "all" || scope === group;
   const posts = wanted("posts") ? await searchPosts(db, words) : [];
-  const hits = [...posts, ...searchStatic(words)];
+  // The owner's visible profile sections (D1, the profile's one-minute copy), with the static
+  // entries.
+  const sections = wanted("contacts")
+    ? sectionSearchEntries((await getProfile(db)).sections ?? [])
+    : [];
+  const hits = [
+    ...posts,
+    ...searchStatic(words, [...STATIC_ENTRIES, ...sections]),
+  ];
 
   const groups: SearchResultGroup[] = SEARCH_GROUPS.filter(wanted)
     .map((group) => {

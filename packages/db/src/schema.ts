@@ -67,6 +67,12 @@ export const profile = sqliteTable(
     /** JSON array of { label, href }, checked again on every read. */
     links: text(),
     updated_at: text().notNull(),
+    /**
+     * JSON document of the profile's sections (Work, Education, Skills, ... and custom ones;
+     * `profile/profile-sections.ts`, checked again on every read). NULL = none. 2026-11-25. Last: an
+     * `ALTER TABLE ... ADD` appends it (`migrations/0002_profile_sections.sql`).
+     */
+    sections: text(),
   },
   () => [check("profile_id_check", sql`id = 1`)],
 );

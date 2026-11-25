@@ -3,14 +3,28 @@
  * `migrations/0000_init.sql`), through Drizzle (port 2026-11-25). Written only from the admin app's Profile (behind Access).
  *
  * Defaults are merged PER FIELD: a NULL / empty column shows the default from
- * `profile-seed.ts` (the bio is the résumé summary, the links are its Links, the name the
+ * `profile-seed.ts` (the bio is the seed summary, the links are its Links, the name the
  * site's), so an empty table, or a half-filled one, never blanks the page. `links` NULL means "the
- * résumé's links"; a saved empty list `[]` means "no links".
+ * default links"; a saved empty list `[]` means "no links".
+ *
+ * `sections` (2026-11-25, `migrations/0002_profile_sections.sql`): the profile's Work, Education,
+ * Skills, ... and custom sections, as Google's profile has them, one JSON document checked on every
+ * read (`profile-sections.ts`). The public profile carries them with hidden sections and entries
+ * already REMOVED (never sent). NULL = no sections. Saved by its own write (`saveSections`), so the
+ * profile form and the sections editor never overwrite each other.
  */
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import * as v from "valibot";
 import { getDb } from "../client.ts";
 import { profile as profileTable } from "../schema.ts";
 import { PROFILE_MAX } from "./limits.ts";
+import {
+  EMPTY_SECTIONS,
+  ProfileSectionsSchema,
+  parseStoredSections,
+  toPublicSections,
+  type ProfileSectionsDoc,
+} from "./profile-sections.ts";
 import { PROFILE_SEED } from "./profile-seed.ts";
 import {
   describeLink,
@@ -32,6 +46,7 @@ export const PROFILE_DEFAULTS: Profile = {
     ...(link.brand ? { brand: link.brand } : {}),
     ...(link.me ? { me: true } : {}),
   })),
+  sections: [],
 };
 
 interface ProfileRow {
@@ -40,6 +55,7 @@ interface ProfileRow {
   location: string | null;
   bio: string | null;
   links: string | null;
+  sections: string | null;
   updated_at: string;
 }
 
@@ -78,6 +94,7 @@ async function readRow(db: D1Database): Promise<ProfileRow | null> {
         location: profileTable.location,
         bio: profileTable.bio,
         links: profileTable.links,
+        sections: profileTable.sections,
         updated_at: profileTable.updated_at,
       })
       .from(profileTable)
@@ -131,7 +148,19 @@ function toProfile(row: ProfileRow | null): Profile {
     location: orDefault(row.location, PROFILE_DEFAULTS.location),
     bio: orDefault(row.bio, PROFILE_DEFAULTS.bio),
     links: parseLinks(row.links) ?? PROFILE_DEFAULTS.links,
+    sections: publicSections(row.sections),
   };
+}
+
+/** The stored sections as the site shows them (hidden parts removed); none when broken. */
+function publicSections(json: string | null) {
+  if (json === null) return [];
+  const parsed = parseStoredSections(json);
+  if (!parsed.doc) console.error("profile: stored sections do not parse");
+  if (parsed.dropped) {
+    console.error(`profile: ${parsed.dropped} section records dropped on read`);
+  }
+  return parsed.doc ? toPublicSections(parsed.doc) : [];
 }
 
 // --- /admin only (behind `requireAdmin`) ---------------------------------------------------
@@ -144,7 +173,7 @@ export interface ProfileForm {
   bio: string;
   /** The stored (or default) links, in order; the form adds and removes rows itself. */
   links: { label: string; href: string }[];
-  /** True while `links` is NULL: the page shows the résumé's links. */
+  /** True while `links` is NULL: the page shows the default links. */
   linksDefault: boolean;
   updatedAt: string | null;
   /** The name shown while `name` is empty (a constant in a `.server.ts` cannot reach the client). */
@@ -212,8 +241,94 @@ export async function saveProfile(
   forgetProfile();
 }
 
-/** Back to the defaults: the row is removed. */
+/**
+ * Back to the defaults: the profile form's fields are cleared (NULL = default). The sections are
+ * KEPT (they have their own editor; a profile reset is not a sections delete); with none, the row
+ * is removed, as before the sections.
+ */
 export async function resetProfile(db: D1Database): Promise<void> {
-  await getDb(db).delete(profileTable).where(eq(profileTable.id, 1));
+  const orm = getDb(db);
+  await orm.batch([
+    orm
+      .update(profileTable)
+      .set({
+        name: null,
+        headline: null,
+        location: null,
+        bio: null,
+        links: null,
+        updated_at: new Date().toISOString(),
+      })
+      .where(eq(profileTable.id, 1)),
+    orm
+      .delete(profileTable)
+      .where(and(eq(profileTable.id, 1), isNull(profileTable.sections))),
+  ]);
   forgetProfile();
+}
+
+// --- the sections (admin only, behind `requireAdmin`) --------------------------------------
+
+export interface SectionsForm {
+  /** Everything, hidden parts included. Empty when there is none (or it is broken). */
+  doc: ProfileSectionsDoc;
+  updatedAt: string | null;
+  /** Records that could not be read; a save drops them. */
+  dropped: number;
+  /** Stored sections exist but are not a v1 document: the admin says so (Import replaces them). */
+  broken: boolean;
+}
+
+/** The admin's view: every section. Throws when the table is missing (the page says so). */
+export async function getSectionsForm(db: D1Database): Promise<SectionsForm> {
+  const row = await readRow(db);
+  if (!row?.sections) {
+    return {
+      doc: EMPTY_SECTIONS,
+      updatedAt: row?.updated_at ?? null,
+      dropped: 0,
+      broken: false,
+    };
+  }
+  const parsed = parseStoredSections(row.sections);
+  return {
+    doc: parsed.doc ?? EMPTY_SECTIONS,
+    updatedAt: row.updated_at,
+    dropped: parsed.dropped,
+    broken: !parsed.doc,
+  };
+}
+
+export type SaveSectionsResult =
+  | { ok: true }
+  | { ok: false; issues: v.FlatErrors<typeof ProfileSectionsSchema> };
+
+/**
+ * The sections' ONE write path (m3-hierarchy D4): the whole document, validated again with the
+ * schema the reads use, then an upsert of the `sections` column only (a missing row is created
+ * with the other fields NULL = their defaults). Nothing is written when anything fails.
+ */
+export async function saveSections(
+  db: D1Database,
+  input: unknown,
+  now = new Date(),
+): Promise<SaveSectionsResult> {
+  const parsed = v.safeParse(ProfileSectionsSchema, input);
+  if (!parsed.success) return { ok: false, issues: v.flatten(parsed.issues) };
+  await getDb(db)
+    .insert(profileTable)
+    .values({
+      id: 1,
+      sections: JSON.stringify(parsed.output),
+      updated_at: now.toISOString(),
+    })
+    .onConflictDoUpdate({
+      target: profileTable.id,
+      set: {
+        sections: sql`excluded.sections`,
+        updated_at: sql`excluded.updated_at`,
+      },
+    });
+  forgetProfile();
+  return { ok: true };
 }

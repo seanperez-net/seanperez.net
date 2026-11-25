@@ -2,8 +2,16 @@ import { Slot, component$ } from "@qwik.dev/core";
 import { AvatarPresenceGlyph, Card, List } from "@seanperez/ui";
 import type { AvatarPresence } from "@seanperez/ui";
 import { PRESENCE_WORDS } from "../content/contacts";
-import { RESUME, type ResumeEntry } from "../content/resume";
-import type { Profile, ProfileLink } from "@seanperez/db/profile/profile";
+import { PROFILE_CONTENT } from "../content/profile-content";
+import {
+  linkDetail,
+  type Profile,
+  type ProfileLink,
+} from "@seanperez/db/profile/profile";
+import type {
+  PublicProfileEntry,
+  PublicProfileSection,
+} from "@seanperez/db/profile/profile-sections";
 import { LinkRows } from "./profile-parts";
 
 /**
@@ -61,28 +69,89 @@ export const ProfileSection = component$<{
   </section>
 ));
 
-/** Experience / Education rows (a section is drawn only when its list has entries). */
-const EntryList = component$<{ labelledBy: string; rows: ResumeEntry[] }>(
-  ({ labelledBy, rows }) => (
-    <List.Root padding="none" density="compact" aria-labelledby={labelledBy}>
-      {rows.map((entry) => (
-        <List.Item
-          key={entry.title + entry.place}
-          headline={`${entry.title}, ${entry.place}`}
-          supportingText={entry.detail}
-          trailingSupportingText={entry.dates}
-        />
+/**
+ * One section entry (m3-hierarchy B4): the title as the headline; where (organisation · place, and
+ * the entry's site as text, so it also reads on paper) or a skill group's keywords as supporting
+ * text; the dates as trailing text. Its summary and each highlight follow as rows of their own,
+ * supporting text only (body-medium, on-surface-variant: under the entry, never clipped; owner
+ * 2026-11-25: "one row per highlight"). NOT a list nested in the row: `Item`'s default slot sits
+ * BEFORE the headline and the library has no nested list in a row (`list.md`, OPEN). All
+ * non-interactive. Returns sibling rows, so it is a function, not a component.
+ */
+const sectionEntryRows = (entry: PublicProfileEntry) => {
+  const where = [entry.where, entry.url ? linkDetail(entry.url) : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const lines = [entry.summary, ...entry.highlights].filter(Boolean);
+  return [
+    <List.Item
+      key={entry.id}
+      // The anchor search results link to (`search/entries.ts`).
+      id={`profile-${entry.id}`}
+      headline={entry.position}
+      headlineLines="auto"
+      supportingText={
+        entry.keywords.length ? entry.keywords.join(" · ") : where || undefined
+      }
+      trailingSupportingText={entry.dates || undefined}
+    />,
+    ...lines.map((line, i) => (
+      <List.Item
+        key={`${entry.id}-${i}`}
+        supportingText={line}
+        supportingLines="auto"
+      />
+    )),
+  ];
+};
+
+/**
+ * The profile's SECTIONS (2026-11-25): Work, Education, Skills, ... and custom ones such as Food &
+ * beverage, as Google's profile shows them (owner: "the real app at google.com doesnt have a resume
+ * it has the profile"). ONE list of collapsible sections (`List.Group`, a native `<details>`: opens
+ * without JavaScript, prints open; owner: "kind of like an accordian ... allowed to work in the
+ * pane"). A `shown` section starts open, a `collapsed` one closed: the admin's data, never code.
+ * Hidden sections and entries never reach here (removed on the server, `getProfile`). Each section's
+ * title is its group header, so there is no umbrella heading.
+ */
+export const SectionGroups = component$<{ sections: PublicProfileSection[] }>(
+  ({ sections }) => (
+    <List.Root
+      id="profile-sections"
+      padding="none"
+      density="compact"
+      aria-label="Profile sections"
+    >
+      {sections.map((section) => (
+        <List.Group
+          key={section.id}
+          id={`profile-${section.id}`}
+          value={section.id}
+          open={section.open}
+        >
+          <List.GroupHeader
+            label={section.title}
+            supportingText={
+              section.entries.length === 1
+                ? "1 entry"
+                : `${section.entries.length} entries`
+            }
+          />
+          <List.GroupContent>
+            {section.entries.flatMap(sectionEntryRows)}
+          </List.GroupContent>
+        </List.Group>
       ))}
     </List.Root>
   ),
 );
 
 /**
- * The OWNER's profile in the card: availability and location, About, then the résumé
- * (Experience, Education, Projects) and Links. Its sections have stable ids
- * (`resume-experience`, ...) to link to. Data: the
- * D1 profile (`profile`, from the contacts loader) and `content/resume.ts` (a module, never
- * passed through props).
+ * The OWNER's profile in the card: availability and location, About, his sections (Work,
+ * Education, ...: `profile.sections`), Projects and Links. Anchors: `profile-<section id>`,
+ * `profile-<entry id>`, `profile-projects`, `profile-links`. Data: the D1 profile (`profile`, from
+ * the contacts loader, sections included) and `content/profile-content.ts` (projects, a module,
+ * never passed through props).
  */
 export const OwnerProfileSections = component$<{
   profile: Profile;
@@ -123,27 +192,18 @@ export const OwnerProfileSections = component$<{
         </p>
       </ProfileSection>
     )}
-    {/* Release 2026-11-25: an empty section is not drawn (no "To be added." on the public
-      résumé); it appears once `content/resume.ts` has entries. */}
-    {RESUME.experience.length > 0 && (
-      <ProfileSection id="resume-experience" title="Experience">
-        <EntryList labelledBy="resume-experience" rows={RESUME.experience} />
-      </ProfileSection>
+    {profile.sections && profile.sections.length > 0 && (
+      <SectionGroups sections={profile.sections} />
     )}
-    {RESUME.education.length > 0 && (
-      <ProfileSection id="resume-education" title="Education">
-        <EntryList labelledBy="resume-education" rows={RESUME.education} />
-      </ProfileSection>
-    )}
-    {RESUME.projects.length > 0 && (
+    {PROFILE_CONTENT.projects.length > 0 && (
       // The public GitHub repos (build time, `scripts/repos.ts`).
-      <ProfileSection id="resume-projects" title="Projects">
+      <ProfileSection id="profile-projects" title="Projects">
         <List.Root
           padding="none"
           density="compact"
-          aria-labelledby="resume-projects"
+          aria-labelledby="profile-projects"
         >
-          {RESUME.projects.map((repo) => (
+          {PROFILE_CONTENT.projects.map((repo) => (
             <List.Item
               key={repo.url}
               href={repo.url}
@@ -159,10 +219,10 @@ export const OwnerProfileSections = component$<{
       </ProfileSection>
     )}
     {profile.links.length > 0 && (
-      <ProfileSection id="resume-links" title="Links">
+      <ProfileSection id="profile-links" title="Links">
         <LinkRows
           links={profile.links}
-          labelledBy="resume-links"
+          labelledBy="profile-links"
           density="compact"
         />
       </ProfileSection>

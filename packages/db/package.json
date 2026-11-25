@@ -15,6 +15,7 @@
     "./profile/profile.server": "./src/profile/profile.server.ts",
     "./profile/profile": "./src/profile/profile.ts",
     "./profile/profile-seed": "./src/profile/profile-seed.ts",
+    "./profile/profile-sections": "./src/profile/profile-sections.ts",
     "./profile/limits": "./src/profile/limits.ts",
     "./messages/messages.server": "./src/messages/messages.server.ts",
     "./messages/inbound.server": "./src/messages/inbound.server.ts",
@@ -27,10 +28,12 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "fmt": "prettier --write .",
-    "fmt.check": "prettier --check ."
+    "fmt.check": "prettier --check .",
+    "seed:sections": "node scripts/seed-sections.ts"
   },
   "dependencies": {
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "valibot": "^1.5.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261119.1",

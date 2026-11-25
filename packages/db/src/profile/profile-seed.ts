@@ -1,7 +1,7 @@
 /**
  * The profile's defaults: what the site shows while the D1 `profile` row (edited in the admin
  * app's Profile) is empty, field by field (`profile.server.ts`). Until 2026-11-25 these were read
- * from `apps/web/src/content/resume.ts`; they live here since the package cannot import an app,
+ * from `apps/web/src/content/resume.ts` (now `content/profile-content.ts`); they live here since the package cannot import an app,
  * and `resume.ts` now reads its `summary` and `links` from this file (one source for both apps).
  *
  * PLACEHOLDER for the owner: `summary` is neutral filler. Nothing is invented.

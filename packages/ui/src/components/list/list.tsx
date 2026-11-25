@@ -86,6 +86,11 @@ interface ListContextValue {
   hasGroups: Signal<boolean>;
   /** The root was given `openGroups` / `bind:openGroups`: it decides which groups start open. */
   groupsGiven: boolean;
+  /**
+   * The groups' shared `<details name>` when only one may be open (`multipleGroups={false}`): the
+   * browser closes the others itself, with or without JavaScript.
+   */
+  groupName: string;
 }
 
 export const listContextId = createContextId<ListContextValue>(
@@ -194,7 +199,11 @@ export const listItemVariants = tv({
         "focus-ring-inward",
         // Group header disclosure
         "data-qds-list-group-header:select-none",
-        "data-qds-list-group-header:[&[aria-expanded=true]_[data-list-group-chevron]]:rotate-180",
+        // The header is a native `<summary>` (2026-11-25): no disclosure triangle (`list-none`;
+        // Safari draws `::-webkit-details-marker`), the chevron turns while its `<details>` is open.
+        "data-qds-list-group-header:list-none",
+        "data-qds-list-group-header:[&::-webkit-details-marker]:hidden",
+        "data-qds-list-group-header:[details[open]>&_[data-list-group-chevron]]:rotate-180",
         // A disabled header stays visible (an add-only section)
         "data-qds-list-group-header:data-disabled:cursor-default",
         "data-qds-list-group-header:data-disabled:hover:bg-none",
@@ -467,6 +476,8 @@ const Root = component$<ListRootProps>((props) => {
     { value: "", openGroups: [] as string[] },
   );
   const hasGroups = useSignal(false);
+  const rootId = useId();
+  const groupName = `${rootId}-groups`;
 
   const selectItem$ = $((value: string) => {
     if (selectedValue.value === value) return;
@@ -500,6 +511,7 @@ const Root = component$<ListRootProps>((props) => {
     hasGroups,
     groupsGiven:
       props.openGroups !== undefined || props["bind:openGroups"] !== undefined,
+    groupName,
   });
 
   // The root is the listbox only when it owns the options directly (see `hasGroups`).
@@ -818,7 +830,6 @@ const Divider = component$<ListDividerProps>(
 
 interface ListGroupContextValue {
   isOpen: Signal<boolean>;
-  toggle$: QRL<() => void>;
   contentId: string;
   /** Names the group's content (a listbox in an interactive list). */
   headerId: string;
@@ -841,8 +852,28 @@ export interface ListGroupProps extends Omit<PropsOf<"li">, "class" | "value"> {
 }
 
 /**
- * A collapsible group: an `<li>` holding a `GroupHeader` (a disclosure button) and a
- * `GroupContent` (a nested `<ul>`). M3 lists "Expand & collapse"; APG disclosure.
+ * Before printing, every closed group opens (and closes again after): a printed résumé shows
+ * its collapsed sections. `sync$` so it runs before the browser lays out the print, never
+ * after a lazy load. Chromium also prints closed groups with JavaScript off (the
+ * `::details-content` print rule on the `<details>`).
+ */
+const openForPrint = sync$((_: Event, details: HTMLDetailsElement) => {
+  if (details.open) return;
+  details.setAttribute("data-print-opened", "");
+  details.open = true;
+});
+const closeAfterPrint = sync$((_: Event, details: HTMLDetailsElement) => {
+  if (!details.hasAttribute("data-print-opened")) return;
+  details.removeAttribute("data-print-opened");
+  details.open = false;
+});
+
+/**
+ * A collapsible group: an `<li>` holding a native `<details>`, whose `GroupHeader` is the
+ * `<summary>` and whose `GroupContent` is the nested `<ul>`. M3 lists "Expand & collapse"; the
+ * HTML disclosure widget (since 2026-11-25; e-store's is a `role="button"` and `hidden`, which
+ * cannot open with JavaScript off): it opens without JavaScript, find-in-page and a link to an id
+ * inside it open it (Chromium; others NOT PROOFED), and `open` follows the `toggle` event.
  */
 const Group = component$<ListGroupProps>((props) => {
   /* eslint-disable @typescript-eslint/no-unused-vars -- pulled out so they never reach the DOM */
@@ -891,32 +922,46 @@ const Group = component$<ListGroupProps>((props) => {
     if (open !== listed) listCtx.toggleGroup$(groupValue);
   });
 
-  const toggle$ = $(() => listCtx.toggleGroup$(groupValue));
+  // The browser opened or closed it (a click on the summary, find-in-page, the `name` group
+  // closing a sibling, print): the root's list follows. A no-op when they already agree.
+  const onToggle$ = $((_: Event, details: HTMLDetailsElement) => {
+    if (details.open !== listCtx.openGroups.value.includes(groupValue)) {
+      listCtx.toggleGroup$(groupValue);
+    }
+  });
 
   useContextProvider(listGroupContextId, {
     isOpen,
-    toggle$,
     contentId,
     headerId,
   });
 
   return (
     <li {...rest} data-qds-list-group="" class={["list-none", className]}>
-      <Slot />
+      <details
+        open={isOpen.value}
+        // One open at a time: the browser's own exclusive group (no JavaScript needed).
+        name={listCtx.multipleGroups.value ? undefined : listCtx.groupName}
+        onToggle$={onToggle$}
+        window:onBeforePrint$={openForPrint}
+        window:onAfterPrint$={closeAfterPrint}
+        data-qds-list-group-details=""
+        class={[
+          // Printed open (Chromium's `::details-content`; elsewhere `openForPrint` opens it).
+          "print:[&::details-content]:[content-visibility:visible]",
+          "print:[&>summary_[data-list-group-chevron]]:hidden",
+        ]}
+      >
+        <Slot />
+      </details>
     </li>
   );
 });
 
-/** A header's keys: Enter / Space toggle; arrows, Home and End move between headers. */
+/** A header's keys: arrows, Home and End move between headers (Enter / Space are the summary's own). */
 const headerKeys = sync$((e: KeyboardEvent) => {
   const el = e.target as HTMLElement;
   if (!el.hasAttribute("data-qds-list-group-header")) return;
-  if (el.hasAttribute("data-disabled")) return;
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    el.click();
-    return;
-  }
   if (
     e.key !== "ArrowDown" &&
     e.key !== "ArrowUp" &&
@@ -929,7 +974,7 @@ const headerKeys = sync$((e: KeyboardEvent) => {
   if (!list) return;
   const headers = Array.from(
     list.querySelectorAll<HTMLElement>(
-      "[data-qds-list-group-header][role='button']",
+      "summary[data-qds-list-group-header]:not([data-disabled])",
     ),
   );
   const index = headers.indexOf(el);
@@ -950,15 +995,18 @@ export interface ListGroupHeaderProps extends Omit<ItemProps, "class"> {
   label?: string;
   /** Trailing chevron, rotated while open. `null`: none. */
   chevronIcon?: IconName | null;
-  /** A header with nothing to disclose (an add-only section): a label row, not a button. */
+  /** A header with nothing to disclose (an add-only section): it does not toggle. */
   "aria-disabled"?: boolean;
   class?: ClassList;
   itemClass?: ClassList;
 }
 
 /**
- * The group's disclosure: a `<div role="button">` holding an `Item` (the same sizes as the rows).
- * Not a `<button>`: an `end` control beside the chevron would be a button inside a button.
+ * The group's disclosure: the native `<summary>` (its button role and expanded state come from
+ * the browser), holding an `Item` (the same sizes as the rows). Content model: `<summary>` allows
+ * phrasing and heading content and `Item` renders `<div>`s; browsers render it, a validator
+ * flags it (OPEN, `list.md`). An `end` control beside the chevron is a control inside the summary
+ * (also OPEN in `list.md`).
  */
 const GroupHeader = component$<ListGroupHeaderProps>(
   ({
@@ -976,11 +1024,6 @@ const GroupHeader = component$<ListGroupHeaderProps>(
     const groupCtx = useContext(listGroupContextId);
     const listCtx = useContext(listContextId);
 
-    const handleClick$ = $(() => {
-      if (ariaDisabled) return;
-      groupCtx.toggle$();
-    });
-
     const trailing: JSXOutput | undefined =
       end || chevronIcon ? (
         <div class="pointer-events-auto flex items-center">
@@ -997,18 +1040,17 @@ const GroupHeader = component$<ListGroupHeaderProps>(
       ) : undefined;
 
     return (
-      <div
+      <summary
         id={groupCtx.headerId}
-        role={ariaDisabled ? undefined : "button"}
-        tabIndex={ariaDisabled ? undefined : 0}
-        aria-expanded={ariaDisabled ? undefined : groupCtx.isOpen.value}
-        aria-controls={ariaDisabled ? undefined : groupCtx.contentId}
-        // Not `aria-disabled`: a disabled header has no role (a generic element may not carry
-        // it); `data-disabled` styles it.
+        aria-controls={groupCtx.contentId}
+        // A header with nothing to disclose: the click (and Enter / Space, which click) does not
+        // toggle, and it is not a Tab stop.
+        aria-disabled={ariaDisabled ? "true" : undefined}
+        preventdefault:click={ariaDisabled || undefined}
+        tabIndex={ariaDisabled ? -1 : undefined}
         data-disabled={ariaDisabled || undefined}
         data-qds-list-group-header=""
         data-selected={itemProps.selected || undefined}
-        onClick$={handleClick$}
         onKeyDown$={headerKeys}
         class={[
           listItemVariants({
@@ -1031,7 +1073,7 @@ const GroupHeader = component$<ListGroupHeaderProps>(
         >
           <Slot />
         </Item>
-      </div>
+      </summary>
     );
   },
 );
@@ -1041,8 +1083,8 @@ export type ListGroupContentProps = Omit<PropsOf<"ul">, "class"> & {
 };
 
 /**
- * The group's rows: a nested `<ul>`, `hidden` while closed. In an `interactive` list it is the
- * listbox, named by its header, with its own single Tab stop.
+ * The group's rows: a nested `<ul>` after the summary; the `<details>` hides it while closed.
+ * In an `interactive` list it is the listbox, named by its header, with its own single Tab stop.
  */
 const GroupContent = component$<ListGroupContentProps>(
   ({ class: className, onFocusIn$, onFocusOut$, onKeyDown$, ...rest }) => {
@@ -1063,7 +1105,6 @@ const GroupContent = component$<ListGroupContentProps>(
         onKeyDown$={[rovingKeys, onKeyDown$]}
         onFocusIn$={[focusInList, onFocusIn$]}
         onFocusOut$={[focusOutList, onFocusOut$]}
-        hidden={!groupCtx.isOpen.value}
         data-qds-list-group-content=""
         class={["flex flex-col py-0", className]}
       >

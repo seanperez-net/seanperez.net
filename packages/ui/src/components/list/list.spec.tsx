@@ -53,3 +53,70 @@ describe("List.Item actions", () => {
     expect(link.getAttribute("tabindex")).toBe("-1");
   });
 });
+
+/**
+ * `List.Group` as a native disclosure (2026-11-25): `<details>` / `<summary>`, so a closed group
+ * opens with JavaScript off and its rows are in the HTML; the open state is the `open`
+ * attribute, never `hidden` on the rows.
+ */
+describe("List.Group", () => {
+  it("renders details / summary with the start state as the open attribute", async () => {
+    const { screen, render } = await createDOM();
+    await render(
+      <QwikRouterMockProvider>
+        <List.Root aria-label="Résumé">
+          <List.Group value="dev">
+            <List.GroupHeader label="Experience" />
+            <List.GroupContent>
+              <List.Item headline="Developer" />
+            </List.GroupContent>
+          </List.Group>
+          <List.Group value="food" open={false}>
+            <List.GroupHeader label="Hospitality" />
+            <List.GroupContent>
+              <List.Item headline="Server" />
+            </List.GroupContent>
+          </List.Group>
+        </List.Root>
+      </QwikRouterMockProvider>,
+    );
+    const [open, closed] = Array.from(screen.querySelectorAll("details"));
+    expect(open.hasAttribute("open")).toBe(true);
+    expect(closed.hasAttribute("open")).toBe(false);
+    for (const details of [open, closed]) {
+      const summary = details.querySelector("summary")!;
+      expect(summary.parentElement).toBe(details);
+      expect(summary.getAttribute("role")).toBeNull();
+      const rows = details.querySelector("[data-qds-list-group-content]")!;
+      expect(rows.hasAttribute("hidden")).toBe(false);
+      expect(summary.getAttribute("aria-controls")).toBe(rows.id);
+    }
+    // The closed group's rows are in the markup (readable without JavaScript, printable).
+    expect(closed.textContent).toContain("Server");
+    // Several may be open: no shared name.
+    expect(open.hasAttribute("name")).toBe(false);
+  });
+
+  it("one open at a time shares a details name", async () => {
+    const { screen, render } = await createDOM();
+    await render(
+      <QwikRouterMockProvider>
+        <List.Root aria-label="Pick" multipleGroups={false}>
+          <List.Group value="a">
+            <List.GroupHeader label="A" />
+            <List.GroupContent />
+          </List.Group>
+          <List.Group value="b" open={false}>
+            <List.GroupHeader label="B" />
+            <List.GroupContent />
+          </List.Group>
+        </List.Root>
+      </QwikRouterMockProvider>,
+    );
+    const names = Array.from(screen.querySelectorAll("details")).map((d) =>
+      d.getAttribute("name"),
+    );
+    expect(names[0]).toBeTruthy();
+    expect(names[0]).toBe(names[1]);
+  });
+});

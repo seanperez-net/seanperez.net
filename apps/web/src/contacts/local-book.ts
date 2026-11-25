@@ -16,7 +16,7 @@
  * with `siteId` (source `site`), made from the site's data on the first change, shown INSTEAD of
  * the site's row. Deleting it moves the override to the Trash (Recover); "Delete forever" hides the
  * site contact (`hiddenSite`), and the Trash's "Restore" or the contact page bring it back;
- * "Reset to the site's version" drops the override. The site's data, the profile page's résumé and
+ * "Reset to the site's version" drops the override. The site's data, the owner's profile and
  * the "Contact me" companion (the server profile) are untouched whatever is in this book. (The
  * second agent and I had recommended read-only built-ins; the owner chose the override.)
  *
@@ -67,7 +67,7 @@ const PHOTO_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
  * A LINKED PROFILE (2026-11-25, Google's PROFILE source; `.claude/notes/
  * contacts-google-parity-2026-11-25.md`): the person's own profile, shown read-only in the
  * contact's "Profile" card. Either one of the site's accounts that has a profile (today the
- * owner's: his résumé), or a profile ADDRESS anywhere (`https:` only, `safeLinkHref`; never
+ * owner's: his profile), or a profile ADDRESS anywhere (`https:` only, `safeLinkHref`; never
  * fetched). Google links a contact to a profile by a verified email, phone or profile URL; here
  * the visitor links it by hand, in their browser.
  */

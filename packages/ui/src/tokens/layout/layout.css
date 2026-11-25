@@ -636,3 +636,75 @@
   [data-qds-detail-pane] {
   display: none;
 }
+
+/*
+ * Print (2026-11-25, ported from e-store `tokens/layout/layout.css` "Print" (2026-11-14), our
+ * region names are the same utilities): the scaffold is a viewport-tall grid whose panes scroll
+ * inside themselves, so a printed page showed the app bar and rail and cut the content at the
+ * visible height. In print the scaffold is a plain block, the panes grow to their content, and the
+ * chrome (app bar, rail, drawer, supporting pane, companion rail) is left out. In a list-detail
+ * showing a record, only the record prints. A part of a page that should not print (its actions)
+ * takes Tailwind's `print:hidden`.
+ *
+ * Ours on top of e-store's: ink on paper whatever the theme. A dark theme's light text would print
+ * as a faint grey and its surfaces are dropped by the browser, so the colour roles a page uses for
+ * text and surfaces print as black on white. `!important` because the runtime theme
+ * (`ThemeChanger`, a source colour) may set them inline on the root.
+ */
+@media print {
+  :root,
+  .dark,
+  .dark-medium-contrast,
+  .dark-high-contrast {
+    color-scheme: light;
+    --color-surface: #fff !important;
+    --color-surface-dim: #fff !important;
+    --color-surface-bright: #fff !important;
+    --color-surface-container-lowest: #fff !important;
+    --color-surface-container-low: #fff !important;
+    --color-surface-container: #fff !important;
+    --color-surface-container-high: #fff !important;
+    --color-surface-container-highest: #fff !important;
+    --color-on-surface: #000 !important;
+    --color-on-surface-variant: #333 !important;
+    --color-primary: #000 !important;
+    --color-secondary: #333 !important;
+    --color-outline: #666 !important;
+    --color-outline-variant: #ccc !important;
+  }
+  .layout-scaffold {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+  .layout-scaffold
+    :is(
+      .scaffold-appbar,
+      .scaffold-nav,
+      .scaffold-rail,
+      .scaffold-trail,
+      .scaffold-support,
+      [data-qds-list-detail-fab],
+      [data-layout-nav-fit]
+    ) {
+    display: none !important;
+  }
+  .layout-scaffold
+    :is(
+      .scaffold-body,
+      [data-qds-list-detail],
+      [data-qds-list-detail] > div,
+      [data-qds-list-pane],
+      [data-qds-detail-pane]
+    ) {
+    display: block;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .layout-scaffold [data-qds-list-detail][data-view="detail"] [data-qds-list-pane] {
+    display: none !important;
+  }
+}

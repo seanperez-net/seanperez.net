@@ -12,7 +12,7 @@ import { deleteOwnAccount } from "@seanperez/db/account/account.server";
 import { clearSessionCookie, sessionOf } from "@seanperez/server/account/contact.server";
 import { ME_CHANGED_EVENT, fetchMe, type Me } from "../account/me";
 import { ConfirmDialog } from "./contacts-dialogs";
-import { ResumeSection } from "./resume-section";
+import { SectionCard } from "./section-card";
 
 /**
  * "Your account" on /profile/ (owner, 2026-11-25, "DECIDED" (3)): the contact account this
@@ -106,7 +106,7 @@ export const ProfileAccount = component$(() => {
     // Placement only: no box of its own, so the page's grid gap appears only with the section.
     <div class="contents">
       {me.value && (
-        <ResumeSection id={ACCOUNT_ID} title="Your account" full>
+        <SectionCard id={ACCOUNT_ID} title="Your account" full>
           <List.Root aria-labelledby={ACCOUNT_ID}>
             <List.Item
               startIcon="person"
@@ -138,7 +138,7 @@ export const ProfileAccount = component$(() => {
               {error.value}
             </p>
           )}
-        </ResumeSection>
+        </SectionCard>
       )}
       <ConfirmDialog
         open={confirmOpen}

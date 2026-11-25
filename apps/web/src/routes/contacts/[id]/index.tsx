@@ -28,7 +28,7 @@ export const useContactId = routeLoader$(({ params, error }) => {
 });
 
 /**
- * `/contacts/<id>/`: one of the SITE's contacts in the detail pane, linkable (the owner's résumé
+ * `/contacts/<id>/`: one of the SITE's contacts in the detail pane, linkable (the owner's profile
  * lives in his: `/contacts/sean-perez/`). In single-pane mode the
  * layout hides the list, and the profile shows a back button.
  *

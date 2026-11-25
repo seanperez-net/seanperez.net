@@ -9,7 +9,7 @@ import { BrandMark } from "./brand-mark";
  * The owner's links from his PROFILE (D1 `profile`, edited at /admin/profile), like any app that
  * reads a user's profile, not from the build (owner, 2026-11-24: "get it from the user profile
  * ... even if there is only one user"). The same `getProfile` as /profile/ and the contact
- * profile, so the three show one list. Falls back to `RESUME.links` with no row or a failed read
+ * profile, so the three show one list. Falls back to `PROFILE_CONTENT.links` with no row or a failed read
  * (`profile.server.ts`).
  *
  * Root layout loader (re-exported from `routes/layout.tsx`): the Contact me companion is on every

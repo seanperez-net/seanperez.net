@@ -77,6 +77,8 @@ export const layoutVariants = tv({
       "text-on-surface",
     ],
     skipLink: [
+      // Not on paper (2026-11-25, the résumé's print view; `layout.css` "@media print").
+      "print:hidden",
       "fixed",
       "top-3",
       "inset-s-4",
@@ -413,7 +415,14 @@ export const layoutVariants = tv({
       "group-data-[view=detail]/ld:hidden",
     ],
     paneHeader: ["pane-header-bleed", "bg-surface"],
-    paneHeaderRow: ["flex", "min-w-0", "items-center", "gap-2"],
+    paneHeaderRow: [
+      "flex",
+      "min-w-0",
+      "items-center",
+      "gap-2",
+      // On paper the title stays, its controls (Back, actions) go (2026-11-25).
+      "print:[&_:is(button,a)]:hidden",
+    ],
     // The title truncates with an ellipsis but keeps a readable minimum (6rem, about seven
     // characters of title-large): actions that do not fit are the host's to move into an overflow
     // menu (M3 app bars), never the title's to absorb down to one letter (2026-11-25, owner).
@@ -585,6 +594,7 @@ export const layoutVariants = tv({
     // viewport edge that peeks 24px and slides out on hover or focus.
     sideToggle: [
       "group/side",
+      "print:hidden",
       "fixed",
       "inset-e-0",
       "bottom-[calc(var(--layout-margin)+(--spacing(2)))]",

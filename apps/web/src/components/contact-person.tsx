@@ -69,7 +69,7 @@ import {
   LinkProfileDialog,
 } from "./contacts-dialogs";
 import { findAccount } from "../content/accounts";
-import { ResumeSection } from "./resume-section";
+import { SectionCard } from "./section-card";
 import { formatListTime } from "@seanperez/chat";
 import { recentInteractions } from "../contacts/interactions";
 import { useStoredMessages } from "./use-demo-thread";
@@ -112,7 +112,7 @@ const RecentInteractions = component$<{ accountId: string; rowKey: string }>(
       recentInteractions(accountId, stored.value),
     );
     return rows.value.length > 0 ? (
-      <ResumeSection
+      <SectionCard
         id="person-interactions"
         title="Recent interactions"
         full
@@ -134,7 +134,7 @@ const RecentInteractions = component$<{ accountId: string; rowKey: string }>(
             />
           ))}
         </List.Root>
-      </ResumeSection>
+      </SectionCard>
     ) : null;
   },
 );
@@ -723,7 +723,7 @@ export const ContactPerson = component$<ContactPersonProps>(
                   record.phones.length > 0 ||
                   !!record.notes ||
                   !trashed.value) && (
-                  <ResumeSection
+                  <SectionCard
                     id="person-details"
                     title={detailsTitle}
                     full
@@ -785,7 +785,7 @@ export const ContactPerson = component$<ContactPersonProps>(
                         />
                       )}
                     </List.Root>
-                  </ResumeSection>
+                  </SectionCard>
                 )}
               </div>
               {/* Google's second column: recent interactions, History. */}

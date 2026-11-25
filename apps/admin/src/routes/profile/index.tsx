@@ -7,7 +7,7 @@ import {
   valibot$,
   type DocumentHead,
 } from "@qwik.dev/router";
-import { Button, IconButton, Layout, TextField } from "@seanperez/ui";
+import { Button, IconButton, Layout, List, TextField } from "@seanperez/ui";
 import * as v from "valibot";
 import { requireAdmin } from "@seanperez/server/feed/access.server";
 import { formatDate } from "@seanperez/server/feed/format";
@@ -151,6 +151,17 @@ export default component$(() => {
               An empty field shows its default. No email address: the site shows
               none.
             </p>
+            {/* The profile's sections (Work, Education, ...; 2026-11-25) have their own editor: one
+                single-action row. */}
+            <List.Root aria-label="More of the profile">
+              <List.Item
+                href="/profile/sections/"
+                startIcon="article"
+                headline="Sections"
+                supportingText="Work, education, skills and your own; what the site shows; Import JSON"
+                endIcon="chevron_right"
+              />
+            </List.Root>
             <Form action={save} class="grid gap-4">
               <TextField
                 name="name"
@@ -195,7 +206,7 @@ export default component$(() => {
                 label="Bio"
                 maxLength={PROFILE_MAX.bio}
                 value={shown("bio", loaded.value.form.bio)}
-                supportingText={`Plain text, up to ${PROFILE_MAX.bio} characters. Default: the résumé summary.`}
+                supportingText={`Plain text, up to ${PROFILE_MAX.bio} characters. Default: the site's summary.`}
                 error={err("bio")}
               />
               <fieldset class="grid gap-4">
@@ -204,7 +215,7 @@ export default component$(() => {
                 </legend>
                 <p class="text-body-medium text-on-surface-variant">
                   {loaded.value.form.linksDefault
-                    ? "Showing the résumé's links until you save."
+                    ? "Showing the default links until you save."
                     : "Empty rows are left out. The order here is the order of the Contact me icons."}{" "}
                   A profile on GitHub, X, Bluesky, YouTube, Instagram or a large
                   Mastodon instance gets its mark (from the address), and

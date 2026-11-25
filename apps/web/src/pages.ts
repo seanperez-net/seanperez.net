@@ -52,7 +52,7 @@ export const PAGES = {
   "/contacts/": {
     title: "Contacts · Sean Perez",
     description:
-      "Contacts: Sean Perez's profile, résumé and projects, and a message form.",
+      "Contacts: Sean Perez's profile, work, projects and a message form.",
     card: "Contacts",
   },
   // The Messages app (owner, 2026-11-24); one card for every thread. No Assistant in the copy:
@@ -70,10 +70,10 @@ export const PAGES = {
       "How apps work on this site: remove Contact me, add it back, and where that choice is kept (your browser only).",
     card: "How apps work",
   },
-  // The owner's contact profile, with the résumé (owner 2026-11-24).
+  // The owner's contact profile (owner 2026-11-24): work, education, projects.
   "/contacts/sean-perez/": {
     title: "Sean Perez · Contacts",
-    description: "Sean Perez: profile, résumé, projects and links.",
+    description: "Sean Perez: profile, work, education, projects and links.",
     card: "Contact: Sean Perez",
   },
 } satisfies Record<string, PageMeta>;
