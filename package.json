@@ -19,6 +19,11 @@
     "dev:admin": "pnpm --filter @seanperez/admin dev",
     "build:admin": "pnpm --filter \"@seanperez/admin...\" build",
     "deploy:admin": "pnpm --filter @seanperez/admin run deploy",
-    "test:ui": "pnpm --filter @seanperez/ui test"
+    "test:ui": "pnpm --filter @seanperez/ui test",
+    "db:generate": "pnpm --filter @seanperez/db db:generate",
+    "db:status": "pnpm --filter @seanperez/web db:status",
+    "db:status:remote": "pnpm --filter @seanperez/web db:status:remote",
+    "db:migrate": "pnpm --filter @seanperez/web db:migrate",
+    "db:migrate:remote": "pnpm --filter @seanperez/web db:migrate:remote"
   }
 }
