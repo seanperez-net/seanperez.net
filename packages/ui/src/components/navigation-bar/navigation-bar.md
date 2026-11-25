@@ -9,45 +9,45 @@ Ported 2026-11-23 from e-store's `components/navigation/nav-bar.tsx` and `nav-bu
 
 ## Parts
 
-| Part                  | Element                    | What |
-| --------------------- | -------------------------- | ---- |
-| `NavigationBar.Root`  | `<nav>` > row `<div>`      | The bar, a landmark (default name "Main") |
-| `NavigationBar.Item`  | router `<Link>`            | A destination; a `Badge.Badge` in `q:slot="badge"` |
+| Part                 | Element               | What                                               |
+| -------------------- | --------------------- | -------------------------------------------------- |
+| `NavigationBar.Root` | `<nav>` > row `<div>` | The bar, a landmark (default name "Main")          |
+| `NavigationBar.Item` | router `<Link>`       | A destination; a `Badge.Badge` in `q:slot="badge"` |
 
 ## API
 
 ### `NavigationBar.Root`
 
-| Prop         | Type                                      | Default      | What |
-| ------------ | ----------------------------------------- | ------------ | ---- |
+| Prop         | Type                                       | Default      | What                                                                                        |
+| ------------ | ------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------- |
 | `layout`     | `"adaptive" \| "vertical" \| "horizontal"` | `"adaptive"` | `adaptive`: vertical items below 600dp, horizontal from 600dp, in CSS (M3 "Configurations") |
-| `aria-label` | `string`                                  | `"Main"`     | Landmark name |
+| `aria-label` | `string`                                   | `"Main"`     | Landmark name                                                                               |
 
 ### `NavigationBar.Item`
 
-| Prop           | Type       | What |
-| -------------- | ---------- | ---- |
-| `href`         | `string`   | Destination (router `Link`, client navigation) |
-| `icon`         | `IconName` | Icon |
-| `iconSelected` | `IconName` | Icon while current: M3 "Use a filled icon for the active destination" (`home_filled`, ...) |
-| `label`        | `string`   | Required: M3 "Don't remove the labels" |
-| `current`      | `boolean`  | `aria-current="page"` |
-| `onClick$`     | `QRL`      | Passed to the link by name |
-| slot `badge`   | `Badge.Badge` | Over the icon's top end (the badge's own offsets for a centred 24dp icon) |
+| Prop           | Type          | What                                                                                       |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| `href`         | `string`      | Destination (router `Link`, client navigation)                                             |
+| `icon`         | `IconName`    | Icon                                                                                       |
+| `iconSelected` | `IconName`    | Icon while current: M3 "Use a filled icon for the active destination" (`home_filled`, ...) |
+| `label`        | `string`      | Required: M3 "Don't remove the labels"                                                     |
+| `current`      | `boolean`     | `aria-current="page"`                                                                      |
+| `onClick$`     | `QRL`         | Passed to the link by name                                                                 |
+| slot `badge`   | `Badge.Badge` | Over the icon's top end (the badge's own offsets for a centred 24dp icon)                  |
 
-## Measurements and colours (PROOFED 2026-11-23: M3 tokens in Chrome; measured in Chrome)
+## Measurements and colors (PROOFED 2026-11-23: M3 tokens in Chrome; measured in Chrome)
 
-| Item | M3 | Ours (measured) |
-| ---- | -- | --------------- |
-| Container | `surface-container`, 64dp, full width | 64 |
-| Vertical item | indicator 56 x 32dp, 6dp from the top, label 4dp under it; equal widths | pill 56x32 at +6, label at +42 |
-| Horizontal item | indicator 40dp high, 16dp sides, icon and label 4dp apart inside it; fixed width, extra space at the ends | pill 40 high; items equal (103 x 3), centred |
-| Active | indicator `secondary-container`, icon `on-secondary-container`, label `secondary` | same |
-| Inactive | icon and label `on-surface-variant` | same |
-| State layer | `on-secondary-container`, 8 / 10 / 10, on the indicator | `after:` on the indicator |
-| Label | label-medium; never wrapped or truncated | `text-label-medium whitespace-nowrap` |
-| Selection motion | indicator expands from the centre, one axis | `scale-x` 0 to 1 |
-| Focus | M3 ring | e-store's indicator ring (3dp `secondary`, 2dp out) on the pill |
+| Item             | M3                                                                                                        | Ours (measured)                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Container        | `surface-container`, 64dp, full width                                                                     | 64                                                              |
+| Vertical item    | indicator 56 x 32dp, 6dp from the top, label 4dp under it; equal widths                                   | pill 56x32 at +6, label at +42                                  |
+| Horizontal item  | indicator 40dp high, 16dp sides, icon and label 4dp apart inside it; fixed width, extra space at the ends | pill 40 high; items equal (103 x 3), centred                    |
+| Active           | indicator `secondary-container`, icon `on-secondary-container`, label `secondary`                         | same                                                            |
+| Inactive         | icon and label `on-surface-variant`                                                                       | same                                                            |
+| State layer      | `on-secondary-container`, 8 / 10 / 10, on the indicator                                                   | `after:` on the indicator                                       |
+| Label            | label-medium; never wrapped or truncated                                                                  | `text-label-medium whitespace-nowrap`                           |
+| Selection motion | indicator expands from the centre, one axis                                                               | `scale-x` 0 to 1                                                |
+| Focus            | M3 ring                                                                                                   | e-store's indicator ring (3dp `secondary`, 2dp out) on the pill |
 
 NOT PROOFED: the gap between horizontal items (M3 "space between items 0dp"; ours 0, the pills of
 the widest items touch); the label weight (no token printed; ours 500 for both states).
@@ -60,15 +60,12 @@ them for the bar; removed after the 2026-11-23 review). `href` goes through `saf
 label is rendered twice (inside the indicator for horizontal items, under it for vertical ones)
 and exactly one is displayed, so it is read once.
 
-## How `Layout` would use it (owner decides; not wired)
+## Not part of `Layout` (owner, 2026-11-23)
 
-Below 600dp `Layout.Root` would render `<NavigationBar.Root>` from its `railItems` (each
-`{ href, label, icon }` plus an `iconSelected`) as the scaffold's bottom row, hidden from 600dp
-where `Layout.Rail` takes over, with `layout="vertical"` (the rail covers medium windows; use
-`adaptive` only if the bar should also show from 600 to 839). It replaces the app bar's menu
-button and modal drawer below 600dp when there are 3 to 5 destinations (M3: fewer than three use
-tabs; more than five use the modal rail). It must not show with a docked toolbar (M3). The pane
-then needs 64dp of bottom clearance plus `env(safe-area-inset-bottom)`.
+The bar is for a PWA only ("that is only for pwa", as e-store's `pwa` mode). `Layout` does not
+render it: small screens keep the app bar's menu button and the modal drawer. Use it standalone
+in an app shell that needs a bottom bar; the pane then needs 64dp of bottom clearance plus
+`env(safe-area-inset-bottom)`, and it must not show with a docked toolbar (M3).
 
 ## Where it differs from e-store
 
@@ -86,8 +83,19 @@ then needs 64dp of bottom clearance plus `env(safe-area-inset-bottom)`.
 
 ```tsx
 <NavigationBar.Root aria-label="Main" layout="vertical">
-  <NavigationBar.Item href="/" icon="home" iconSelected="home_filled" label="Home" current />
-  <NavigationBar.Item href="/inbox/" icon="notifications" iconSelected="notifications_filled" label="Inbox">
+  <NavigationBar.Item
+    href="/"
+    icon="home"
+    iconSelected="home_filled"
+    label="Home"
+    current
+  />
+  <NavigationBar.Item
+    href="/inbox/"
+    icon="notifications"
+    iconSelected="notifications_filled"
+    label="Inbox"
+  >
     <Badge.Badge q:slot="badge" value={3} label="3 new messages" />
   </NavigationBar.Item>
 </NavigationBar.Root>

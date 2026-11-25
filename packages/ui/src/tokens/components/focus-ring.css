@@ -21,7 +21,7 @@
 
 @theme static inline {
   --transition-duration-focus-ring: var(--transition-duration-long-4);
-  /* M3 focus indicator colour: md.sys.color.secondary (material-web md-focus-ring). */
+  /* M3 focus indicator color: md.sys.color.secondary (material-web md-focus-ring). */
   --color-focus-ring: var(--color-secondary);
 }
 

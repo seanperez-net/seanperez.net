@@ -57,7 +57,7 @@ const value = useSignal("standard");
 ## Styles
 
 `radioGroupVariants` (orientation) and `radioVariants` slots: `item`, `indicator`, `dot`,
-`label`, `description`, `input`. Colours from M3 tokens: unselected `on-surface-variant`
+`label`, `description`, `input`. Colors from M3 tokens: unselected `on-surface-variant`
 (`on-surface` on hover), selected `primary`, disabled `on-surface` 38%, chosen or not (fixed in
 the 2026-11-23 review: a chosen disabled item kept its `primary` ring, measured in Chrome).
 Focus: the `focus-ring` utility on the item (8dp corners), as e-store; M3 draws it around the
@@ -73,10 +73,8 @@ Focus: the `focus-ring` utility on the item (8dp corners), as e-store; M3 draws 
 - Space only; e-store also chose on Enter.
 - The checked state is a `useComputed$` read in JSX; e-store read it in the item body.
 - The indicator has M3's 40dp state layer and the 48dp `touch-target`; hover darkens the ring.
-- `Radio.Swatch` (added 2026-11-23, e-store's): a colour disc (`color`, `size` sm 24 / md 32 / lg 40) in place of the indicator, with a 2px `on-surface` ring when its item is chosen; usable
-  outside a group. Name the item with `aria-label` (the colour alone says nothing). Edge ring is
-  `outline-variant` (e-store `outline-variant/30`, too faint on white). M3 has no swatch: NOT
-  PROOFED. Checked in Chrome: sizes, ring on the chosen item, one Tab stop.
+- `Radio.Swatch` (e-store's color / finish picker) is NOT ported: removed 2026-11-23 (owner: a
+  shop component, "we are not making a store").
 
 ## Not done / owner decision
 
@@ -85,5 +83,5 @@ would give the keys, the single Tab stop, the checked state and form posting fro
 with no hidden input and no key handlers. That is a different design from e-store's: not built.
 
 PROOFED 2026-11-23: APG radio group (keys, tab stop), material-web radio tokens (sizes,
-colours), Qwik rc.5 (`sync$` cannot capture; signals in JSX). Checked in Chrome: arrows, Space,
+colors), Qwik rc.5 (`sync$` cannot capture; signals in JSX). Checked in Chrome: arrows, Space,
 Tab, disabled skip, hidden inputs follow the value, 48px target, 40px state layer.

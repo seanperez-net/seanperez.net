@@ -11,15 +11,15 @@ Every part is a direct child of the scaffold grid and sits on its own named trac
 Rail | Drawer | Pane (primary) | SupportingPane | CompanionRail
 ```
 
-| Part                    | Element    | What it is                                                                                      |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| `Layout.Rail`           | `<nav>`    | The navigation rail, leading edge, full height. Its menu button controls the Drawer             |
-| `Layout.Drawer`         | `<aside>`  | The rail's drawer (e-store's types: standard, floating, modal). None without `drawerItems`      |
-| `Layout.Pane`           | `<main>`   | The primary (main) pane: the page                                                               |
-| `Layout.SupportingPane` | `<aside>`  | The second pane, beside the primary one                                                         |
-| `Layout.CompanionRail`  | `<nav>`    | The trailing rail. Its buttons control the SupportingPane                                       |
-| `Layout.AppBar`         | `<header>` | The top app bar, above the panes, from the rail's end to the far edge                           |
-| `Layout.Footer`         | `<footer>` | Small print, in the bottom margin                                                               |
+| Part                    | Element    | What it is                                                                                 |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------ |
+| `Layout.Rail`           | `<nav>`    | The navigation rail, leading edge, full height. Its menu button controls the Drawer        |
+| `Layout.Drawer`         | `<aside>`  | The rail's drawer (e-store's types: standard, floating, modal). None without `drawerItems` |
+| `Layout.Pane`           | `<main>`   | The primary (main) pane: the page                                                          |
+| `Layout.SupportingPane` | `<aside>`  | The second pane, beside the primary one                                                    |
+| `Layout.CompanionRail`  | `<nav>`    | The trailing rail. Its buttons control the SupportingPane                                  |
+| `Layout.AppBar`         | `<header>` | The top app bar, above the panes, from the rail's end to the far edge                      |
+| `Layout.Footer`         | `<footer>` | Small print, in the bottom margin                                                          |
 
 The rails are not inside the asides: each rail is a `<nav>` and the region it controls is the
 `<aside>` next to it. Every part is optional except `Root` and `Pane`; a track with nothing in it
@@ -27,10 +27,10 @@ is 0px wide (a page with only an app bar, a pane and a footer just has margins).
 
 ## By window size
 
-| Width      | Rail   | Drawer                                                       | Supporting pane                                   | Companion rail |
-| ---------- | ------ | ------------------------------------------------------------ | ------------------------------------------------- | -------------- |
-| under 600  | hidden | modal sheet (app bar button), every destination              | modal side sheet (its own opener, companion tabs) | hidden         |
-| 600 and up | shown  | per `drawerType` (below); none without `drawerItems`         | modal side sheet below 840, beside the pane above | shown          |
+| Width      | Rail   | Drawer                                               | Supporting pane                                   | Companion rail |
+| ---------- | ------ | ---------------------------------------------------- | ------------------------------------------------- | -------------- |
+| under 600  | hidden | modal sheet (app bar button), every destination      | modal side sheet (its own opener, companion tabs) | hidden         |
+| 600 and up | shown  | per `drawerType` (below); none without `drawerItems` | modal side sheet below 840, beside the pane above | shown          |
 
 ## The drawer and the rail's menu button (2026-11-23, ported from e-store)
 
@@ -59,15 +59,15 @@ expansion; no drawer when there are no drawer items; the rail's menu button alwa
   Leaving 600px upwards closes it.
 - Floating: a card on e-store's `--layout-drawer-bg` (`surface-container-low`), with the panes'
   corners (`--layout-pane-radius`, below) and `shadow-2` (e-store: an ad-hoc shadow), plus the
-  pointer arrow. The colour is e-store's choice, not an M3 role for a floating card.
+  pointer arrow. The color is e-store's choice, not an M3 role for a floating card.
 - Docked (and the standard drawer): NO surface, corners or shadow. The drawer sits transparent on
   the scaffold's `surface-container`, like the rail, with a 4px end margin (`me-1`), and the
   primary pane starts at the track's end (no margin track). Sources, which agree: e-store
   `packages/ui/src/components/layout/layout.tsx` ~1874-1882 (docked: `relative me-1 min-h-0
-  min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the owner,
+min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the owner,
   2026-11-11) and the reference app on the recovered drive
   (`/Volumes/OS/Users/seanp/Desktop/work/vendure/packages/ui/src/components/layout/layout.tsx`
-  1024-1036, the same classes). 2026-11-23: an earlier "coloured when docked" note here was a
+  1024-1036, the same classes). 2026-11-23: an earlier "colored when docked" note here was a
   misread instruction and is withdrawn.
 - M3 for reference, read 2026-11-23 at https://m3.material.io/components/navigation-drawer/specs
   (token table): modal container `surface-container-low`, elevation 1dp; standard container
@@ -85,14 +85,14 @@ expansion; no drawer when there are no drawer items; the rail's menu button alwa
   repeat "components twice"). In the compact modal a section's name is a title-small headline
   row (e-store's `navDrawerSectionVariants.headline`), not a link, then its children.
 - Reviewer fixes (2026-11-23): the card never closes under focus (rail mouse-leave and hovering
-  another destination wait while focus is in it);  the `<aside>` keeps `popover="manual"` docked
+  another destination wait while focus is in it); the `<aside>` keeps `popover="manual"` docked
   too (classes undo the popover box), so the show / hide task never waits on the attribute;
   `onMouseLeave$`, `onFocusOut$`, `onClick$`, `document:onKeyDown$` given to `Layout.Rail` /
   `Layout.Drawer` run beside ours (arrays) instead of being replaced; `drawerType` follows its
   prop; following a link in the floating card closes it; no `aria-label` on the `<aside>`s (their
   `<nav>` is the named landmark); the app bar menu button sets `aria-controls` only when a modal
   drawer exists. Left as is: keyboard reach of the floating card is DOM order (after the rail's
-  footer); the disabled rail button shows no tooltip (native `disabled` gets no pointer events).
+  footer); the disabled rail button shows no tooltip (native `disabled` gets no pointer events). Opening the compact sheet focuses a control the open panel marks `data-autofocus` (a form's first field), else the selected tab, else the close button (2026-11-24, NEW). The icon-only companion rail buttons, its hide / show tab and the compact sheet opener use the M3 plain tooltip (`data-tooltip`, the `TooltipProvider` in Root), not a native `title` (2026-11-24); the compact sheet's tabs show their labels, so they have none.
 
 - Docked is the visitor's CHOICE (e-store `layout.tsx` 1740-1795, `isDrawerDocked`, fixed
   2026-11-23 after the owner saw a rail click turn the docked drawer back into the floating one).
@@ -101,6 +101,92 @@ expansion; no drawer when there are no drawer items; the rail's menu button alwa
   the button still reads "Undock drawer"; back in a section the card is docked again. Only the
   600px breakpoint changes the drawer's form (the modal below it). Not persisted across reloads
   (`bind:drawerDocked` starts `false`), as e-store's.
+
+- Groups inside a section (2026-11-24, ported from e-store's `DrawerButtonExpandable`,
+  `navigation/nav-drawer-button.tsx`, for the Messages app's Google Chat sections): a child item
+  with its own `items` is a GROUP, a row-sized `<button aria-expanded aria-controls>` with the
+  label and an `expand_more` chevron that turns, then its rows, opening and closing with e-store's
+  grid-rows transition (0fr to 1fr, 200ms standard easing, none under reduced motion). Rendered
+  wherever a section's children are: the floating / docked card, the standard drawer and the
+  compact modal. A group needs no `href` (`LayoutDrawerItem.href` is optional since then, as
+  e-store's `NavItem.href?`). Current marking is recursive (`holds`): a page inside a group makes
+  its section active (rail `current="section"`, the docked card). Differs from e-store: NEW
+  `open` (start open; e-store opens only a group holding the page, which we also do); the closed
+  rows are `inert` (e-store's stay in the Tab order at 0px); ids from `useId` (the docked and the
+  modal drawer render the same groups); in the compact modal the group is inline, where e-store's
+  modal drawer opens a level-1 item's children as a sub-pane with a back button (not ported). Not
+  ported: e-store's per-row `badge` (unread counts would need the app's read state above
+  `Layout.Root`).
+- Type hierarchy (2026-11-24, owner: "there is no hierarchy on the typography"). Sources:
+  m3.material.io/components/navigation-drawer/specs and /guidelines (read in Chrome 2026-11-24:
+  rows 56dp, 28dp start padding, 12dp indicator inset; "Section label (optional)", "Dividers can
+  be used to separate groups of destinations"); material-web v0_192 `_md-comp-navigation-drawer.scss`
+  (headline = title-small on-surface-variant; label = label-large on-surface-variant; ACTIVE label
+  weight = `label-large-weight-prominent`); Google Chat measured 2026-11-24 (e-store
+  `.claude/reference/findings-from-seanperez-ui-port.md` 173: section headers 12px / 500 with a
+  disclosure arrow, rows 28px). Title-small and label-large are both 14 / 20 / 500, so type size
+  alone cannot rank a header above a row. What the drawer does:
+
+  | Part                                                       | Role                                                             | Colour                                            | Height                            | Start                                                                           | Source                                                                                       |
+  | ---------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+  | Headline (section name; top of the floating / docked card) | `title-small`                                                    | `on-surface-variant`                              | 56                                | 28dp (label line)                                                               | M3 headline; e-store `navDrawerSectionVariants.headline`, `DrawerPanel` header (PORTED)      |
+  | Group header (collapsible)                                 | `label-medium` (12 / 16 / 500)                                   | `on-surface-variant`                              | 40                                | 28dp                                                                            | Google Chat's 12px / 500; e-store `sm` density 40 (NEW for us: M3 has no collapsible header) |
+  | Row                                                        | `label-large`                                                    | `on-surface-variant`                              | 56 (`--layout-drawer-row-height`) | 28dp with its icon; 40dp without one in a section (e-store's 12px child indent) | M3 / material-web                                                                            |
+  | Current row                                                | `label-large` bold (`--text-label-large-prominent--font-weight`) | `on-secondary-container` on `secondary-container` | 56                                | as a row                                                                        | material-web `active-*`                                                                      |
+  | Divider                                                    | `Separator` (`outline-variant`), 8dp above and below             |                                                   |                                   | full row width                                                                  | M3 guidelines; e-store `my-2`                                                                |
+
+  Dividers: before a section and after it when more items follow (compact modal, standard
+  drawer), and before every group but the first. A child row draws its own `icon` (since
+  2026-11-24; Messages gives Shortcuts their icons and conversations `person` / `groups` /
+  `smart_toy`). The old `data-nested:ps-13` (52dp, lined up with a parent icon that is never
+  drawn) is gone. Row height stays M3's 56; Google Chat's 28 / e-store's 48 is an OWNER DECISION
+  (a density option would be a `LayoutConfig` field). Checked in Chrome 2026-11-24 (apps/web
+  1568px docked, 700 docked, 390 modal, light and dark; ui playground 390 modal).
+
+- With no drawer items the rail's menu button is never shown open and is named `menuLabel`
+  ("Open menu"), whatever dock choice a route with a drawer left behind (2026-11-24, second
+  agent's finding: a site whose `drawerType` is `floating` read "Undock drawer" on a disabled
+  button).
+- ~~Drawer items PER ROUTE~~ (2026-11-24, withdrawn the same day): the site gave `drawerItems`
+  only on `/messages/` routes, so hovering Messages floated nothing from Home, Contacts or Maps
+  (owner: "it also stops the hover from working").
+- The menu button follows the CURRENT page; hover follows the HOVERED destination (2026-11-24,
+  owner: "only when your on a route or rail item that has a drawer items does the hamburger
+  colapse become active and the hover / drawer works"). Give `drawerItems` the SAME full list on
+  every route (e-store's model, rule L24); the Layout decides the rest:
+  - `menuEnabled` (Root, context): floating, `!!activeSection` (the page is inside a destination
+    with children); standard / modal, `hasDrawer` (that drawer lists everything on every page).
+    Disabled, the button is the plain `menuLabel`, never shown open, native `disabled`.
+  - `docked` (unchanged): `drawerDocked && activeSection`. The dock CHOICE (`drawerDocked`)
+    persists across pages but docks only inside a section.
+  - Hover / focus (`peekAt$`, `peekSection`) is blocked only while a section is actually DOCKED
+    (`docked`), not by the choice. So on a page outside every section any destination with
+    children floats its card, whatever the choice; inside a section with it docked, nothing floats
+    (e-store's: hover never swaps the docked panel).
+  - Differs from e-store (NEW, owner's request): e-store's button is enabled on every page
+    (`nav-rail.tsx` 188-191 `hasDrawerChildren` looks at ALL drawer items) and reads Dock /
+    Undock there; and with the choice docked on a page outside every section, e-store floats
+    nothing on hover (`layout.tsx` 1697-1700 returns while `isDrawerDocked`). Ours: disabled
+    there, and hover floats.
+  - A click on a row in the floating card from another page navigates; on arrival the section
+    docks if the choice is docked (the card hides and the same `<aside>` takes the nav track).
+    Focus then falls to the body (the popover hid under it); not handled.
+  - App side: `apps/web/src/routes/layout.tsx` `DRAWER_GROUPS` (rail `href` -> groups); /admin
+    passes none. Checked in Chrome 2026-11-24 (site at 1000 / 700 / 390 in iframes, light and
+    dark; playground Overview disabled, categories enabled).
+
+## The rail's FAB (2026-11-24, ported from e-store)
+
+`Layout.Rail fab` (JSX): e-store's `Layout.Rail fab` / `NavRail fab` (`layout.tsx` ~1030-1075,
+`navigation/nav-rail.tsx` ~360-375; used by e-store `apps/master` for "New project"). A box above
+the destinations (`py-3`, centred in the icon column, `data-layout-rail-fab`), the JSX rendered
+through `freshJsx` as e-store does (the Qwik rc JSX-prop bug, `utils/jsx-prop.ts`). M3, read
+2026-11-24 at m3.material.io/components/navigation-rail/guidelines: "The menu icon and FAB should
+always be top-aligned"; a FAB nested in the rail rests at elevation level 0 (the box sets the FAB's
+shadow to none, level 1 on hover: ours). FAB guidelines (same date): lower end corner in compact
+and medium windows, the rail in expanded ones. The rail is hidden below 600px, so the page puts its
+own FAB in its pane there (the site: `components/app-action.tsx`). Not ported: e-store's extended
+FAB in the expanded rail (no expanded rail here).
 
 Not ported from e-store: the expanded rail (`railMenuTrigger="expand"`), density, icons-only
 rail, the drawer resize sash, `panelContent`, sub-pane navigation inside the modal drawer, the
@@ -132,20 +218,88 @@ Owner: "the drawer should match ... the same as the panes ... if its compact its
 
 ## API
 
-| Part                    | Props                                                                                                                                                      |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Layout.Root`           | `LayoutConfig` (below), `bind:drawerOpen?`, `bind:drawerDocked?` (both start `false`), `bind:supportExpanded?`, `bind:activeCompanion?`, ids           |
-| `Layout.AppBar`         | `title`, `menuButton?` (default: `Layout.Root drawer`), `menuLabel?`; actions in the slot                                                                  |
-| `Layout.Rail`           | `menuLabel?`, `closeMenuLabel?`, `dockLabel?`, `undockLabel?`, `menuIcon?`, `menuOpenIcon?`, `aria-label?`; slot: more `Layout.RailItem`s              |
-| `Layout.RailItem`       | `icon`, `label`, `current?`, plus `<a>` props (`href`)                                                                                                     |
-| `Layout.Drawer`         | `header?` (modal title), `closeLabel?`, `closeIcon?`, `panelLabel?`; rows from `drawerItems` (no slot)                                                     |
-| `Layout.Pane`           | `role="primary"`; slot: a `Layout.PaneHeader` and ONE body element                                                                                         |
-| `Layout.PaneHeader`     | `title`, `headingLevel?` (2); actions in the slot                                                                                                          |
-| `Layout.SupportingPane` | `header`, `closeLabel?`, `closeIcon?`, `companionTabsLabel?` (`"Companion apps"`), `showLabel?` (`"Show side panel"`), `showIcon?`; slot: ONE body element |
-| `Layout.CompanionRail`  | `apps: { id, label, icon }[]`, `aria-label?`                                                                                                               |
-| `Layout.SupportToggle`  | `icon`, `label`, `app?`, `onToggle$?`: opens the supporting pane from anywhere                                                                             |
-| `Layout.MenuButton`     | `label?`, `closeLabel?`, `icon?`, `openIcon?`: opens the modal drawer (the app bar's, below 600px)                                                         |
-| `Layout.Footer`         | slot                                                                                                                                                       |
+| Part                    | Props                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Layout.Root`           | `LayoutConfig` (below), `bind:drawerOpen?`, `bind:drawerDocked?` (both start `false`), `bind:supportExpanded?`, `bind:activeCompanion?`, `bind:trailShown?`, ids (`mainId`, `drawerId`, `railId`, `supportId`, `trailId`)                                                                                                                                                                                                                                                                                                    |
+| `Layout.AppBar`         | `title`, `menuButton?` (default: `Layout.Root drawer`), `menuLabel?`; actions in the slot                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `Layout.Rail`           | `menuLabel?`, `closeMenuLabel?`, `dockLabel?`, `undockLabel?`, `menuIcon?`, `menuOpenIcon?`, `fab?` (JSX), `aria-label?`; slot: more `Layout.RailItem`s                                                                                                                                                                                                                                                                                                                                                                      |
+| `Layout.RailItem`       | `icon`, `label`, `current?`, plus `<a>` props (`href`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Layout.Drawer`         | `header?` (modal title), `closeLabel?`, `closeIcon?`, `panelLabel?`; rows from `drawerItems` (no slot)                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Layout.Pane`           | `role="primary"`, `bleed?` (full-bleed content such as a map: no insets, no scroll; e-store's, ported 2026-11-23); slot: a `Layout.PaneHeader` and ONE body element                                                                                                                                                                                                                                                                                                                                                          |
+| `Layout.PaneHeader`     | `title`, `headingLevel?` (2), `titleId?` (the heading's `id`, for `aria-labelledby` on the region it titles; `id` is the `<header>`'s, which holds the actions too, NEW 2026-11-24), `fullscreen?` / `fullscreenLabel?` (a `FullscreenButton` on the pane's `<main>` after the actions, NEW 2026-11-24, see below), `backHref?` / `backLabel?` ("Back") / `backIcon?` ("arrow_back"): a link `IconButton` before the title, marked `data-pane-header-back` (FROM E-STORE `pane-header.tsx`, 2026-11-24); `hideTitle?` (false): the heading stays for screen readers only and a spacer keeps the actions at the end, as Google Contacts' person page (NEW 2026-11-24, owner); actions in the slot |
+| `Layout.SupportingPane` | `header`, `closeLabel?`, `closeIcon?`, `companionTabsLabel?` (`"Companion apps"`), `showLabel?` (`"Show side panel"`), `showIcon?`; slot: ONE body element; named slot `header-actions` (FROM E-STORE, 2026-11-25): the open companion's actions in the title row, before Close (the site's Contact me "More" menu)                                                                                                                                                                                                                                                                                                                                                                   |
+| `Layout.CompanionRail`  | `apps?: { id, label, icon, emphasis? }[]` (default `Layout.Root companions`; `emphasis`: see "An emphasized companion"), `hideButton?` (true), `hideLabel?`, `showLabel?`, `aria-label?`                                                                                                                                                                                                                                                                                                                                     |
+| `Layout.SupportToggle`  | `icon`, `label`, `app?`, `onToggle$?`: opens the supporting pane from anywhere                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `Layout.DrawerItem`     | `current?`, `nested?`, plus `<a>` props: a drawer row (router `Link`) for rows a host renders itself                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `Layout.MenuButton`     | `label?`, `closeLabel?`, `icon?`, `openIcon?`: opens the modal drawer (the app bar's, below 600px)                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Layout.Footer`         | slot. Optional: the site does not render it (owner 2026-11-24: an app layout has no site footer in M3); without it the bottom row is only the margin                                                                                                                                                                                                                                                                                                                                                                         |
+
+## List-detail: `Layout.ListDetail` (NEW 2026-11-24, not in e-store as a part)
+
+M3's list-detail canonical layout as TWO PANES
+(m3.material.io/foundations/layout/canonical-layouts/list-detail and /breakpoints/expanded, read
+2026-11-24: "A list-detail layout uses two panes", a 360dp fixed pane, "The spacer between panes
+is 24dp"; one pane on compact, the back button only in single-pane detail view, a selection state
+only in two-pane, a placeholder in the detail pane until something is chosen).
+
+```tsx
+<Layout.Pane role="primary" bleed aria-label="Contacts">
+  <Layout.ListDetail view={id ? "detail" : "list"} fab={<AppFab />}>
+    <Layout.ListPane aria-labelledby="t">
+      <Layout.PaneHeader title="Contacts (2)" titleId="t" />
+      <div>{/* ONE body: a List.Root rovingFocus, or an EmptyState */}</div>
+    </Layout.ListPane>
+    <Layout.DetailPane bleed?>
+      <Layout.PaneHeader title="Name" backHref="/contacts/" />  {/* + ONE body */}
+    </Layout.DetailPane>
+  </Layout.ListDetail>
+</Layout.Pane>
+```
+
+- The part is the bleed primary pane's one root; the primary pane turns transparent
+  (`[data-pane="primary"]:has(> [data-qds-list-detail])`, `layout.css`), so the two panes are two
+  `surface` cards with `--layout-pane-radius` on the scaffold, `--layout-pane-spacer` between.
+- Two panes from a 43rem CONTAINER width (`@container/list-detail`), list fixed at
+  `--layout-pane-fixed` (360px, e-store's token name). Below it, `view` (from the URL, rule L19)
+  picks the one pane shown. The container is the primary pane, so a docked drawer and an open
+  supporting pane push two-pane mode to a wider window (Contacts with both open: about 1430px).
+- `[data-pane-header-back]` (the PaneHeader back link, or any element carrying the attribute)
+  is hidden in two-pane mode by the container query.
+- `fab`: the compact FAB, at the list pane's lower end corner, below 600px and in list view only
+  (from 600px it is the rail's).
+- Each pane is a `layout-pane-rulers` scroller (`scrollbar-pane`); `DetailPane bleed` for a
+  detail that scrolls itself (a chat transcript with a pinned composer).
+- Playground: `/list-detail/`. Used by Contacts and Messages in `apps/web`.
+- e-store's apps (chat, contacts) split ONE pane with a border; its gallery shows two surfaces
+  with `gap-(--layout-pane-spacer)`. We took the two surfaces (M3's text). NOT PROOFED by the owner.
+
+An app's drawer sections (Contacts' Frequent, Trash, labels) are plain `LayoutDrawerItem` data in
+the app's `DRAWER_GROUPS` entry (`apps/web/src/routes/layout.tsx`); each is a route. A dialog
+reached from the drawer is a route too (rows are links): `/contacts/import/`.
+
+## Pane full screen (NEW 2026-11-24, not in e-store)
+
+`Layout.PaneHeader fullscreen` ends the header with a `FullscreenButton` (e-store's, cut to any
+element; `fullscreen-button.md`) whose target is the primary pane's `<main>`. Opt-in per page: the
+site uses it on Contacts. e-store's layout has no pane maximise or full screen (checked
+2026-11-24), so this is new; the button is e-store's.
+
+- The pane in full screen: the UA box (fixed, inset 0, 100%), `bg-surface`, square corners
+  (`[&:fullscreen]:rounded-none` in `pane`).
+- No button where the browser cannot (iPhone, a refusing iframe). No button on the supporting
+  pane: below 840px it is a showing popover, which the Fullscreen spec's ready check refuses, and
+  a second agent advised against a desktop-only one (2026-11-24). Panes without a header (Home,
+  Maps) have none; the map has MapLibre's own control instead (one button per action).
+- Overlays: see `fullscreen-button.md`.
+
+## Opening a companion from the page: `openCompanion` (NEW 2026-11-24, not in e-store)
+
+`openCompanion(layout, id, opener?)`, exported beside `layoutContextId`: from a page's own
+control (a list row), open the supporting pane on companion `id` the way the companion rail's
+buttons do. It notes `opener` for focus to return to when the sheet (below 840px) closes, and
+opens the sheet even when `supportExpanded` is already true (setting the signals by hand does
+neither). Browser only, in an event handler: `const layout = useContext(layoutContextId)`, then
+`openCompanion(layout, "contact", element)`. Used by `/contacts/` on the site.
 
 ## State and context
 
@@ -168,7 +322,7 @@ pane, named by their `header`), `<footer>`. A skip link to the primary pane is t
 element. The menu buttons carry `aria-controls` and `aria-expanded` (the rail's: the drawer;
 the app bar's: the modal drawer, `${drawerId}-modal`; none while disabled); the companion buttons carry
 `aria-controls` and `aria-pressed`. Escape closes a modal sheet, and so does a click on its scrim.
-The navigation drawer's modal sheet is a `<dialog>`; the supporting pane's is a `popover="auto"`
+The navigation drawer's modal sheet is a `<dialog>`; the supporting pane's is a `popover="manual"`
 made modal by setting `inert` on the scaffold's other regions while it is open (see "Compact
 screens" below). Both move focus in and give it back to the control that opened them.
 
@@ -194,7 +348,9 @@ const activeCompanion = useSignal<string | null>(null);
   activeHref={location.url.pathname}
   railItems={[{ href: "/", icon: "widgets", label: "Components" }]}
   // A section with children: the floating card on hover / focus of "Components".
-  drawerItems={[{ href: "/", label: "Components", icon: "widgets", items: pages }]}
+  drawerItems={[
+    { href: "/", label: "Components", icon: "widgets", items: pages },
+  ]}
   drawerType="floating"
   themeToggle
   companions={[{ id: "about", label: "About", icon: "info" }]}
@@ -227,40 +383,114 @@ the layout parts add only the scaffold placement and the menu button. `Layout.Ra
 `Layout.Root` takes the scaffold's content as plain serialisable data (`LayoutConfig`) and puts
 it in the layout context as `config`; every part reads it there. A part's own prop wins.
 
-| `Layout.Root` prop | Type                 | Read by                                             |
-| ------------------ | -------------------- | --------------------------------------------------- |
-| `title`            | `string`             | `Layout.AppBar`                                     |
-| `titleHref`        | `string`             | `Layout.AppBar`                                     |
-| `activeHref`       | `string`             | `Layout.Rail`, `Layout.Drawer` (the current item)   |
-| `railItems`        | `LayoutRailItem[]`   | `Layout.Rail`                                       |
-| `drawerTitle`      | `string`             | `Layout.Drawer` (the modal drawer's title)          |
-| `drawerItems`      | `LayoutDrawerItem[]` | `Layout.Drawer`, `Layout.Rail` (none: no drawer)    |
-| `drawerType`       | `modal\|standard\|floating` | `Layout.Drawer`, `Layout.Rail` (e-store's)  |
-| `drawer`           | `auto\|off`          | `Layout.AppBar`, `Layout.Drawer` (compact modal)    |
-| `themeToggle`      | `boolean`            | `Layout.Rail` footer, `Layout.AppBar` below 600px   |
-| `layoutMode`       | `default\|compact`   | the scaffold (`data-layout-mode`: margins, spacer, corners) |
-| `companions`       | `LayoutCompanion[]`  | `Layout.CompanionRail`, `Layout.SupportingPane`     |
-| `sourceColor`      | `string` (hex)       | the theme (see `theme-changer.md`)                  |
-| `colorMode`        | `light\|dark\|auto`  | the theme                                           |
+| `Layout.Root` prop | Type                        | Read by                                                                                                                                                                                                   |
+| ------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`            | `string`                    | `Layout.AppBar`                                                                                                                                                                                           |
+| `titleHref`        | `string`                    | `Layout.AppBar`                                                                                                                                                                                           |
+| `activeHref`       | `string`                    | `Layout.Rail`, `Layout.Drawer` (the current item)                                                                                                                                                         |
+| `railItems`        | `LayoutRailItem[]`          | `Layout.Rail` (each item's optional `prefetchBundles`, NEW 2026-11-24, goes to its `Link` and to the compact drawer's row for it)                                                                         |
+| `drawerTitle`      | `string`                    | `Layout.Drawer` (the modal drawer's title)                                                                                                                                                                |
+| `drawerItems`      | `LayoutDrawerItem[]`        | `Layout.Drawer`, `Layout.Rail` (none: no drawer)                                                                                                                                                          |
+| `drawerType`       | `modal\|standard\|floating` | `Layout.Drawer`, `Layout.Rail` (e-store's)                                                                                                                                                                |
+| `drawer`           | `auto\|off`                 | `Layout.AppBar`, `Layout.Drawer` (compact modal)                                                                                                                                                          |
+| `themeToggle`      | `boolean \| "rail"`         | `Layout.Rail` footer, `Layout.AppBar` below 600px; `"rail"`: the rail footer, and below 600px the compact drawer's footer (`ThemeToggle look="full"`), never the app bar (e-store's L7, owner 2026-11-24) |
+| `layoutMode`       | `default\|compact`          | the scaffold (`data-layout-mode`: margins, spacer, corners)                                                                                                                                               |
+| `companions`       | `LayoutCompanion[]`         | `Layout.CompanionRail`, `Layout.SupportingPane`                                                                                                                                                           |
+| `sourceColor`      | `string` (hex)              | the theme (see `theme-changer.md`)                                                                                                                                                                        |
+| `colorMode`        | `light\|dark\|auto`         | the theme                                                                                                                                                                                                 |
 
 State props: `bind:drawerOpen`, `bind:drawerDocked`, `bind:supportExpanded`, `bind:activeCompanion`,
 `bind:trailShown`, `bind:color`, `bind:mode`.
 
+## Motion: slide, not reflow (2026-11-24, NEW, not in e-store)
+
+Owner, 2026-11-24: scrollbars appeared and vanished while the drawer, panes and groups animated,
+and the drawer's text re-wrapped as it grew; "it looks nicer also if the text looks like its
+sliding out of the drawer not apearing in the drawer as it grows".
+
+M3 (read in Chrome 2026-11-24): transition patterns, "Beyond screen bounds" (navigation drawer,
+sheets): components "slide on and off screen without changing shape"; "Coplanar sheets shrink the
+available area for content" (so the primary pane reflowing as its track narrows is expected);
+"A nav drawer enters from the left helping users understand where it's located when it's off
+screen". Navigation drawer guidelines: "Don't wrap label text", and "When a navigation drawer
+animates on screen, it uses an enter and exit transition pattern". Durations and easing are
+unchanged: the scaffold's tracks 300ms (`medium-2`) Standard, groups 200ms (`short-4`) Standard.
+
+e-store (read 2026-11-24): its docked drawer animates its own `width` (300ms) with
+`overflow-hidden`; its panels are `absolute inset-0`, so they reflow too; no `scrollbar-gutter`,
+no fixed-width content, and its docked drawer also disappears at once on close. Nothing to port.
+
+How (`layout.css` "Slide, not reflow"):
+
+- `layout-slide` on the region in the track (the docked / standard drawer, the supporting pane
+  from 840px): `overflow: clip`. It clips like `hidden` but is not a scroll container (MDN
+  `overflow`; Chrome 90, Firefox 81, Safari 16), so no scrollbar and nothing a focused row can
+  scroll sideways.
+- `layout-slide-content` on its one content box (the drawer card, the supporting pane's panel):
+  `inline-size` = `min-` = `max-inline-size` = `--layout-slide-size`, the region's final width
+  (drawer: `--layout-drawer-panel-width` less the 4px `me-1`; pane: `--layout-support-expanded`).
+  The scroller inside never narrows: no horizontal bar, no reflow.
+- It rides on the moving edge: the drawer's card on the track's END (`justify-end`), so it slides
+  out from behind the rail; the supporting pane's panel on its START, so it slides in from beside
+  the companion rail. Logical alignment, so right-to-left mirrors (checked in Chrome).
+- From 840px the panel, not the `<aside>`, is the pane's `surface` with the pane radius, so the
+  rounded surface slides in whole.
+- Exits keep the content while the track closes:
+  - Drawer: `LayoutDrawer`'s `inTrack` stays true (with the docked section in `trackSection`)
+    until the scaffold's `grid-template-columns` transition ends (`afterTrackTransition`:
+    `getAnimations()` after two frames, a 450ms timeout, at once when nothing runs, e.g. reduced
+    motion). The scaffold's `data-nav` follows `docked` at once. Meanwhile the `<aside>` is
+    `data-closing` and `inert`. Re-docking mid-exit cancels it (task `cleanup`). Leaving the
+    docked section by a link plays the same exit with that section's rows.
+  - Supporting pane from 840px: always laid out (`md:flex`), hidden while collapsed with
+    `visibility`, transitioned over the track's 300ms. Visibility interpolates as visible until
+    the end (CSS Transitions), in every engine, so no `display` / `overlay` discrete transition
+    (rule L26; Firefox cannot transition `display`, MDN BCD). Hidden, it leaves the focus order
+    and the accessibility tree.
+  - `close$` clears `activeCompanion` (which the app's slot content follows) only after the exit:
+    from 840px after the track transition, below 840px by the sheet's `toggle` after
+    `closeAnimated` (before, the sheet slid out empty).
+- Groups: the row wrapper is `overflow: clip` (no scroll container), and the drawer's scroll body
+  (`drawerBody`, also the floating card and the compact modal) has `scrollbar-gutter: stable`
+  (Tailwind `scrollbar-gutter-stable`; MDN: Chrome 94, Firefox 97, Safari 18.2; no effect with
+  overlay scrollbars), so a group opening past the drawer's height no longer makes every row jump
+  8px when the bar comes. Cost: with a classic bar the rows' end inset is 20px, not 12px, even
+  while the list fits (owner to decide, see PLAN.md).
+- Reduced motion: no transition anywhere (the scaffold's guard, `md:motion-reduce:` and
+  `max-md:motion-reduce:` variants, the latter added because Tailwind sorts a breakpoint variant
+  after `motion-reduce:`, so the compact sheet still slid).
+
+Measured in Chrome (rAF samples, 1000px window, before -> after): docking the Messages drawer, a
+horizontal bar on the drawer's list for 5 frames and a row 161 -> 204px wide -> no bar, the row
+204px every frame and moving 42 -> 100px from behind the rail; undocking, gone in one frame ->
+slides out over 300ms; opening the supporting pane, a horizontal bar for 4 frames and its content
+33 -> 264px wide -> no bar, content and title constant (320 / 224px); collapsing a group, the bar
+toggling mid-animation and rows 212 <-> 204px -> rows 204px throughout. Modal drawer and sheet
+(390px): already slid at a fixed width; the drawer's bar now there from the first frame.
+NOT PROOFED: Safari / iOS and Firefox (the owner's devices), reduced motion run live (rule order
+read from the stylesheet).
+
 ## Surfaces and elevation
 
-| Region                                | Colour role                                    | Elevation      |
-| ------------------------------------- | ---------------------------------------------- | -------------- |
-| Scaffold, app bar, navigation rail    | `surface-container`                            | 0              |
-| Panes (primary, supporting)           | `surface`                                      | 0              |
+| Region                                | Color role                                                                 | Elevation      |
+| ------------------------------------- | -------------------------------------------------------------------------- | -------------- |
+| Scaffold, app bar, navigation rail    | `surface-container`                                                        | 0              |
+| Panes (primary, supporting)           | `surface`                                                                  | 0              |
 | Drawer card, floating (from 600px)    | `--layout-drawer-bg` (`surface-container-low`), the pane radius, e-store's | 2 (`shadow-2`) |
-| Drawer, docked / standard             | none: transparent on the scaffold (e-store, reference app) | 0     |
-| Drawer, modal (below 600px)           | `surface-container-low` (`Modal`)              | 1 (`shadow-1`) |
-| Supporting pane as a modal side sheet | `surface-container-low`                        | 1 (`shadow-1`) |
-| Companion rail                        | transparent                                    | 0              |
-| "Show side panel" tab (rail hidden)   | `surface-bright`                               | 1 (`shadow-1`) |
-| Menus (the account menu)              | `surface-container`                            | 2 (`shadow-2`) |
+| Drawer, docked / standard             | none: transparent on the scaffold (e-store, reference app)                 | 0              |
+| Drawer, modal (below 600px)           | `surface-container-low` (`Modal`)                                          | 1 (`shadow-1`) |
+| Supporting pane as a modal side sheet | `surface-container-low`                                                    | 1 (`shadow-1`) |
+| Companion rail                        | transparent                                                                | 0              |
+| "Show side panel" tab (rail hidden)   | `surface-bright`                                                           | 1 (`shadow-1`) |
+| Menus (the account menu)              | `surface-container`                                                        | 2 (`shadow-2`) |
 
 Levels are Material 3's: modal navigation drawer and modal side sheet level 1, menu level 2.
+
+`--field-bg` (the patch an outlined field's floated label paints over its outline) follows each
+fill: the `bg-surface*` utilities in `tokens/utilities.css` set it, and a part whose fill comes
+from a responsive variant sets it beside the fill (the supporting pane: `md:[--field-bg:...]`
+with `md:bg-surface`, `max-md:` on the sheet and its header). Rule: any container with its own
+fill sets `--field-bg` to that fill (see `text-field.md`).
 
 ## Insets are grid tracks
 
@@ -282,6 +512,36 @@ padding is INSIDE a control (a drawer row's 16px, the skip link's pill), which i
 own shape, not layout. The app bar's controls never move: its end inset does not change when
 the drawer, the supporting pane or the companion rail opens or closes.
 
+## An emphasized companion: `LayoutCompanion.emphasis` (NEW 2026-11-24, not in e-store)
+
+Owner, 2026-11-24: the site's "Contact me" must stand out from the other companions. One
+companion can carry `emphasis: "primary" | "tonal"`; unset keeps the rail's own colours. It is
+data on the companion (serialisable, a CMS can store it), drawn by the `emphasis` variant of the
+`companionPill` slot, in the rail AND in the compact sheet's tab row (the pane header shows only
+the title, the compact opener only its own `showIcon`, so neither needs it).
+
+| `emphasis` | Resting pill / icon                              | Selected (`aria-pressed` / `aria-selected`)      |
+| ---------- | ------------------------------------------------ | ------------------------------------------------ |
+| unset      | none / `on-surface-variant`                      | `secondary-container` / `on-secondary-container` |
+| `primary`  | `primary-container` / `on-primary-container`     | `primary` / `on-primary`                         |
+| `tonal`    | `secondary-container` / `on-secondary-container` | `secondary` / `on-secondary`                     |
+
+PROOFED 2026-11-24, read in Chrome: m3.material.io/components/navigation-rail/specs (active
+indicator `secondary-container`, icon `on-secondary-container`, inactive `on-surface-variant`);
+/components/floating-action-button/specs (default FAB colours `primary-container` /
+`on-primary-container`: the rail's FAB, so `primary` at rest reads as the rail's one emphasized
+action); /components/icon-buttons/specs (filled toggle selected `primary` / `on-primary`; tonal
+default `secondary-container` / `on-secondary-container`, tonal toggle selected `secondary` /
+`on-secondary`; state layers hover 8%, focus 10%, pressed 10%). The state layer of an
+emphasized pill is its content colour (`before:bg-current`). All pills now also show focus and
+pressed layers (`opacity-focus`, `opacity-pressed`); the 2px `secondary` focus outline stays.
+
+`tonal` at rest is the same colour as an unset companion's SELECTED pill: prefer `primary`.
+Measured in Chrome 2026-11-24 (`primary`, default source colour): icon on pill, light 13.28:1
+resting / 6.42:1 selected, dark 7.22:1 / 7.7:1 (M3 asks 3:1). The resting pill against the
+rail's `surface-container` is only 1.11:1 in light (1.76:1 dark): the icon carries the contrast,
+the pill is a tint. Name and tooltip are the companion's `label`, unchanged.
+
 ## Hide / show side panel
 
 `Layout.CompanionRail` renders ONE fixed button at the bottom end (`hideButton`, `hideLabel`,
@@ -295,10 +555,22 @@ Ported from e-store (`layout.md` "Companion tabs in the compact sheet (owner 202
 `companion-rail.tsx` `CompanionTabs`).
 
 - Below 840px the supporting pane has no track. `Layout.SupportingPane` is ONE
-  `<aside popover="auto">`: from 840px a pane in the support track (the browser's popover box is
-  reset by classes), below 840px an M3 modal side sheet on the end edge, in the top layer, with
-  `::backdrop` as the 32% scrim. Escape and a press on the scrim are the browser's (light dismiss).
-  It replaced a `position: fixed` aside, a scrim `<div>` and the root's own Escape handler.
+  `<aside popover="manual">` (`"auto"` until 2026-11-24): from 840px a pane in the support track
+  (the browser's popover box is reset by classes), below 840px an M3 modal side sheet on the end
+  edge, in the top layer, with `::backdrop` as the 32% scrim. Escape and a press on the scrim are
+  ours since 2026-11-24 (`markSheetDismiss`, a `sync$`, then `dismiss$`): a `popover="auto"`
+  closes itself on them at once and uncancellably (HTML light dismiss), which skipped the exit
+  animation. Escape is left to a menu or dialog open inside the sheet. The press is read on the
+  document: a press on a popover's `::backdrop` is NOT hit-tested to the popover (Chrome
+  2026-11-24: it landed on the scaffold), unlike a dialog's. It replaced a `position: fixed`
+  aside, a scrim `<div>` and the root's own Escape handler.
+- Sheet motion (2026-11-24, as `Modal position="right"`, see `modal.md` "Motion"): in from the
+  end edge, 500ms Emphasized; out, 200ms Emphasized, played with `data-closing` while it is
+  still open and only then `hidePopover()` (`closeAnimated`); scrim linear, same durations;
+  mirrored in right-to-left; none under reduced motion. Crossing 840px with the sheet open
+  hides it at once. PROOFED in Chrome (rAF samples): out by Escape and by a scrim press at 700px,
+  200ms, in the top layer to the last frame, `inert` cleared and focus back on the opener. NOT
+  PROOFED: Safari / iOS, right-to-left, reduced motion live.
 - `supportExpanded` is the one state. Below 840px a `useTask$` on it opens or closes the sheet
   (its first run is on the server, so a pane rendered expanded never pops up on load); the
   sheet's `toggle` event writes it back (Escape, scrim) and clears `activeCompanion`, as the close
@@ -317,7 +589,8 @@ Ported from e-store (`layout.md` "Companion tabs in the compact sheet (owner 202
   on the first click instead of needing two.
 - Below 600px, where the companion rail is hidden, the pane renders its own opener (driven by
   `Layout.Root companions`, no page markup): the rail's "Show side panel" tab, fixed at the bottom
-  end, shown whole (`sheetTrigger`, `sm:hidden`). It opens the active companion, or the first.
+  end, peeking 24px until hovered or focused like the rail's tab and hidden while the sheet is
+  open (`sheetTrigger`, owner 2026-11-23). It opens the active companion, or the first.
   `aria-controls` = the pane, `aria-expanded` = the sheet is open.
 - With two or more companions the sheet starts with a tab row (`[data-layout-companion-tabs]`,
   `sm:hidden`): `role="tablist"` named by `companionTabsLabel`, one `role="tab"` per companion
@@ -374,3 +647,50 @@ Proof:
   crossing 840px both ways, dark mode, the tab row with a temporary second companion, no console
   errors.
   NOT run on a phone or in Safari / Firefox.
+
+## Each app's side panel: the supporting pane follows the route (2026-11-24)
+
+Owner (2026-11-24): the rail holds the site's apps and each app brings its own side panel. No
+library change: the app's ONE `Layout.Root` (rule L2) passes `companions` for the current route
+and renders the pane's content by `activeCompanion` (`apps/web/src/routes/layout.tsx`).
+
+- Mechanism, from e-store's UI gallery (`packages/ui/src/routes/layout.tsx`: one `Layout.Root`,
+  the supporting pane's content chosen from `useLocation().url.pathname`, its `/bleed/` demo).
+  e-store's backend instead gives every app its own `Layout.Root`
+  (`apps/backend/src/routes/apps/(apps)/<app>/layout.tsx`); not taken (contradicts L2, and the
+  rail would remount on every app switch). A route rendering its own `Layout.SupportingPane`
+  was also rejected (review agent): the sheet's `inert` on the other regions would outlive an
+  `<aside>` unmounted while open, and `supportId` would remount per navigation.
+- Client navigation with the pane open switches it to the new route's panel (a `useTask$` on
+  the route's panel id); a closed pane stays closed. A panel outside the route's list (the
+  account menu's "Theme colors..." on `/maps/`) can still be opened: pass `header` yourself,
+  since the pane's default title is the open companion's label FROM THE LIST.
+- PROOFED 2026-11-24, read in Chrome: m3.material.io/foundations/layout/canonical-layouts/supporting-pane
+  ("Use the supporting pane layout when the secondary content is only meaningful in relation to
+  the primary content"; beside the focus pane from Expanded, fixed 360dp; below it in compact /
+  medium, where "a bottom sheet can be useful"); m3.material.io/components/side-sheets/guidelines
+  (standard side sheets hold "a list of actions that affect the screen's primary content, such as
+  filters"; modal side sheets "preferred in compact breakpoints"). The Map panel (map style) fits
+  both. Home has NO panel (2026-11-24): its Theme panel moved to the account menu's theme dropdown
+  (`AccountMenu themeColors`; owner: "if its in the menu it should be a menu not go into the
+  pane"), and site-wide theme controls are not "about" Home's content anyway. A route with no
+  panel passes `companions={[]}`, renders no `Layout.CompanionRail`, and an open pane closes on
+  the way there (the pane stays mounted, so its sheet takes `inert` off on close).
+  m3.material.io/foundations/layout/canonical-layouts/list-detail read the same day: not
+  applicable (no parent-child content).
+- Contact (owner, 2026-11-24): its OWN companion on every route, after the route's own panels
+  ("you can add more rail items to change the sub pane"), so the companion rail now shows on
+  every route. When a route change drops the open companion (the Map panels leaving /maps/), the
+  pane switches to the new route's first one; Contact stays open across routes. The pane has no
+  `header`: it titles itself with the open companion's label.
+- NOT PROOFED: M3 puts the compact / medium supporting pane BELOW the focus pane; ours stays a
+  modal side sheet below 840px (see "Compact screens").
+
+### Overlay app bar: NOT ported (2026-11-24)
+
+e-store's `Layout.AppBar look="overlay"` (its `layout.css` "Overlay app bar", used by
+`packages/maps`) was studied for `/maps/` and left out: its selectors assume a wrapper around
+the bar (ours is the grid item itself), its bar carries a floating search pill with its own
+surface (ours is a bare title and an avatar, unreadable over tiles without one), the map's
+top-end controls would sit under the avatar, and no M3 page describes a transparent top app bar
+(floating over content is M3's search bar). Revisit if Maps gets a search pill.

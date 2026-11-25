@@ -13,13 +13,13 @@ A small dot (something new) or a count, on an icon. From e-store's `components/b
 
 `Badge.Badge` (a `<span>`):
 
-| Prop    | Type            | Default                                      |                                                                        |
-| ------- | --------------- | -------------------------------------------- | ---------------------------------------------------------------------- |
-| `value` | `number`        |                                              | A count (large badge). Without it, a small dot.                        |
-| `max`   | `number`        | `999`                                        | Above it the badge shows "{max}+" (M3: at most 4 characters with "+"). |
-| `size`  | `small` `large` | from `value`                                 | Override.                                                              |
-| `label` | `string`        | "New notification" / "{value} notifications" | What a screen reader hears.                                            |
-| `announce` | `boolean`    | `true`                                       | `false`: the host puts `badgeSpokenText(value, label)` after its own name. |
+| Prop       | Type            | Default                                      |                                                                            |
+| ---------- | --------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| `value`    | `number`        |                                              | A count (large badge). Without it, a small dot.                            |
+| `max`      | `number`        | `999`                                        | Above it the badge shows "{max}+" (M3: at most 4 characters with "+").     |
+| `size`     | `small` `large` | from `value`                                 | Override.                                                                  |
+| `label`    | `string`        | "New notification" / "{value} notifications" | What a screen reader hears.                                                |
+| `announce` | `boolean`       | `true`                                       | `false`: the host puts `badgeSpokenText(value, label)` after its own name. |
 
 `NavigationRail.Item` takes `badge` (`number`, none at 0, or `true` for the dot) and
 `badgeLabel` and renders this badge on its icon, with the spoken text after the label.
@@ -29,7 +29,7 @@ A small dot (something new) or a count, on an icon. From e-store's `components/b
 |                                                                          | Small               | Large                                                                |
 | ------------------------------------------------------------------------ | ------------------- | -------------------------------------------------------------------- |
 | Size                                                                     | 6 x 6, full corners | 16 high, 16 min wide (34 with 4 characters), 4dp sides, full corners |
-| Colour                                                                   | `error`             | `error` / `on-error`, label-small                                    |
+| Color                                                                    | `error`             | `error` / `on-error`, label-small                                    |
 | From the icon's top-trailing corner to the badge's bottom-leading corner | 6 down, 6 in        | 14 down, 12 in                                                       |
 
 The offsets are measured from a 24dp icon CENTRED in `Badge.Root`, so the root can be the icon,
@@ -44,7 +44,7 @@ DOM, so a host that names itself after the badge (the rail item) sets `announce=
 `badgeSpokenText()` after its label: "Mail, 3 notifications" (checked in Chrome). Beside an icon
 button the badge is NOT part of the button's name: put the count in the button's `label` and set
 `announce={false}`. M3: hide a notification badge once the destination is selected (the
-app does that). Keep the `error` colours (3:1).
+app does that). Keep the `error` colors (3:1).
 
 ## Usage
 
@@ -58,7 +58,7 @@ app does that). Keep the `error` colours (3:1).
 
 ## Proof
 
-- Sizes, colours, type, placement, max: PROOFED 2026-11-23 against the M3 spec page and tokens;
+- Sizes, colors, type, placement, max: PROOFED 2026-11-23 against the M3 spec page and tokens;
   measured in Chrome (dot 6x6 at 6/6; count 16 high at 14/12; "999+" 35 wide) on an icon and an
   icon button, and on rail destinations.
 - Hidden text instead of a live region: PROOFED against the M3 accessibility page (read with the

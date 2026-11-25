@@ -19,17 +19,35 @@ export const navigateMenuItems = sync$((event: KeyboardEvent) => {
   const menu = target.closest('[role="menu"]') as HTMLElement | null;
   if (!menu) return;
 
-  // Tab closes the menu and moves on (no preventDefault).
+  // Tab closes the whole menu tree and moves on (APG; no preventDefault): the outermost menu,
+  // whose hiding hides every submenu nested in it.
   if (event.key === "Tab") {
-    if (menu.matches(":popover-open")) menu.hidePopover();
+    let root: HTMLElement = menu;
+    for (
+      let up = root.parentElement?.closest<HTMLElement>('[role="menu"]');
+      up;
+      up = root.parentElement?.closest<HTMLElement>('[role="menu"]')
+    )
+      root = up;
+    if (root.matches(":popover-open")) root.hidePopover();
     return;
   }
 
+  // This menu's rows, and its control rows (`data-qds-menu-row`: a segmented button in the
+  // account menu) as one stop each, at their pressed control, else their first.
   const items = Array.from(
     menu.querySelectorAll<HTMLElement>(
-      '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"]), [role="menuitemradio"]:not([aria-disabled="true"])',
+      '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"]), [role="menuitemradio"]:not([aria-disabled="true"]), [data-qds-menu-row]',
     ),
-  ).filter((item) => item.closest('[role="menu"]') === menu);
+  )
+    .filter((item) => item.closest('[role="menu"]') === menu)
+    .map((item) =>
+      item.hasAttribute("data-qds-menu-row")
+        ? (item.querySelector<HTMLElement>('[aria-pressed="true"]') ??
+          item.querySelector<HTMLElement>("button:not([disabled])") ??
+          item)
+        : item,
+    );
   const currentIndex = items.indexOf(target);
   let nextIndex = -1;
 
@@ -40,8 +58,9 @@ export const navigateMenuItems = sync$((event: KeyboardEvent) => {
     event.preventDefault();
     nextIndex = currentIndex - 1 < 0 ? items.length - 1 : currentIndex - 1;
   } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-    // No submenus: Left / Right do nothing in the menu, and must not reach a group around it
-    // (a Toolbar's or a rail's `rovingKeys` would move focus out of the open menu).
+    // Left / Right never reach a group around the menu (a Toolbar's or a rail's `rovingKeys`
+    // would move focus out of the open menu). A `Menu.SubTrigger` opens on Right and a
+    // `Menu.SubContent` closes on Left with their own handlers, after this one.
     event.preventDefault();
     return;
   } else if (event.key === "Home") {
@@ -90,4 +109,51 @@ export const chooseMenuItem = sync$((event: KeyboardEvent) => {
     '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]',
   ) as HTMLElement | null;
   (item ?? el)?.click();
+});
+
+/**
+ * Keys for a control row inside a menu (`data-qds-menu-row` on it, this as its `onKeyDown$`): a
+ * group with its own Left / Right (a `ToggleGroup`, `rovingKeys`) that is not a menu row itself.
+ * Up / Down / Home / End move between the menu's rows as from a row (the row is one stop, as in
+ * `navigateMenuItems`); Tab closes the whole menu tree and moves on, as from a row; Escape is
+ * the popover's own. Added 2026-11-24 for the account menu's theme segmented button (owner);
+ * not in e-store.
+ */
+export const menuRowKeys = sync$((event: KeyboardEvent, row: HTMLElement) => {
+  const menu = row.closest('[role="menu"]') as HTMLElement | null;
+  if (!menu) return;
+  if (event.key === "Tab") {
+    let root: HTMLElement = menu;
+    for (
+      let up = root.parentElement?.closest<HTMLElement>('[role="menu"]');
+      up;
+      up = root.parentElement?.closest<HTMLElement>('[role="menu"]')
+    )
+      root = up;
+    if (root.matches(":popover-open")) root.hidePopover();
+    return;
+  }
+  if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  const stops = Array.from(
+    menu.querySelectorAll<HTMLElement>(
+      '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"]), [role="menuitemradio"]:not([aria-disabled="true"]), [data-qds-menu-row]',
+    ),
+  ).filter((item) => item.closest('[role="menu"]') === menu);
+  const index = stops.indexOf(row);
+  const next =
+    event.key === "ArrowDown"
+      ? (index + 1) % stops.length
+      : event.key === "ArrowUp"
+        ? (index - 1 + stops.length) % stops.length
+        : event.key === "Home"
+          ? 0
+          : stops.length - 1;
+  const target = stops[next];
+  if (!target || target === row) return;
+  const focusable = target.hasAttribute("data-qds-menu-row")
+    ? (target.querySelector<HTMLElement>('[aria-pressed="true"]') ??
+      target.querySelector<HTMLElement>("button:not([disabled])"))
+    : target;
+  focusable?.focus();
 });

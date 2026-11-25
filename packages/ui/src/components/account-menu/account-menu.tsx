@@ -9,7 +9,7 @@ import {
   useSignal,
   useTask$,
 } from "@qwik.dev/core";
-import type { ClassList, JSXOutput, QRL } from "@qwik.dev/core";
+import type { ClassList, JSXOutput, QRL, Signal } from "@qwik.dev/core";
 import { themeContextId } from "../../theme/theme-context";
 import type { ColorMode } from "../../theme/theme-storage";
 import { freshJsx } from "../../utils/jsx-prop";
@@ -18,7 +18,16 @@ import type { AvatarPresence, AvatarSize } from "../avatar";
 import { Icon } from "../icon";
 import type { IconName } from "../icon";
 import { iconButtonVariants } from "../icon-button";
-import { Menu } from "../menu";
+import { Menu, menuContextId } from "../menu";
+import { DEFAULT_MODE_OPTIONS, ThemeChanger } from "../theme-changer";
+import { IconButton } from "../icon-button";
+import {
+  DEFAULT_SOURCE_COLOR,
+  THEME_STYLE_ID,
+} from "../../theme/theme-storage";
+import { openPopover } from "../../utils/top-layer";
+import { ToggleGroup } from "../toggle-group";
+import { menuRowKeys } from "../../utils/menu-keys";
 
 /**
  * The app bar's account control (M3 top app bar trailing avatar, 32dp). From e-store's
@@ -65,17 +74,50 @@ export interface AccountMenuItem {
  */
 export type AccountPresencePref = "auto" | "busy" | "away" | "invisible";
 
+/**
+ * How long a status lasts, as data (NEW 2026-11-24, owner: "yes add the busy durations"). Ids
+ * and labels only: the HOST turns the id into an end time (the library has no clock).
+ */
+export interface AccountPresenceDurationOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * Busy's choices: few, as Slack / Teams / Google Chat offer (a short list of hours, the end of
+ * the day, until changed). `today` = the next local midnight, for the host to compute.
+ */
+export const DEFAULT_PRESENCE_DURATIONS: AccountPresenceDurationOption[] = [
+  { id: "1h", label: "For 1 hour" },
+  { id: "4h", label: "For 4 hours" },
+  { id: "today", label: "Until end of day" },
+  { id: "forever", label: "Until I change it" },
+];
+
 /** One status row, as data. */
 export interface AccountPresenceOption {
   value: AccountPresencePref;
   label: string;
   /** The glyph drawn in the row. */
   glyph: AvatarPresence;
+  /**
+   * How long it lasts (NEW 2026-11-24): the row becomes a submenu of these (`menuitemradio`s);
+   * choosing one calls `onPresenceChange$(value, id)`. Without JavaScript (`presenceAction`
+   * only) the row stays a plain submit row and the server picks the length.
+   */
+  durations?: AccountPresenceDurationOption[];
+  /** The submenu's name. Default "<label> for". */
+  durationsLabel?: string;
 }
 
 export const DEFAULT_PRESENCE_OPTIONS: AccountPresenceOption[] = [
   { value: "auto", label: "Automatic", glyph: "online" },
-  { value: "busy", label: "Busy", glyph: "busy" },
+  {
+    value: "busy",
+    label: "Busy",
+    glyph: "busy",
+    durations: DEFAULT_PRESENCE_DURATIONS,
+  },
   { value: "away", label: "Away", glyph: "away" },
   { value: "invisible", label: "Appear offline", glyph: "offline" },
 ];
@@ -137,8 +179,20 @@ export type AccountMenuProps = {
   presencePref?: AccountPresencePref;
   /** A same-origin URL the status rows POST `presence=<value>` to, without JavaScript. */
   presenceAction?: string;
-  /** Runs with the chosen status. The rows render only with this or `presenceAction`. */
-  onPresenceChange$?: QRL<(value: AccountPresencePref) => void>;
+  /**
+   * Runs with the chosen status, and the chosen duration's id for a row with `durations`. The
+   * rows render only with this or `presenceAction`.
+   */
+  onPresenceChange$?: QRL<
+    (value: AccountPresencePref, duration?: string) => void
+  >;
+  /** The current choice's duration id: the checked row of its submenu. */
+  presenceDuration?: string;
+  /**
+   * The current choice's end, as the host words it ("Until 3:40 PM", "Until you change it"):
+   * the second line of a submenu row that holds the current choice (part of its name).
+   */
+  presenceUntilText?: string;
   presenceOptions?: AccountPresenceOption[];
   presenceGroupLabel?: string;
   /**
@@ -146,8 +200,27 @@ export type AccountMenuProps = {
    * `ThemeRoot` provides it), which applies and saves the pick. No rows without one.
    */
   themeRows?: boolean;
+  /**
+   * How `themeRows` draws: `rows` (default, e-store's: three radio rows) or `segmented` (NEW,
+   * owner 2026-11-24: a small label and our `ToggleGroup`, M3's segmented button, icon-only
+   * segments named by their labels, with tooltips). The segmented row is one stop for the menu's
+   * Up / Down (`data-qds-menu-row`, `menuRowKeys`); Left / Right move between its segments.
+   */
+  themeLook?: "rows" | "segmented";
   themeOptions?: AccountThemeOption[];
   themeGroupLabel?: string;
+  /**
+   * A "Theme colors..." row (NEW, owner 2026-11-24) that closes the menu and opens a theme
+   * dropdown anchored at the avatar: a `popover="auto"` dialog with a heading and `ThemeChanger`
+   * (source color, hue / chroma / tone, mode), after the Material Web catalog's top app bar
+   * theme menu (material-web.dev: an `md-menu` re-roled `dialog`, "Theme Controls"). Needs a
+   * theme context, as `themeRows`.
+   */
+  themeColors?: boolean;
+  /** The row's label. */
+  themeColorsLabel?: string;
+  /** The dropdown's heading and name. */
+  themeColorsTitle?: string;
   /** Menu alignment against the trigger; the app bar's trailing edge wants `end`. */
   align?: "start" | "end";
   class?: ClassList;
@@ -183,11 +256,17 @@ export const AccountMenu = component$<AccountMenuProps>(
     presencePref,
     presenceAction,
     onPresenceChange$,
+    presenceDuration,
+    presenceUntilText,
     presenceOptions = DEFAULT_PRESENCE_OPTIONS,
     presenceGroupLabel = "Status",
     themeRows = false,
-    themeOptions = DEFAULT_THEME_OPTIONS,
+    themeLook = "rows",
+    themeOptions: givenThemeOptions,
     themeGroupLabel = "Theme",
+    themeColors = false,
+    themeColorsLabel = "Theme colors",
+    themeColorsTitle = "Theme Controls",
     class: className,
     ...rest
   }) => {
@@ -199,8 +278,20 @@ export const AccountMenu = component$<AccountMenuProps>(
     useTask$(({ track }) => {
       pref.value = track(() => presencePref) ?? "";
     });
-    // The scaffold's colour mode; the checked theme row follows it, a pick writes it.
+    // The checked duration row, the same way.
+    const duration = useSignal<string>(presenceDuration ?? "");
+    useTask$(({ track }) => {
+      duration.value = track(() => presenceDuration) ?? "";
+    });
+    // The scaffold's color mode; the checked theme row follows it, a pick writes it.
     const theme = useContext(themeContextId, null);
+    // The segmented row is the SAME ToggleGroup as `ThemeChanger`'s mode button (owner
+    // 2026-11-24): its options (dark / auto / light) unless the host gives its own.
+    const themeOptions =
+      givenThemeOptions ??
+      (themeLook === "segmented"
+        ? DEFAULT_MODE_OPTIONS
+        : DEFAULT_THEME_OPTIONS);
     // Untracked: reading the mode in render would re-render the whole menu on every change.
     const mode = useSignal<string>(
       untrack(() => theme?.colorMode.value ?? "auto"),
@@ -212,6 +303,9 @@ export const AccountMenu = component$<AccountMenuProps>(
       if (theme && (value === "auto" || value === "light" || value === "dark"))
         theme.colorMode.value = value;
     });
+
+    const themeLabelId = useId();
+    const themePanelId = useId();
 
     // An in-page sign out (or sign in) removes the control that had focus: the trigger (which
     // the closing menu had focused, or a row of its menu), or the host's sign-in button. Focus
@@ -290,7 +384,18 @@ export const AccountMenu = component$<AccountMenuProps>(
       : undefined;
     const named = [who, presenceWord].filter(Boolean).join(", ");
     const hasStatusRows = !!presenceAction || !!onPresenceChange$;
-    const statusRows = presenceOptions.map((option) => (
+    const statusRows = presenceOptions.map((option) =>
+      // A row with durations is a submenu, on the JavaScript path only (a submenu needs it).
+      option.durations?.length && !presenceAction ? (
+        <PresenceDurationRow
+          key={option.value}
+          option={option}
+          pref={pref}
+          duration={duration}
+          untilText={presenceUntilText}
+          onPresenceChange$={onPresenceChange$}
+        />
+      ) : (
       <Menu.RadioItem
         key={option.value}
         value={option.value}
@@ -300,7 +405,8 @@ export const AccountMenu = component$<AccountMenuProps>(
         <AvatarPresenceGlyph presence={option.glyph} size="md" class="me-1" />
         {option.label}
       </Menu.RadioItem>
-    ));
+      ),
+    );
     const hasSignOut = !!onSignOut$ || !!signOutHref;
     const hasItems = (items?.length ?? 0) > 0;
 
@@ -393,7 +499,45 @@ export const AccountMenu = component$<AccountMenuProps>(
                 </Menu.RadioGroup>
               </>
             )}
-            {themeRows && theme && (
+            {themeRows && theme && themeLook === "segmented" && (
+              <>
+                <Menu.Separator />
+                <div
+                  // As the header row: 12dp sides, 8dp block; the label over the group.
+                  class="grid gap-2 px-3 py-2"
+                  data-qds-account-menu-theme-group=""
+                >
+                  <span
+                    id={themeLabelId}
+                    class="text-label-medium text-on-surface-variant"
+                  >
+                    {themeGroupLabel}
+                  </span>
+                  <ToggleGroup.Root
+                    bind:value={mode}
+                    onValueChange$={pickTheme$}
+                    aria-labelledby={themeLabelId}
+                    fullWidth
+                    checkmark
+                    data-qds-menu-row=""
+                    onKeyDown$={menuRowKeys}
+                  >
+                    {themeOptions.map((option) => (
+                      <ToggleGroup.Item
+                        key={option.value}
+                        value={option.value}
+                        icon={option.icon}
+                        aria-label={option.label}
+                        // The global plain tooltip (`TooltipProvider`), not `title`.
+                        data-tooltip=""
+                        data-qds-account-menu-theme={option.value}
+                      />
+                    ))}
+                  </ToggleGroup.Root>
+                </div>
+              </>
+            )}
+            {themeRows && theme && themeLook === "rows" && (
               <>
                 <Menu.Separator />
                 <Menu.RadioGroup
@@ -415,7 +559,7 @@ export const AccountMenu = component$<AccountMenuProps>(
                 </Menu.RadioGroup>
               </>
             )}
-            {(hasItems || hasSignOut) && <Menu.Separator />}
+            {hasItems && <Menu.Separator />}
             {items?.map((item) => (
               <Menu.Item key={item.id ?? item.label} href={item.href}>
                 {item.icon && <Icon name={item.icon} size="sm" />}
@@ -423,9 +567,31 @@ export const AccountMenu = component$<AccountMenuProps>(
               </Menu.Item>
             ))}
             <Slot />
+            {themeColors && theme && (
+              <>
+                {/* After the host's rows (owner 2026-11-24: Profile and Contacts above it),
+                    in its own group. */}
+                <Menu.Separator />
+                <Menu.Item
+                  aria-haspopup="dialog"
+                  aria-controls={themePanelId}
+                  // After the row's own handler has closed the menu (focus is back on the
+                  // trigger, which the dropdown's Escape then returns to).
+                  onClick$={() => {
+                    const panel = document.getElementById(themePanelId);
+                    if (panel) openPopover(panel);
+                  }}
+                  data-qds-account-menu-theme-colors=""
+                >
+                  <Icon name="palette" size="sm" />
+                  {themeColorsLabel}
+                </Menu.Item>
+              </>
+            )}
             {hasSignOut && (
               <>
-                {hasItems && <Menu.Separator />}
+                {/* Its own group, after everything else (e-store's). */}
+                <Menu.Separator />
                 <Menu.Item
                   href={signOutHref}
                   onClick$={onSignOut$}
@@ -437,8 +603,188 @@ export const AccountMenu = component$<AccountMenuProps>(
               </>
             )}
           </Menu.Content>
+          {themeColors && theme && (
+            <AccountThemePanel
+              id={themePanelId}
+              title={themeColorsTitle}
+              align={align}
+            />
+          )}
         </Menu.Root>
       </span>
+    );
+  },
+);
+
+/**
+ * A status row with durations (NEW 2026-11-24, owner: "yes add the busy durations"; e-store's
+ * AccountMenu has none): `Menu.Sub`, its trigger the status (glyph, label and, while it is the
+ * current choice, the host's "Until 3:40 PM" as a second line, so the state is in the row's
+ * name: a `menuitem` with a submenu cannot be `aria-checked`), the checked fill
+ * (`SubTrigger checked`); the submenu a radio group of the durations. Its own component so the
+ * signals are read in its JSX only (rule Q12).
+ */
+const PresenceDurationRow = component$<{
+  option: AccountPresenceOption;
+  pref: Signal<string>;
+  duration: Signal<string>;
+  untilText?: string;
+  onPresenceChange$?: QRL<
+    (value: AccountPresencePref, duration?: string) => void
+  >;
+}>(({ option, pref, duration, untilText, onPresenceChange$ }) => {
+  const value = option.value;
+  const pick$ = $((id: string) => {
+    pref.value = value;
+    duration.value = id;
+    return onPresenceChange$?.(value, id);
+  });
+  return (
+    <Menu.Sub>
+      <Menu.SubTrigger
+        checked={pref.value === value}
+        data-qds-account-menu-presence={value}
+      >
+        <AvatarPresenceGlyph presence={option.glyph} size="md" class="me-1" />
+        <span class="flex min-w-0 flex-col">
+          <span>{option.label}</span>
+          {pref.value === value && untilText && (
+            <span
+              class="text-body-small text-on-surface-variant"
+              data-qds-account-menu-presence-until=""
+            >
+              {/* A pause in the row's name: "Busy, Until 3:40 PM". */}
+              <span class="sr-only">, </span>
+              {untilText}
+            </span>
+          )}
+        </span>
+      </Menu.SubTrigger>
+      <Menu.SubContent>
+        <Menu.RadioGroup
+          // The host passes `presenceDuration` only for the current choice, so only its
+          // duration is checked.
+          value={duration}
+          onValueChange$={pick$}
+          aria-label={option.durationsLabel ?? `${option.label} for`}
+          data-qds-account-menu-durations={value}
+        >
+          {option.durations!.map((d) => (
+            <Menu.RadioItem
+              key={d.id}
+              value={d.id}
+              data-qds-account-menu-duration={d.id}
+            >
+              {d.label}
+            </Menu.RadioItem>
+          ))}
+        </Menu.RadioGroup>
+      </Menu.SubContent>
+    </Menu.Sub>
+  );
+});
+
+/**
+ * The theme dropdown (`AccountMenu themeColors`): a `popover="auto"` dialog anchored under the
+ * account menu's trigger, placed as `Menu.Content` is (4px below, end edges lined up, flipping,
+ * last scrolling below), with the menu's surface (surface-container, extra-small corners, level
+ * 2). Focus moves to its first control on open; Escape or a click outside closes it (the
+ * browser's light dismiss) and focus goes back to the trigger.
+ */
+const AccountThemePanel = component$<{
+  id: string;
+  title: string;
+  align: "start" | "end";
+  copyLabel?: string;
+  copiedLabel?: string;
+}>(
+  ({
+    id,
+    title,
+    align,
+    copyLabel = "Copy current theme",
+    copiedLabel = "Copied",
+  }) => {
+    const menu = useContext(menuContextId);
+    const copied = useSignal(false);
+    // The theme controls render on the FIRST open only, then stay (perf audit 2026-11-24): closed,
+    // the panel is on every page, and `ThemeChanger` (three sliders and their state) was about
+    // 16 KB of HTML plus its serialized state for a dialog most visitors never open. The heading
+    // row stays server-rendered, so the copy button is there for focus the moment it opens.
+    // Never reset on close: the sliders keep their state between opens. NEW, not in e-store.
+    const mounted = useSignal(false);
+    const titleId = `${id}-title`;
+    const anchor = `--menu-${menu.triggerId}`;
+    const end = align === "end";
+    return (
+      <div
+        id={id}
+        popover="auto"
+        role="dialog"
+        aria-labelledby={titleId}
+        data-qds-account-theme-panel=""
+        style={{
+          positionAnchor: anchor,
+          top: "calc(anchor(bottom) + 4px)",
+          bottom: "auto",
+          left: end ? "auto" : "anchor(start)",
+          right: end ? "anchor(end)" : "auto",
+          position: "absolute",
+          margin: "unset",
+          positionTry: end
+            ? "normal flip-block, flip-inline, flip-block flip-inline, --qds-menu-scroll-below-end"
+            : "normal flip-block, flip-inline, flip-block flip-inline, --qds-menu-scroll-below",
+        }}
+        // No `display` class here: it would beat the browser's `display: none` for a closed
+        // popover (the grid is on the inner wrapper).
+        class={[
+          "w-[min(22.5rem,calc(100vw-1rem))] p-4",
+          "scrollbar-pane max-h-[calc(100dvh-2rem)] overflow-y-auto",
+          "rounded-xs bg-surface-container text-on-surface shadow-2",
+        ]}
+        onToggle$={(event: ToggleEvent, element: HTMLDivElement) => {
+          if (event.newState === "open") {
+            mounted.value = true;
+            requestAnimationFrame(() =>
+              element.querySelector<HTMLElement>(FOCUSABLE)?.focus(),
+            );
+            return;
+          }
+          // Escape and `hidePopover()` return focus themselves (HTML spec); a click elsewhere
+          // keeps that control's focus. Only focus left inside or lost goes back to the trigger.
+          const active = document.activeElement;
+          if (!active || active === document.body || element.contains(active))
+            menu.triggerRef.value?.focus();
+        }}
+      >
+        {/* The catalog's order: the headline and a copy button on one row, then the theme
+          controls without a Reset (`ThemeChanger reset={false}`). */}
+        <div class="grid content-start gap-4">
+          <div class="flex items-center justify-between gap-2">
+            <h2 id={titleId} class="text-title-medium text-on-surface">
+              {title}
+            </h2>
+            <IconButton
+              icon={copied.value ? "check" : "content_copy"}
+              label={copied.value ? copiedLabel : copyLabel}
+              data-tooltip=""
+              onClick$={async () => {
+                // The generated palette CSS (as the catalog copies its theme), or the built-in
+                // source color when no theme has been made.
+                const css =
+                  document
+                    .getElementById(THEME_STYLE_ID)
+                    ?.textContent?.trim() || DEFAULT_SOURCE_COLOR;
+                await navigator.clipboard.writeText(css);
+                copied.value = true;
+                setTimeout(() => (copied.value = false), 2000);
+              }}
+            />
+          </div>
+          {/* Light / dark is not here: one place only (the rail, the drawer footer). */}
+          {mounted.value && <ThemeChanger reset={false} mode={false} />}
+        </div>
+      </div>
     );
   },
 );

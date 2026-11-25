@@ -51,7 +51,7 @@ export const toolbarVariants = tv({
       "duration-short-4",
       "ease-standard",
       "motion-reduce:transition-none",
-      // State layer in the icon's own colour (every M3 toolbar token pairs them): 8 / 10 / 10.
+      // State layer in the icon's own color (every M3 toolbar token pairs them): 8 / 10 / 10.
       "before:pointer-events-none",
       "before:absolute",
       "before:inset-0",
@@ -122,7 +122,7 @@ export const toolbarVariants = tv({
       },
     },
     { variant: "docked", class: { divider: ["w-px", "my-2"] } },
-    // Item colours. Standard: icon `on-surface-variant`; a selected toggle on
+    // Item colors. Standard: icon `on-surface-variant`; a selected toggle on
     // `secondary-container` / `on-secondary-container`.
     {
       colorScheme: "standard",
@@ -279,7 +279,7 @@ export type ToolbarItemProps = Omit<
   type?: "button" | "submit" | "reset";
 };
 
-/** An action: an icon button in the toolbar's colours. */
+/** An action: an icon button in the toolbar's colors. */
 const ToolbarItem = component$<ToolbarItemProps>((props) => {
   const {
     icon,

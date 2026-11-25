@@ -1,5 +1,6 @@
 import type { ClassList, JSXOutput, PropsOf } from "@qwik.dev/core";
 import { Link } from "@qwik.dev/router";
+import type { PrefetchStrategy } from "@qwik.dev/router";
 import { safeHref } from "../../utils/safe-href";
 
 /**
@@ -28,6 +29,11 @@ export type LinkButtonProps = Omit<PropsOf<"a">, "type" | "class"> & {
   target?: "_blank";
   /** A full page load instead of the router's client-side navigation (a plain `<a>`). */
   reload?: boolean;
+  /**
+   * The router `Link`'s own prop: when it fetches the destination's bundles (default
+   * `"visible"`). Ignored for a plain `<a>`. NEW 2026-11-24 (perf audit), not in e-store.
+   */
+  prefetchBundles?: PrefetchStrategy;
 };
 
 export type NormalButtonProps = Omit<PropsOf<"button">, "type" | "class"> & {
@@ -39,16 +45,37 @@ export type UnstyledButtonProps = (LinkButtonProps | NormalButtonProps) & {
   children?: JSXOutput;
 };
 
+/**
+ * Whether a link's `rel` marks it as going off the site (`external`, HTML's link type: "the
+ * referenced document is not part of the same site"). Button and List.Item end such a link with
+ * the `open_in_new` mark. NEW 2026-11-24.
+ *
+ * @see https://html.spec.whatwg.org/multipage/links.html#link-type-external
+ */
+export const relIsExternal = (rel: unknown) =>
+  typeof rel === "string" && rel.toLowerCase().split(/\s+/).includes("external");
+
 export const UnstyledButton = (props: UnstyledButtonProps) => {
   // Copied before destructuring: an inline component's props object is the caller's.
   const all = { ...props };
   if (all.type === "link") {
     // `type` is dropped: "link" is not an attribute of `<a>`.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { reload, type: _type, href: givenHref, children, ...rest } = all;
+    const {
+      reload,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      type: _type,
+      href: givenHref,
+      children,
+      prefetchBundles,
+      ...rest
+    } = all;
     const href = safeHref(givenHref);
     if (rest.target === "_blank" || reload) {
-      const rel = rest.target === "_blank" ? "noopener noreferrer" : undefined;
+      // A given `rel` (`me`, `external`) is kept; a new tab adds `noopener noreferrer` to it.
+      const rel =
+        rest.target === "_blank"
+          ? [rest.rel, "noopener noreferrer"].filter(Boolean).join(" ")
+          : rest.rel;
       return (
         <a {...rest} href={href} rel={rel}>
           {children}
@@ -56,7 +83,7 @@ export const UnstyledButton = (props: UnstyledButtonProps) => {
       );
     }
     return (
-      <Link {...rest} href={href}>
+      <Link {...rest} href={href} prefetchBundles={prefetchBundles}>
         {children}
       </Link>
     );

@@ -33,7 +33,7 @@
  * unless both standard properties are `auto` (spec, MDN), hence the reset inside the test.
  * Desktop only (`pointer: fine`): iOS and Android keep their own overlay bars.
  *
- * The thumb colour is `--scrollbar-thumb` (default primary). Each end of the track is held off a
+ * The thumb color is `--scrollbar-thumb` (default primary). Each end of the track is held off a
  * rounded corner by `--scrollbar-track-margin` (20px, e-store's: on a 28px corner the curve is
  * only about 1px in at 20px), or by `-start` / `-end` where a header or footer covers that corner.
  * Not checked in a browser other than Chrome on macOS. */
@@ -100,9 +100,9 @@
 
 /*
  * `--field-bg` follows the surface an element paints. From e-store's `tokens/utilities.css`
- * (2026-11-23). CSS cannot ask "what colour is behind me" (`background-color: inherit` copies the
+ * (2026-11-23). CSS cannot ask "what color is behind me" (`background-color: inherit` copies the
  * parent's, usually `transparent`), but custom properties inherit, and the element that paints a
- * surface knows its colour: each surface utility declares the matching `--field-bg`, and the
+ * surface knows its color: each surface utility declares the matching `--field-bg`, and the
  * nearest painted ancestor wins. The avatar's presence glyph cuts its outline out of it, so the
  * cut-out matches the app bar (`surface-container`) or the menu it sits on. Set `--field-bg`
  * yourself over a background that is not a `bg-surface*` class.

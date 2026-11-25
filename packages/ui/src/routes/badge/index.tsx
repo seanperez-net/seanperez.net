@@ -4,14 +4,12 @@ import {
   Badge,
   Icon,
   IconButton,
-  Knobs,
   Layout,
   NavigationRail,
   badgeSizes,
   badgeSpokenText,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
@@ -19,6 +17,8 @@ export default component$(() => {
     value: knob.number(3, { min: 0, max: 99999 }),
     max: knob.number(999, { min: 1, max: 9999 }),
     size: knob.select(["auto", ...badgeSizes] as const, "auto"),
+    // What a screen reader hears for the badge on the icon (empty: the default text).
+    label: knob.text("", "label (spoken, on the icon)"),
   });
 
   return (
@@ -30,6 +30,7 @@ export default component$(() => {
           <Badge.Root>
             <Icon name="mail" label="Mail" />
             <Badge.Badge
+              label={knobs.values.label || undefined}
               value={knobs.values.count ? knobs.values.value : undefined}
               max={knobs.values.max}
               size={
@@ -57,8 +58,9 @@ export default component$(() => {
               }
             />
           </Badge.Root>
-          {/* On navigation rail destinations (`NavigationRail.Item badge`). */}
-          <NavigationRail.Root aria-label="Badge demo" class="h-64 rounded-lg">
+          {/* On navigation rail destinations (`NavigationRail.Item badge`): the rail as it is,
+              its height from its own rows, no classes on it. */}
+          <NavigationRail.Root aria-label="Badge demo">
             <NavigationRail.Item
               href="#"
               icon="mail"

@@ -28,7 +28,34 @@ e-store's `components/combobox/` (2026-11-23).
 
 `Input`: `label`, `placeholder` (shown once the label floated), `clearIcon` (`close`),
 `expandIcon` (`expand_more`), `clearLabel` (`"Clear"`), `openLabel` (`"Show options"`),
-`onInput$`, `onKeyDown$`, `onClick$`, `...PropsOf<"input">`.
+`actionIcon` + `actionLabel` + `onAction$` (see below), `onInput$`, `onKeyDown$`, `onClick$`,
+`...PropsOf<"input">`.
+
+### Free text, remote options, a trailing action (NEW 2026-11-24, not in e-store)
+
+For the app's place field (`apps/web/src/components/place-field.tsx`: Location inputs whose
+suggestions come from the Maps app's Photon search). e-store's Combobox has none of these.
+
+- `Root freeText`: the typed text IS the value. The input itself posts it under `name` (no
+  hidden input); `value` / `bind:value` is the text, follows every edit (and `onValueChange$`
+  runs for each), and a value set from outside is shown in the field; choosing an option puts its
+  `label` in the field; closing the list keeps what was typed. APG combobox, list autocomplete
+  with a free value.
+- `Root filter={false}`: options are not hidden by the typed text, for options the caller already
+  chose for it (Photon matches "Muenchen" to "München", which the substring filter would hide).
+- `Root supportingText`: M3 text field supporting text under the field (`aria-describedby`); an
+  `error` replaces it.
+- `Input actionIcon` / `actionLabel` / `onAction$`: one trailing icon button before the clear /
+  open button (M3 text fields allow a trailing icon button), named by `actionLabel` (also its
+  plain tooltip). It IS a Tab stop: a separate command, unlike the clear / open button.
+
+Proof: APG combobox (free value allowed in list autocomplete); M3 text fields (supporting text,
+trailing icon button). A second agent (2026-11-24) recommended exactly these additions over a
+listbox built in the app. Checked in Chrome 2026-11-24 (/profile/ dialog, /admin/profile): "Hav"
+gives Havana, Cuba first; ArrowDown + Enter chooses without submitting; the form posts the text;
+the action button runs; light and dark.
+
+`Content`: `onToggle$` (runs beside its own), `...PropsOf<"div">`.
 
 `Item`: `value` and `label` (required: shown, matched, put in the field), `keywords`,
 `disabled`, `selectedIcon` (`check`), `onClick$`. Children follow the label.
@@ -54,6 +81,15 @@ over the typed text. The input closes it on Escape and on focus out (APG: the li
 the field loses focus). The list is named by the field's `<label>` (`aria-labelledby`), not by
 the input, whose value would become the name (accname 1.2, step 2E).
 
+A mouse press on the list, an option or the button never takes focus from the input: each has a
+`sync$` `onMouseDown$` that prevents the default (a consumer's own `onMouseDown$` on
+`Combobox.Content` / `Combobox.Item` runs after it). FIXED 2026-11-24: these were bare
+`preventdefault:mousedown` attributes, which qwikloader (installed `@qwik.dev/core` 2.0.0-rc.5,
+`dispatch` / `addEventOrRoot`) reads only for event types some element has a handler for
+(defaults `click`, `input`). On a page with no mousedown handler a press focused the listbox
+(`tabIndex={-1}`), the input's focus-out closed the list, and a slow press chose nothing (a quick
+click still won the race). The playground hid it: the app bar's Search registers `mousedown`.
+
 ## Where it differs from e-store
 
 - Highlight is state (`highlightedId`) rendered into the DOM; e-store's `sync$` wrote
@@ -69,7 +105,7 @@ the input, whose value would become the name (accname 1.2, step 2E).
 - `Group` is named by its `GroupLabel`; e-store's group had no name.
 - The button's names are props; it uses `popovertarget` in open mode; clearing calls
   `onValueChange$("")`.
-- Invalid + focused keeps the error colour on the outline and label (M3 error state).
+- Invalid + focused keeps the error color on the outline and label (M3 error state).
 - Signals read in JSX / `useComputed$`; logical properties.
 - NOT DONE (second agent, 2026-11-23): a `value` / `bind:value` set from outside does not update
   the text in the field; pass `displayValue` with it. Doing it needs each Item to register its
@@ -77,7 +113,7 @@ the input, whose value would become the name (accname 1.2, step 2E).
 - `variant="tonal"` on Root (added 2026-11-23, e-store's): 40dp `surface-container` field, 14px,
   no floating label (it names the input through `aria-labelledby`), placeholder always shown,
   2dp inset primary ring on focus, `error-container` when invalid. Not in M3, NOT PROOFED. Checked
-  in Chrome: height, colours, name.
+  in Chrome: height, colors, name.
 - Left out: the anchor polyfill (dynamic import).
 
 ## Browser support

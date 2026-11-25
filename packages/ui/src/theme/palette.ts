@@ -5,7 +5,7 @@ import {
 } from "@material/material-color-utilities";
 
 /**
- * The Material 3 colour roles for one source colour, as CSS. Same method as e-store's theme
+ * The Material 3 color roles for one source color, as CSS. Same method as e-store's theme
  * package: Google's `themeFromSourceColor`, with the surface roles taken from the neutral
  * palette at the tones the current M3 spec gives them.
  * https://m3.material.io/styles/color/static/baseline

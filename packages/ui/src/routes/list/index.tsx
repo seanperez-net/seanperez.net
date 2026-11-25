@@ -4,13 +4,11 @@ import {
   Avatar,
   Checkbox,
   IconButton,
-  Knobs,
   Layout,
   List,
   Switch,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 const heading = "text-title-small text-on-surface-variant";
 

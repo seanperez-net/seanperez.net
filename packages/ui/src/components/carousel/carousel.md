@@ -12,14 +12,14 @@ multi-aspect ratio, hero, center-aligned hero, full-screen. Ported from e-store'
 
 ## Layouts (PROOFED 2026-11-23 against the M3 specs' measurement tables)
 
-| `variant`             | How it moves | Padding (M3)                 | Gap | Item widths (M3)                          | Snap (M3)        |
-| --------------------- | ------------ | ---------------------------- | --- | ----------------------------------------- | ---------------- |
-| `multi-browse`        | contained    | 16dp sides, 8dp top / bottom | 8dp | large (dynamic or `maxItemWidth`), medium (dynamic), small 56 | one item a step |
-| `hero` (default)      | contained    | 16dp sides, 8dp top / bottom | 8dp | large (dynamic), small 56                 | one item a step  |
-| `center-aligned-hero` | contained    | 16dp sides, 8dp top / bottom | 8dp | small, large, small                       | one item a step  |
-| `uncontained`         | native scroll| 16dp leading, 8dp top / bottom | 8dp | the caller's, all the same             | `snap` prop      |
-| `uncontained-multi`   | native scroll| 16dp leading, 8dp top / bottom | 8dp | the caller's, 9:16 to 16:9             | `snap` prop      |
-| `full-screen`         | vertical scroll | 0                         | 16dp| the container's                           | always           |
+| `variant`             | How it moves    | Padding (M3)                   | Gap  | Item widths (M3)                                              | Snap (M3)       |
+| --------------------- | --------------- | ------------------------------ | ---- | ------------------------------------------------------------- | --------------- |
+| `multi-browse`        | contained       | 16dp sides, 8dp top / bottom   | 8dp  | large (dynamic or `maxItemWidth`), medium (dynamic), small 56 | one item a step |
+| `hero` (default)      | contained       | 16dp sides, 8dp top / bottom   | 8dp  | large (dynamic), small 56                                     | one item a step |
+| `center-aligned-hero` | contained       | 16dp sides, 8dp top / bottom   | 8dp  | small, large, small                                           | one item a step |
+| `uncontained`         | native scroll   | 16dp leading, 8dp top / bottom | 8dp  | the caller's, all the same                                    | `snap` prop     |
+| `uncontained-multi`   | native scroll   | 16dp leading, 8dp top / bottom | 8dp  | the caller's, 9:16 to 16:9                                    | `snap` prop     |
+| `full-screen`         | vertical scroll | 0                              | 16dp | the container's                                               | always          |
 
 Items: container `surface`, shape 28dp (`rounded-xl`; full-screen square), vertically centred.
 State layer on-surface: hover 8%, focus 10%, pressed 10%. Elevation level 0, hovered level 1
@@ -59,37 +59,37 @@ narrows its picture is masked from both sides.
 
 ## Parts
 
-| Part               | Element | What |
-| ------------------ | ------- | ---- |
-| `Carousel.Root`    | `div role="region" aria-roledescription="carousel"` | The container, a live region, the track. Slots: default (items), `header`, `footer`. |
-| `Carousel.Item`    | `div role="group" aria-roledescription="slide"` | One item, a tab stop. |
-| `Carousel.Header`  | `div`   | Title (slot) and the 48dp-target arrow icon button to the page of all items. `q:slot="header"`. |
-| `Carousel.ShowAll` | `div` + text `Button` | "Show all" below a carousel without a header, 4dp padding. `q:slot="footer"`. |
+| Part               | Element                                             | What                                                                                            |
+| ------------------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Carousel.Root`    | `div role="region" aria-roledescription="carousel"` | The container, a live region, the track. Slots: default (items), `header`, `footer`.            |
+| `Carousel.Item`    | `div role="group" aria-roledescription="slide"`     | One item, a tab stop.                                                                           |
+| `Carousel.Header`  | `div`                                               | Title (slot) and the 48dp-target arrow icon button to the page of all items. `q:slot="header"`. |
+| `Carousel.ShowAll` | `div` + text `Button`                               | "Show all" below a carousel without a header, 4dp padding. `q:slot="footer"`.                   |
 
 ## API
 
 ### `Carousel.Root`
 
-| Prop             | Type              | Default | Notes |
-| ---------------- | ----------------- | ------- | ----- |
-| `variant`        | `CarouselVariant` | `"hero"`| See the table. Reactive. |
-| `aria-label`     | `string`          | required | The region's name; without the word "carousel" (APG). |
-| `maxItemWidth`   | `number` (px)     | `0`     | Contained layouts: the large item's maximum (M3: "customizable maximum width"). |
-| `snap`           | `boolean`         | `false` | Uncontained layouts: M3 snap-scrolling instead of default scrolling. |
-| `onIndexChange$` | `QRL<(i) => void>`|         | The current item changed. |
-| `itemLabel`      | `string`          | `"{index} of {count}"` | Each item's name and the live announcement (translatable). |
-| `class`, `data-*`|                   |         | Forwarded to the region. |
+| Prop              | Type               | Default                | Notes                                                                           |
+| ----------------- | ------------------ | ---------------------- | ------------------------------------------------------------------------------- |
+| `variant`         | `CarouselVariant`  | `"hero"`               | See the table. Reactive.                                                        |
+| `aria-label`      | `string`           | required               | The region's name; without the word "carousel" (APG).                           |
+| `maxItemWidth`    | `number` (px)      | `0`                    | Contained layouts: the large item's maximum (M3: "customizable maximum width"). |
+| `snap`            | `boolean`          | `false`                | Uncontained layouts: M3 snap-scrolling instead of default scrolling.            |
+| `onIndexChange$`  | `QRL<(i) => void>` |                        | The current item changed.                                                       |
+| `itemLabel`       | `string`           | `"{index} of {count}"` | Each item's name and the live announcement (translatable).                      |
+| `class`, `data-*` |                    |                        | Forwarded to the region.                                                        |
 
 ### `Carousel.Item`
 
-| Prop         | Type      | Default | Notes |
-| ------------ | --------- | ------- | ----- |
-| `index`      | `number`  |         | Its position from 0; its name is `itemLabel` filled in, once the count is measured. |
-| `aria-label` | `string`  |         | A name of its own instead. |
+| Prop         | Type      | Default | Notes                                                                                                                                       |
+| ------------ | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index`      | `number`  |         | Its position from 0; its name is `itemLabel` filled in, once the count is measured.                                                         |
+| `aria-label` | `string`  |         | A name of its own instead.                                                                                                                  |
 | `onClick$`   | `QRL`     |         | Click, tap, Enter or Space. A click on a contained, not-current item also makes it current. A swipe that ends on the item does not call it. |
-| `disabled`   | `boolean` | `false` | Content at 38% (an outlined item's outline at 12%, M3), no pointer, out of the tab order, skipped by the arrows. |
-| `outlined`   | `boolean` | `false` | M3 "with outline" item. |
-| `class`      |           |         | The item's size: its height (contained, multi-aspect) and width (uncontained). |
+| `disabled`   | `boolean` | `false` | Content at 38% (an outlined item's outline at 12%, M3), no pointer, out of the tab order, skipped by the arrows.                            |
+| `outlined`   | `boolean` | `false` | M3 "with outline" item.                                                                                                                     |
+| `class`      |           |         | The item's size: its height (contained, multi-aspect) and width (uncontained).                                                              |
 
 ### `Carousel.Header`
 
@@ -102,12 +102,12 @@ narrows its picture is masked from both sides.
 
 ## Keyboard and ARIA (PROOFED 2026-11-23: M3 accessibility page, APG carousel)
 
-| Key | Action |
-| --- | ------ |
-| Tab / Shift+Tab | Contained layouts: next / previous item (M3: "Tab or Arrows moves to the previous or next carousel item"; collapsed items are `inert`, so the browser cannot do it); from the last / first item it leaves the carousel natively. Scrolling layouts: the browser's own Tab order (every item is tabbable). |
-| ArrowRight / ArrowLeft | Next / previous item (swapped in RTL). Disabled items are skipped. |
-| ArrowDown / ArrowUp | Leave the carousel to the next / previous focusable element on the page (M3: "Use the up and down arrow keys to leave the carousel"). |
-| Enter / Space | Activate the item (`onClick$`). |
+| Key                    | Action                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab / Shift+Tab        | Contained layouts: next / previous item (M3: "Tab or Arrows moves to the previous or next carousel item"; collapsed items are `inert`, so the browser cannot do it); from the last / first item it leaves the carousel natively. Scrolling layouts: the browser's own Tab order (every item is tabbable). |
+| ArrowRight / ArrowLeft | Next / previous item (swapped in RTL). Disabled items are skipped.                                                                                                                                                                                                                                        |
+| ArrowDown / ArrowUp    | Leave the carousel to the next / previous focusable element on the page (M3: "Use the up and down arrow keys to leave the carousel").                                                                                                                                                                     |
+| Enter / Space          | Activate the item (`onClick$`).                                                                                                                                                                                                                                                                           |
 
 - The container is a named region with `aria-roledescription="carousel"`; it is never focused
   itself (M3: "Avoid focusing on the carousel container").
@@ -116,6 +116,9 @@ narrows its picture is masked from both sides.
 - A visually hidden polite live region (e-store's) speaks the position only after a swipe, a wheel
   move or a click on a peeking item; a keyboard move focuses the item, which already reads its
   "N of M" (e-store's region spoke every move a second time).
+- Press ripple: an enabled item carries `data-ripple` and a `RippleSurface` (e-store's), but
+  `RippleProvider` is mounted nowhere (not in `Layout.Root`, the playground or the site), so no
+  ripple is drawn; the pressed state layer (10%) shows.
 - Pointer: swipe (30px, 1.2x horizontal) and horizontal wheel move a contained carousel one item.
 - A focused item partly outside a scrolling track is scrolled fully into view at once.
 

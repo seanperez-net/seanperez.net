@@ -9,6 +9,7 @@ import { defineConfig, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import pkg from "./package.json";
 import tailwindcss from "@tailwindcss/vite";
+import { swManifest } from "./scripts/sw-manifest";
 type PkgDep = Record<string, string>;
 const { dependencies = {}, devDependencies = {} } = pkg as any as {
   dependencies: PkgDep;
@@ -39,6 +40,8 @@ export default defineConfig(({ command, mode }): UserConfig => {
       qwikVite(),
       tsconfigPaths({ root: "." }),
       tailwindcss(),
+      // After qwikVite(): the service worker's file list and version (offline, 2026-11-24).
+      swManifest(),
     ],
     // This tells Vite which dependencies to pre-build in dev mode.
     optimizeDeps: {

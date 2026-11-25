@@ -1,18 +1,12 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, Radio, knob, useKnobs } from "../../index";
+import { Layout, Radio } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 const options = [
   { value: "standard", label: "Standard", hint: "3 to 5 days" },
   { value: "express", label: "Express", hint: "Next day" },
   { value: "pickup", label: "Pick up", hint: "Not available here" },
-];
-
-const swatches = [
-  { value: "blue", label: "Blue", color: "#1a73e8" },
-  { value: "green", label: "Green", color: "#188038" },
-  { value: "white", label: "White", color: "#ffffff" },
-  { value: "black", label: "Black", color: "#202124" },
 ];
 
 export default component$(() => {
@@ -21,9 +15,7 @@ export default component$(() => {
     disabled: knob.boolean(false, "Group disabled"),
     itemDisabled: knob.boolean(true, "Pick up disabled"),
     descriptions: knob.boolean(true),
-    swatchSize: knob.select(["sm", "md", "lg"] as const, "md", "Swatch size"),
   });
-  const colour = useSignal("blue");
   const value = useSignal("standard");
   const empty = useSignal("");
 
@@ -72,28 +64,6 @@ export default component$(() => {
                 <Radio.Item key={size} value={size.toLowerCase()}>
                   <Radio.Indicator />
                   <Radio.Label>{size}</Radio.Label>
-                </Radio.Item>
-              ))}
-            </Radio.Group>
-          </fieldset>
-          <fieldset class="grid gap-2">
-            <legend class="mb-2 text-title-small">Colour (Radio.Swatch)</legend>
-            <Radio.Group
-              bind:value={colour}
-              name="colour"
-              orientation="horizontal"
-              aria-label="Colour"
-            >
-              {swatches.map((swatch) => (
-                <Radio.Item
-                  key={swatch.value}
-                  value={swatch.value}
-                  aria-label={swatch.label}
-                >
-                  <Radio.Swatch
-                    color={swatch.color}
-                    size={knobs.values.swatchSize}
-                  />
                 </Radio.Item>
               ))}
             </Radio.Group>

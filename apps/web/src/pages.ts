@@ -21,8 +21,52 @@ export interface PageMeta {
 export const PAGES = {
   "/": {
     title: "Sean Perez",
-    description: "Sean Perez: projects and code.",
-    card: "Projects and code",
+    // Home is the feed (owner, 2026-11-24).
+    description: "Sean Perez: posts, projects and code.",
+    card: "Feed",
+  },
+  "/maps/": {
+    title: "Maps · Sean Perez",
+    description:
+      "A map app built with Qwik and MapLibre on Sean Perez's Layout.",
+    card: "Maps: Qwik and MapLibre",
+  },
+  "/search/": {
+    title: "Search · Sean Perez",
+    description: "Search Sean Perez's posts, projects and pages.",
+    card: "Search",
+  },
+  "/profile/": {
+    title: "Profile · Sean Perez",
+    // The VISITOR's own profile since 2026-11-25 (`visitor-is-guest-you`), not the owner's.
+    description:
+      "Your profile on this site: a name, a headline and a bio, kept in your browser.",
+    card: "Profile",
+  },
+  "/devices/": {
+    title: "Devices · Sean Perez",
+    description:
+      "Demo devices: LoRa, Wi-Fi, a truck, a drone and a boat on the map.",
+    card: "Devices",
+  },
+  "/contacts/": {
+    title: "Contacts · Sean Perez",
+    description:
+      "Contacts: Sean Perez's profile, résumé and projects, and a message form.",
+    card: "Contacts",
+  },
+  // The Messages app (owner, 2026-11-24): demo conversations; one card for every thread.
+  "/messages/": {
+    title: "Messages · Sean Perez",
+    description:
+      "A messages app built with Qwik: demo conversations with devices and an assistant.",
+    card: "Messages",
+  },
+  // The owner's contact profile: the résumé that was /about/ (301 there, owner 2026-11-24).
+  "/contacts/sean-perez/": {
+    title: "Sean Perez · Contacts",
+    description: "Sean Perez: profile, résumé, projects and links.",
+    card: "Contact: Sean Perez",
   },
 } satisfies Record<string, PageMeta>;
 
@@ -31,7 +75,7 @@ export type PagePath = keyof typeof PAGES;
 /**
  * Part of every card's URL (`?v=`, see `ogImage` in `seo.ts`): link previews (Facebook, X,
  * LinkedIn, Slack) cache an image by its URL. A page's own text is already in the hash; bump
- * this when the card's layout or the theme's colours change.
+ * this when the card's layout or the theme's colors change.
  */
 export const CARD_VERSION = 1;
 
@@ -39,6 +83,6 @@ export const CARD_VERSION = 1;
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-/** Where a route's card is served: `/` -> `/og/index.png`, `/about/` -> `/og/about.png`. */
+/** Where a route's card is served: `/` -> `/og/index.png`, `/contacts/sean-perez/` -> `/og/contacts/sean-perez.png`. */
 export const ogImageSrc = (path: string) =>
   `/og/${path.replace(/^\/|\/$/g, "") || "index"}.png`;

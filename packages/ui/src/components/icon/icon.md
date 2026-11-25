@@ -1,6 +1,6 @@
 # Icon
 
-Material Symbols (outlined, Apache License 2.0) as inline SVG paths, painted in the current text colour. Add a symbol by adding its path to `paths` in `icon.tsx`.
+Material Symbols (outlined, Apache License 2.0) as inline SVG paths, painted in the current text color. Add a symbol by adding its path to `paths` in `icon.tsx`.
 
 M3: https://m3.material.io/styles/icons/applying-icons
 
@@ -8,15 +8,15 @@ The API is e-store's `Icon` (`size` names and pixel values, `label`, `data-qds-i
 
 ## API
 
-| Prop    | Type             | Default  | What                                                         |
-| ------- | ---------------- | -------- | ------------------------------------------------------------ |
-| `name`  | `IconName`       | required | one of `iconNames`                                           |
-| `size`  | `IconSize`       | `md`     | `xs` 16, `dense` 18, `sm` 20, `md` 24, `lg` 40, `xl` 48 (px) |
-| `label` | `string`         |          | accessible name; makes the icon `role="img"`                 |
-| `class` | `ClassList`      |          | added after the variant classes (a colour token, placement)  |
-| ...rest | `PropsOf<"svg">` |          | spread on the `<svg>` (`data-*` included)                    |
+| Prop    | Type             | Default  | What                                                                                                |
+| ------- | ---------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `name`  | `IconName`       | required | one of `iconNames` (also exported: the list of every name)                                          |
+| `size`  | `IconSize`       | `md`     | `xs` 16, `dense` 18, `sm` 20, `md` 24, `fabMd` 28, `buttonLg` 32, `fabLg` 36, `lg` 40, `xl` 48 (px) |
+| `label` | `string`         |          | accessible name; makes the icon `role="img"`                                                        |
+| `class` | `ClassList`      |          | added after the variant classes (a color token, placement)                                          |
+| ...rest | `PropsOf<"svg">` |          | spread on the `<svg>` (`data-*` included)                                                           |
 
-`sm` (20dp) is for dense places (menus, dense lists, chips); `md` (24dp) is the standard. `dense` (18dp) is e-store's extra step, not an M3 optical size.
+`dense` (18dp) is for chips and segmented buttons; `sm` (20dp) for extra-small and small buttons and Expressive menus; `md` (24dp) is the standard (icon buttons, rails, drawers, lists, app bars). `fabMd` (28dp) and `fabLg` (36dp) are the medium and large FAB icons, `buttonLg` (32dp) the large button and icon button icon (material-web tokens). 18dp is a valid M3 size (`CLAUDE.md` "Icons"; an earlier line here said otherwise).
 
 ## ARIA
 
@@ -30,7 +30,7 @@ Decorative by default: `aria-hidden="true"`, and the control around it carries t
 
 - Inline SVG paths, not the Material Symbols variable font: no `filled`, `weight`, `grade`, `opticalSize` (font axes), and `name` is the `IconName` union, not any string.
 - Sizes are `size-*` classes on the `<svg>`; e-store sets `font-size` from `--text-icon-*` tokens, which lets a wrapper (`.icon` in its Button) size the glyph. Not ported.
-- No `tone` prop (colour comes from `class` or the parent) and no `StaticIcon`.
+- No `tone` prop (color comes from `class` or the parent) and no `StaticIcon`.
 - `...rest` takes every `<svg>` prop; e-store forwards `data-*` only.
 
 ## Usage

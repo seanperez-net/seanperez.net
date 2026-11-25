@@ -32,8 +32,8 @@ import type { MenuContentProps } from "../menu";
  *   4dp apart) stack above it, 8dp from the close button. Focus lands on the close button, then
  *   Tab goes through the items top to bottom; Space / Enter activate (M3 accessibility page).
  *
- * Colour sets (M3): primary, secondary, tertiary. The FAB is the set's container colour, the
- * close button the set's colour (primary, ...), the items the container colour.
+ * Color sets (M3): primary, secondary, tertiary. The FAB is the set's container color, the
+ * close button the set's color (primary, ...), the items the container color.
  *
  * The Root is a `Menu.Root` (open state, ids, refs); the Trigger is a FAB (`fabVariants`,
  * `FABContent`) on `Menu.Trigger unstyled`.
@@ -157,7 +157,7 @@ export type FABMenuRootProps = PropsOf<"div"> & {
   /** The app's own signal for the open state. */
   open?: Signal<boolean>;
   onOpenChange$?: QRL<(open: boolean) => void>;
-  /** M3 colour set. Default `primary`. */
+  /** M3 color set. Default `primary`. */
   color?: FABMenuColor;
   /** `menu` (M3 web: FAB + baseline menu, default) or `stacked` (M3 Expressive). */
   layout?: FABMenuLayout;

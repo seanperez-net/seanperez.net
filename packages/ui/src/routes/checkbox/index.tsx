@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Checkbox, Knobs, Layout, knob, useKnobs } from "../../index";
+import { Checkbox, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const checked = useSignal(true);
@@ -10,7 +11,7 @@ export default component$(() => {
     disabled: knob.boolean(false),
     error: knob.boolean(false),
     touchStateLayer: knob.boolean(true, "touch-state-layer"),
-    customColours: knob.boolean(false, "custom colours (below)"),
+    customColors: knob.boolean(false, "custom colors (below)"),
     accentColor: knob.color("#0b8043"),
     checkmarkColor: knob.select(["auto", "white", "black"], "auto"),
     uncheckedColor: knob.color("#0b8043"),
@@ -30,16 +31,16 @@ export default component$(() => {
             error={knobs.values.error}
             touch-state-layer={knobs.values.touchStateLayer}
             accentColor={
-              knobs.values.customColours ? knobs.values.accentColor : undefined
+              knobs.values.customColors ? knobs.values.accentColor : undefined
             }
             checkmarkColor={knobs.values.checkmarkColor}
             uncheckedColor={
-              knobs.values.customColours
+              knobs.values.customColors
                 ? knobs.values.uncheckedColor
                 : undefined
             }
             uncheckedBgColor={
-              knobs.values.customColours
+              knobs.values.customColors
                 ? knobs.values.uncheckedBgColor
                 : undefined
             }

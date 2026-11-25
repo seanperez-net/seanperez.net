@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "pnpm --filter @seanperez/web dev",
     "dev:ui": "pnpm --filter @seanperez/ui dev --port 5174",
-    "build": "pnpm --filter @seanperez/ui build && pnpm --filter @seanperez/web og && pnpm --filter @seanperez/web build",
+    "build": "pnpm --filter @seanperez/ui build && pnpm --filter @seanperez/chat build && pnpm --filter @seanperez/web og && pnpm --filter @seanperez/web icons && pnpm --filter @seanperez/web repos && pnpm --filter @seanperez/web build",
     "preview": "pnpm --filter @seanperez/web preview",
     "deploy": "pnpm --filter @seanperez/web run deploy",
-    "check-types": "pnpm --filter @seanperez/web run build.types && pnpm --filter @seanperez/ui exec tsc --noEmit",
+    "check-types": "pnpm --filter @seanperez/web run build.types && pnpm --filter @seanperez/ui exec tsc --noEmit && pnpm --filter @seanperez/chat exec tsc --noEmit",
     "lint": "pnpm -r --parallel run lint",
     "format": "pnpm -r --parallel run fmt",
-    "format:check": "pnpm -r --parallel run fmt.check"
+    "format:check": "pnpm -r --parallel run fmt.check",
+    "dev:chat": "pnpm --filter @seanperez/chat dev --port 5175",
+    "test:e2e": "pnpm --filter @seanperez/web test:e2e"
   }
 }

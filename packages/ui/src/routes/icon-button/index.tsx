@@ -2,16 +2,14 @@ import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import {
   IconButton,
-  Knobs,
   Layout,
   iconButtonLooks,
   iconButtonShapes,
   iconButtonSizes,
   iconButtonWidths,
   iconNames,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
@@ -28,6 +26,8 @@ export default component$(() => {
     flipIconInRtl: knob.boolean(false),
     disabled: knob.boolean(false),
     softDisabled: knob.boolean(false),
+    // What it renders: a <button>, or the router's <Link> drawn as an icon button.
+    element: knob.select(["button", "link"] as const, "button"),
   });
 
   return (
@@ -41,28 +41,43 @@ export default component$(() => {
             knobs.values.look === "inverse" ? "bg-inverse-surface" : "",
           ]}
         >
-          <IconButton
-            icon={knobs.values.icon}
-            label={knobs.values.label}
-            look={knobs.values.look}
-            size={knobs.values.size}
-            width={knobs.values.width}
-            shape={knobs.values.shape}
-            toggle={knobs.values.toggle}
-            selected={knobs.values.selected}
-            onSelectedChange$={(value) => {
-              knobs.values.selected = value;
-            }}
-            iconSelected={
-              knobs.values.iconSelected === "none"
-                ? undefined
-                : knobs.values.iconSelected
-            }
-            labelSelected={knobs.values.labelSelected}
-            flipIconInRtl={knobs.values.flipIconInRtl}
-            disabled={knobs.values.disabled}
-            softDisabled={knobs.values.softDisabled}
-          />
+          {knobs.values.element === "link" ? (
+            <IconButton
+              type="link"
+              href="/button/"
+              icon={knobs.values.icon}
+              label={knobs.values.label}
+              look={knobs.values.look}
+              size={knobs.values.size}
+              width={knobs.values.width}
+              shape={knobs.values.shape}
+              flipIconInRtl={knobs.values.flipIconInRtl}
+              softDisabled={knobs.values.softDisabled}
+            />
+          ) : (
+            <IconButton
+              icon={knobs.values.icon}
+              label={knobs.values.label}
+              look={knobs.values.look}
+              size={knobs.values.size}
+              width={knobs.values.width}
+              shape={knobs.values.shape}
+              toggle={knobs.values.toggle}
+              selected={knobs.values.selected}
+              onSelectedChange$={(value) => {
+                knobs.values.selected = value;
+              }}
+              iconSelected={
+                knobs.values.iconSelected === "none"
+                  ? undefined
+                  : knobs.values.iconSelected
+              }
+              labelSelected={knobs.values.labelSelected}
+              flipIconInRtl={knobs.values.flipIconInRtl}
+              disabled={knobs.values.disabled}
+              softDisabled={knobs.values.softDisabled}
+            />
+          )}
         </div>
       </Knobs>
     </>

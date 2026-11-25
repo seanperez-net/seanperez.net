@@ -13,12 +13,12 @@ import { applyColorMode, applyPaletteCss, loadTheme } from "./theme-storage";
 import type { ColorMode } from "./theme-storage";
 
 /**
- * Theme context: the source colour and the colour mode, shared by `ThemeChanger`,
+ * Theme context: the source color and the color mode, shared by `ThemeChanger`,
  * `ThemeToggle` and anything else that reads or sets the theme. `Layout.Root` provides it (so
  * does `ThemeRoot`, for a page without the layout).
  */
 export type ThemeContextValue = {
-  /** Source colour, hex. Empty: the colours in the token files. */
+  /** Source color, hex. Empty: the colors in the token files. */
   sourceColor: Signal<string>;
   /** light, dark, or auto (follow the system). */
   colorMode: Signal<ColorMode>;
@@ -29,13 +29,13 @@ export const themeContextId = createContextId<ThemeContextValue>(
 );
 
 export type ThemeProps = {
-  /** The source colour to start from (hex). Plain data: a CMS can store it. */
+  /** The source color to start from (hex). Plain data: a CMS can store it. */
   sourceColor?: string;
-  /** The colour mode to start from. Defaults to "auto". */
+  /** The color mode to start from. Defaults to "auto". */
   colorMode?: ColorMode;
-  /** The app's own signal for the source colour. */
+  /** The app's own signal for the source color. */
   "bind:color"?: Signal<string>;
-  /** The app's own signal for the colour mode. */
+  /** The app's own signal for the color mode. */
   "bind:mode"?: Signal<ColorMode>;
 };
 
@@ -66,7 +66,7 @@ export const useThemeProvider = (props: ThemeProps): ThemeContextValue => {
     }),
   );
 
-  // The colour library is only loaded here, the first time a colour is actually applied.
+  // The color library is only loaded here, the first time a color is actually applied.
   useTask$(({ track }) => {
     const color = track(sourceColor);
     const mode = track(colorMode);

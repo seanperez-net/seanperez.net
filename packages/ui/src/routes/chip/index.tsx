@@ -1,6 +1,7 @@
 import { $, component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Chip, ChipGroup, Knobs, Layout, knob, useKnobs } from "../../index";
+import { Button, Chip, ChipGroup, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
@@ -19,6 +20,16 @@ export default component$(() => {
     ),
     disabled: knob.boolean(false),
     label: knob.text("Add to calendar"),
+    overflow: knob.select(
+      ["wrap", "scroll"] as const,
+      "wrap",
+      "overflow (group)",
+    ),
+    orientation: knob.select(
+      ["horizontal", "vertical"] as const,
+      "horizontal",
+      "orientation (group)",
+    ),
   });
   const vegan = useSignal(true);
   const recipients = useSignal(["Ada", "Grace", "Linus", "Margaret"]);
@@ -36,7 +47,11 @@ export default component$(() => {
         <div class="grid gap-8">
           <section class="grid gap-2">
             <h2 class="text-title-small">Assist</h2>
-            <ChipGroup label="Actions">
+            <ChipGroup
+              label="Actions"
+              overflow={knobs.values.overflow}
+              orientation={knobs.values.orientation}
+            >
               <Chip
                 label={knobs.values.label}
                 leadingIcon="add"
@@ -58,7 +73,11 @@ export default component$(() => {
           </section>
           <section class="grid gap-2">
             <h2 class="text-title-small">Filter</h2>
-            <ChipGroup label="Filter by diet">
+            <ChipGroup
+              label="Filter by diet"
+              overflow={knobs.values.overflow}
+              orientation={knobs.values.orientation}
+            >
               <Chip
                 type="filter"
                 label="Vegan"
@@ -95,7 +114,11 @@ export default component$(() => {
           </section>
           <section class="grid gap-2">
             <h2 class="text-title-small">Input (Backspace removes)</h2>
-            <ChipGroup label="Recipients">
+            <ChipGroup
+              label="Recipients"
+              overflow={knobs.values.overflow}
+              orientation={knobs.values.orientation}
+            >
               {recipients.value.map((name) => (
                 <Chip
                   key={name}
@@ -109,17 +132,20 @@ export default component$(() => {
                 />
               ))}
             </ChipGroup>
-            <button
-              type="button"
-              class="justify-self-start text-label-large text-primary underline"
+            <Button
+              look="text"
+              label="Reset recipients"
+              class="justify-self-start"
               onClick$={reset$}
-            >
-              Reset recipients
-            </button>
+            />
           </section>
           <section class="grid gap-2">
             <h2 class="text-title-small">Suggestion</h2>
-            <ChipGroup label="Suggested replies">
+            <ChipGroup
+              label="Suggested replies"
+              overflow={knobs.values.overflow}
+              orientation={knobs.values.orientation}
+            >
               <Chip
                 type="suggestion"
                 label="Sounds good"

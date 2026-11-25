@@ -1,13 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  Carousel,
-  Knobs,
-  Layout,
-  carouselVariantNames,
-  knob,
-  useKnobs,
-} from "../../index";
+import { Carousel, Layout, carouselVariantNames } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 /** A plain picture for the demo (no image files in the playground). */
 const picture = (hue: number, w: number, h: number) =>
@@ -47,6 +41,7 @@ export default component$(() => {
     ),
     snap: knob.boolean(false, "snap (uncontained)"),
     outlined: knob.boolean(false),
+    itemLabel: knob.text("{index} of {count}"),
     disableThird: knob.boolean(false, "third item disabled"),
     header: knob.boolean(true, "header with show-all arrow"),
     showAll: knob.boolean(false, "Show all button below"),
@@ -66,6 +61,7 @@ export default component$(() => {
             variant={knobs.values.variant}
             maxItemWidth={knobs.values.maxItemWidth}
             snap={knobs.values.snap}
+            itemLabel={knobs.values.itemLabel}
             onIndexChange$={(i) => (current.value = i)}
           >
             {knobs.values.header && (

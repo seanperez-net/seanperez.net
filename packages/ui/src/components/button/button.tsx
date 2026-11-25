@@ -1,10 +1,10 @@
 import { $, Slot, component$, sync$, useComputed$ } from "@qwik.dev/core";
-import type { QRL, Signal } from "@qwik.dev/core";
+import type { JSXOutput, QRL, Signal } from "@qwik.dev/core";
 import { tv } from "tailwind-variants/lite";
 import { Icon } from "../icon";
 import type { IconName, IconSize } from "../icon";
 import { useBoundSignal } from "../../utils/use-bound-signal";
-import { UnstyledButton } from "./unstyled-button";
+import { UnstyledButton, relIsExternal } from "./unstyled-button";
 import type {
   LinkButtonProps,
   NormalButtonProps,
@@ -18,7 +18,7 @@ import type {
  *
  * Five looks, five sizes, two shapes (`shape`), the text button's `tone`, and the M3 Expressive
  * toggle button (`toggle`, `selected`). The state layer is the `before` pseudo-element: the
- * content colour over the container at 8% hover, 10% focus, 10% pressed (M3).
+ * content color over the container at 8% hover, 10% focus, 10% pressed (M3).
  *
  * Shape (M3 tokens, per size): `rounded` is fully round; `squared` is 12 / 12 / 16 / 28 / 28dp.
  * Pressed, both morph to 8 / 8 / 12 / 16 / 16dp. A selected toggle swaps its resting shape:
@@ -58,7 +58,7 @@ export const buttonVariants = tv({
     // Disabled
     "disabled:pointer-events-none",
     "disabled:text-on-surface/38",
-    // A toggle's `aria-pressed` colours come later in the stylesheet than `disabled:`.
+    // A toggle's `aria-pressed` colors come later in the stylesheet than `disabled:`.
     "aria-pressed:disabled:text-on-surface/38",
     "aria-[pressed=false]:disabled:text-on-surface/38",
     // Busy (`isLoading`): still focusable, but the pointer cannot press it again (e-store's).
@@ -106,7 +106,7 @@ export const buttonVariants = tv({
       ],
       /*
        * The outline is an inset ring, not a border, as e-store's (its width per size is in
-       * compoundVariants). M3 Expressive colours: outline-variant, on-surface-variant label;
+       * compoundVariants). M3 Expressive colors: outline-variant, on-surface-variant label;
        * the disabled outline stays outline-variant (material-web `disabled-outline-color`).
        */
       outlined: [
@@ -121,7 +121,7 @@ export const buttonVariants = tv({
         "aria-pressed:inset-ring-transparent",
         "aria-pressed:disabled:bg-on-surface/10",
       ],
-      // Colour from `tone` (compoundVariants). M3: "There is no toggle text button."
+      // Color from `tone` (compoundVariants). M3: "There is no toggle text button."
       text: ["bg-transparent"],
     },
     /*
@@ -147,7 +147,7 @@ export const buttonVariants = tv({
       squared: "",
     },
     /**
-     * The text button's colour, e-store's: `default` and `primary` are M3's primary text button;
+     * The text button's color, e-store's: `default` and `primary` are M3's primary text button;
      * `muted` is on-surface-variant, for a low-emphasis action beside content. Other looks
      * ignore it.
      */
@@ -160,7 +160,7 @@ export const buttonVariants = tv({
     },
   },
   compoundVariants: [
-    // ── Text button colour per tone (e-store's) ──
+    // ── Text button color per tone (e-store's) ──
     {
       look: "text",
       tone: ["default", "primary"],
@@ -272,13 +272,27 @@ type ButtonOwnProps = {
   shape?: ButtonShape;
   /** `look="text"` only: "default" / "primary" (M3 primary) or "muted" (on-surface-variant). */
   tone?: ButtonTone;
-  /** An icon before the label; its size follows `size`. */
-  leadingIcon?: IconName;
+  /**
+   * An icon before the label; its size follows `size`. An `IconName`, or (e-store's type,
+   * `JSXOutput`) an icon of your own such as a brand mark (`<GithubIcon aria-hidden="true" />`):
+   * it is drawn in the same box, in the text color. Mark your own icon decorative, the label names
+   * the button.
+   */
+  leadingIcon?: IconName | JSXOutput;
   /**
    * An icon after the label (M3: "a trailing icon" for an action that opens or moves, such as a
    * menu). Wins over `leadingIcon`: one icon per button, as e-store's.
    */
   trailingIcon?: IconName;
+  /**
+   * A link with `rel` containing `external` (a page off the site) ends with the `open_in_new`
+   * icon, named by this text for screen readers ("GitHub, external link"), as the GitHub Pages
+   * page's `a[rel~="external"]::after`. It is a destination mark, not the button's one action
+   * icon, so it shows beside a `leadingIcon`; an explicit `trailingIcon` replaces it. Mirrored in
+   * right-to-left (Google's `open_in_new` asset is `autoMirrored`). NEW 2026-11-24, not in
+   * e-store (which has no external-link mark).
+   */
+  externalLabel?: string;
   /**
    * Working: a spinner takes the icon place, `aria-busy` and `aria-disabled` are set, and a
    * click (or a form's implicit submit) is cancelled, so an action is not sent twice. Stays
@@ -287,7 +301,7 @@ type ButtonOwnProps = {
   isLoading?: boolean;
   /**
    * An M3 Expressive toggle button: a click flips `selected`, shown by `aria-pressed`, the
-   * toggle colours and the shape swap. Not for `look="text"` (M3 has no toggle text button)
+   * toggle colors and the shape swap. Not for `look="text"` (M3 has no toggle text button)
    * nor for a link. New, not in e-store's Button (the names are e-store's IconButton's).
    */
   toggle?: boolean;
@@ -318,7 +332,7 @@ const cancelWhileLoading = sync$((event: Event) => {
  */
 const idleAfterLoading = sync$(() => {});
 
-/** The busy indicator, e-store's: a three-quarter ring in the text colour. */
+/** The busy indicator, e-store's: a three-quarter ring in the text color. */
 const ButtonSpinner = (props: { size: IconSize }) => (
   <svg
     viewBox="0 0 24 24"
@@ -364,6 +378,7 @@ export const Button = component$<ButtonProps>((props) => {
     tone,
     leadingIcon,
     trailingIcon,
+    externalLabel = "external link",
     isLoading,
     toggle,
     selected: selectedProp,
@@ -390,6 +405,7 @@ export const Button = component$<ButtonProps>((props) => {
   });
   const iconSize = iconSizeFor[size];
   const busy = !!isLoading;
+  const external = rest.type === "link" && relIsExternal(rest.rel);
   const click = busy
     ? cancelWhileLoading
     : isToggle
@@ -407,12 +423,34 @@ export const Button = component$<ButtonProps>((props) => {
       onClick$={click as typeof onClick$}
     >
       {busy && <ButtonSpinner size={iconSize} />}
-      {!busy && !trailingIcon && leadingIcon && (
-        <Icon name={leadingIcon} size={iconSize} />
-      )}
+      {!busy &&
+        !trailingIcon &&
+        leadingIcon &&
+        (typeof leadingIcon === "string" ? (
+          <Icon name={leadingIcon as IconName} size={iconSize} />
+        ) : (
+          // Your own icon (e-store's `<span class="leading-icon icon">`): the Icon's box and
+          // color, whatever size the SVG was given.
+          <span
+            class={[
+              iconBoxFor[iconSize],
+              "inline-flex shrink-0 *:size-full *:fill-current",
+            ]}
+          >
+            {leadingIcon}
+          </span>
+        ))}
       {label}
       <Slot />
       {!busy && trailingIcon && <Icon name={trailingIcon} size={iconSize} />}
+      {!busy && !trailingIcon && external && (
+        <Icon
+          name="open_in_new"
+          size={iconSize}
+          label={externalLabel}
+          class="rtl:-scale-x-100"
+        />
+      )}
     </UnstyledButton>
   );
 });

@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Combobox, Knobs, Layout, knob, useKnobs } from "../../index";
+import { Combobox, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 const fruits = {
   Citrus: ["Orange", "Lemon", "Lime", "Grapefruit"],

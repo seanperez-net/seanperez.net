@@ -12,6 +12,8 @@ export type {
   ModalCloseProps,
   ModalCloseTitleActionProps,
   ModalContentProps,
+  ModalDragHandleProps,
+  ModalHeaderProps,
   ModalPosition,
   ModalRootProps,
   ModalSectionProps,

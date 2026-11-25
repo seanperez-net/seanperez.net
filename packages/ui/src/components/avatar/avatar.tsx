@@ -14,6 +14,8 @@ import { tv } from "tailwind-variants/lite";
 import type { VariantProps } from "tailwind-variants/lite";
 import { Icon } from "../icon";
 import type { IconName, IconSize } from "../icon";
+import { IconButton } from "../icon-button";
+import type { IconButtonSize } from "../icon-button";
 import { avatarTone, initialsOf } from "./avatar-utils";
 
 /**
@@ -21,7 +23,7 @@ import { avatarTone, initialsOf } from "./avatar-utils";
  * UI-shaped API.
  *
  * M3 has no avatar page; its components fix the sizes (app bar 32dp, search bar 30dp, list
- * leading 40dp), the shape (full circle) and the initials colours (`on-*-container` on
+ * leading 40dp), the shape (full circle) and the initials colors (`on-*-container` on
  * `*-container`).
  *
  * - `Avatar.Root` / `Avatar.Image` / `Avatar.Fallback`: the compound parts. The image reports its
@@ -47,23 +49,23 @@ export const avatarVariants = tv({
   variants: {
     size: {
       /** 24dp: dense rows, chips. */
-      xs: "text-label-small size-6",
+      xs: "size-6 text-label-small",
       /** 30dp: the M3 search bar's trailing avatar. */
-      search: "text-label-medium size-7.5",
+      search: "size-7.5 text-label-medium",
       /** 32dp: the M3 top app bar's trailing avatar. */
-      appbar: "text-label-large size-8",
+      appbar: "size-8 text-label-large",
       /** 40dp: the M3 list item's leading avatar. The default. */
-      md: "text-title-medium size-10",
+      md: "size-10 text-title-medium",
       /** 48dp: a post row's avatar column. Opt-in; `md` is the M3 one. */
-      post: "text-title-medium size-12",
+      post: "size-12 text-title-medium",
       /** 56dp: a menu or card header. */
-      lg: "text-title-large size-14",
+      lg: "size-14 text-title-large",
       /** 80dp: a profile header. */
-      xl: "text-headline-large size-20",
+      xl: "size-20 text-headline-large",
       /** 96dp: a profile header over a banner. Opt-in; `xl` is the M3 one. */
-      profile: "text-headline-large size-24",
+      profile: "size-24 text-headline-large",
       /** 144dp: a hero. */
-      "2xl": "text-display-large size-36",
+      "2xl": "size-36 text-display-large",
     },
     tone: {
       primary: "bg-primary-container text-on-primary-container",
@@ -79,7 +81,7 @@ export const avatarVariants = tv({
      */
     edge: {
       none: "",
-      hairline: "ring-outline-variant ring-1",
+      hairline: "ring-1 ring-outline-variant",
     },
   },
   defaultVariants: { size: "md", edge: "none" },
@@ -93,7 +95,7 @@ export const avatarVariants = tv({
 export const avatarGroupVariants = tv({
   base: [
     "inline-flex items-center",
-    "**:data-qds-avatar:ring-surface **:data-qds-avatar:ring-2",
+    "**:data-qds-avatar:ring-2 **:data-qds-avatar:ring-surface",
   ],
   variants: {
     size: {
@@ -133,7 +135,7 @@ export const AVATAR_PRESENCE_LABELS: Record<AvatarPresence, string> = {
 };
 
 /**
- * Presence: a ring around the avatar plus a glyph at the bottom-trailing corner. Not colour
+ * Presence: a ring around the avatar plus a glyph at the bottom-trailing corner. Not color
  * alone (WCAG 1.4.1): each state has its own shape (online a filled dot, away a crescent, busy a
  * bar, offline a hollow ring). The ring is an outline with an offset, so the gap shows whatever
  * the avatar sits on and the root's `overflow-hidden` does not clip it. The glyph's cut-out is
@@ -172,7 +174,7 @@ export const avatarPresenceVariants = tv({
       offline: {
         ring: "outline-outline",
         badge:
-          "border-outline border-2 bg-(--avatar-presence-cutout,var(--field-bg,var(--color-surface)))",
+          "border-2 border-outline bg-(--avatar-presence-cutout,var(--field-bg,var(--color-surface)))",
       },
     },
     size: {
@@ -213,6 +215,24 @@ export const AvatarPresenceGlyph = component$<AvatarPresenceGlyphProps>(
     />
   ),
 );
+
+/**
+ * The edit badge (NEW 2026-11-24, not in e-store; Google Contacts' "Set contact photo" button,
+ * measured in Chrome 2026-11-24: a 40px round button with a "+" on the bottom-end of a 162px
+ * avatar, tonal in the view, filled in the edit form). Only from `lg` up: below that the button
+ * would cover most of the circle. `null`: no badge at that size.
+ */
+const BADGE_SIZE: Record<AvatarSize, IconButtonSize | null> = {
+  xs: null,
+  search: null,
+  appbar: null,
+  md: null,
+  post: null,
+  lg: "xs",
+  xl: "xs",
+  profile: "xs",
+  "2xl": "sm",
+};
 
 /** The fallback icon's size per avatar size. */
 const ICON_SIZE: Record<AvatarSize, IconSize> = {
@@ -414,6 +434,20 @@ export type AvatarProps = Omit<AvatarRootProps, "children"> & {
   presence?: AvatarPresence | null;
   /** Words for each presence (a localising host). */
   presenceLabels?: Partial<Record<AvatarPresence, string>>;
+  /**
+   * Shows the EDIT BADGE: a round icon button on the bottom-end corner (Google Contacts' "Set
+   * contact photo"). Sizes `lg` and up only. It takes the presence glyph's corner, so with
+   * `editable` the glyph is not drawn (the ring stays). NEW, not in e-store.
+   */
+  editable?: boolean;
+  /** The badge's icon (the indicator). Default `add` (Google's "+"); `photo_camera`, `edit`... */
+  badgeIcon?: IconName;
+  /** The badge button's name. Default "Change photo". */
+  badgeLabel?: string;
+  /** `tonal` (default, Google's view) or `filled` (Google's edit form). */
+  badgeLook?: "tonal" | "filled";
+  /** The badge was pressed (open a file picker, a photo menu...). */
+  onBadgeClick$?: QRL<(event: PointerEvent, element: HTMLElement) => void>;
 };
 
 const AvatarBase = component$<AvatarProps>(
@@ -428,9 +462,15 @@ const AvatarBase = component$<AvatarProps>(
     decorative = false,
     presence,
     presenceLabels,
+    editable = false,
+    badgeIcon = "add",
+    badgeLabel = "Change photo",
+    badgeLook = "tonal",
+    onBadgeClick$,
     class: className,
     ...rest
   }) => {
+    const badgeSize = editable ? BADGE_SIZE[size] : null;
     const initials = initialsOf(name);
     const presenceWord = presence
       ? (presenceLabels?.[presence] ?? AVATAR_PRESENCE_LABELS[presence])
@@ -445,10 +485,13 @@ const AvatarBase = component$<AvatarProps>(
         {...rest}
         size={size}
         seed={seed ?? name ?? alt}
-        class={p ? p.ring() : className}
+        class={p ? p.ring() : badgeSize ? undefined : className}
         data-presence={presence ?? undefined}
       >
-        {src && <Image src={src} alt={label ?? ""} />}
+        {/* Always mounted: when `src` goes away its task sets the status back to `idle`, so the
+            fallback shows again (unmounted, it left the status `loaded` and the circle blank:
+            found 2026-11-24 removing a contact photo). It renders nothing without a `src`. */}
+        <Image src={src} alt={label ?? ""} />
         <Fallback delay={delay} label={label}>
           {initials ? (
             // The initials are CSS generated content, not a text node: inside a named control
@@ -464,14 +507,40 @@ const AvatarBase = component$<AvatarProps>(
         </Fallback>
       </Root>
     );
+    if (badgeSize) {
+      // The badge is a real button: a SIBLING of the clipped root (a button inside the
+      // `role="img"` fallback would be hidden by it and clipped by `overflow-hidden`). Its span
+      // draws the surface cut-out ring, as the presence glyph does.
+      return (
+        <span
+          data-qds-avatar-editable=""
+          data-presence={presence ?? undefined}
+          class={[
+            avatarPresenceVariants({ size }).wrap(),
+            className,
+          ]}
+        >
+          {avatar}
+          <span
+            data-qds-avatar-badge=""
+            class="absolute inset-e-0 bottom-0 rounded-full shadow-[0_0_0_2px_var(--avatar-presence-cutout,var(--field-bg,var(--color-surface)))]"
+          >
+            <IconButton
+              icon={badgeIcon}
+              label={badgeLabel}
+              look={badgeLook}
+              size={badgeSize}
+              onClick$={onBadgeClick$}
+            />
+          </span>
+        </span>
+      );
+    }
     if (!p) return avatar;
     // The glyph sits outside the root, whose overflow-hidden would clip it. `class` (layout)
     // goes on the outermost element.
     return (
-      <span
-        data-qds-avatar-presence={presence}
-        class={[p.wrap(), className]}
-      >
+      <span data-qds-avatar-presence={presence} class={[p.wrap(), className]}>
         {avatar}
         <span
           aria-hidden="true"

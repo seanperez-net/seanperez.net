@@ -5,7 +5,7 @@ import {
 } from "@material/material-color-utilities";
 
 /**
- * HCT (hue, chroma, tone): Material's colour space, from Google's Material Color Utilities.
+ * HCT (hue, chroma, tone): Material's color space, from Google's Material Color Utilities.
  * Hue 0 to 360, chroma 0 to about 150, tone 0 (black) to 100 (white).
  * https://material.io/blog/science-of-color-design
  */
@@ -16,7 +16,7 @@ export function hctFromHex(hex: string): HctColor {
   return { hue: hct.hue, chroma: hct.chroma, tone: hct.tone };
 }
 
-/** The nearest sRGB colour to an HCT value, as hex. */
+/** The nearest sRGB color to an HCT value, as hex. */
 export function hexFromHct(hue: number, chroma: number, tone: number): string {
   return hexFromArgb(Hct.from(hue, chroma, tone).toInt());
 }

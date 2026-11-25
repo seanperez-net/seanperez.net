@@ -33,7 +33,7 @@ import type { IconName } from "../icon";
  *   and moves on; arrows do not wrap (APG).
  * - The label rests at 28dp from the top (the 56dp field's centre). e-store's `top-1/2` was half
  *   of the Root, which also holds the supporting text, so the label sat low.
- * - Field colours, focus and disabled as the text field (material-web
+ * - Field colors, focus and disabled as the text field (material-web
  *   `_md-comp-{outlined,filled}-select.scss`): e-store faded the whole trigger to 38%.
  * - The error replaces the supporting text and is referenced by `aria-describedby` /
  *   `aria-errormessage`; e-store rendered it in a second, unreferenced line.
@@ -462,6 +462,18 @@ const triggerKeys = sync$((e: KeyboardEvent, trigger: HTMLButtonElement) => {
 });
 
 /**
+ * A press in the list must not take focus off the combobox (APG). A `sync$` handler, not the bare
+ * `preventdefault:mousedown` attribute: qwikloader (installed `@qwik.dev/core` 2.0.0-rc.5,
+ * `qwikloader.debug.js` `dispatch` / `addEventOrRoot`) only reads that attribute while handling an
+ * event type some element has a handler for (defaults `click`, `input`). On a page with no
+ * `onMouseDown$` the press focused the nearest focusable ancestor (the playground's `<main>`);
+ * the option was still chosen but focus was lost (Chrome, 2026-11-24). Same fix as Search.
+ */
+const keepTriggerFocus = sync$((event: MouseEvent) => {
+  event.preventDefault();
+});
+
+/**
  * A button activates on Space KEYUP. Cancelling the keydown stops that in Chrome; this makes
  * sure no browser then toggles the popover (`popovertarget`) shut again (second agent's review).
  */
@@ -601,7 +613,7 @@ const Root = component$<SelectRootProps>((allProps) => {
       class={["group/select relative w-full", className]}
       data-has-value={hasValue.value ? "" : undefined}
       data-open={open.value ? "" : undefined}
-      // A disabled select is not validated: M3's disabled colours win over an error's.
+      // A disabled select is not validated: M3's disabled colors win over an error's.
       data-invalid={
         !disabled.value && (error.value || nativeInvalid.value) ? "" : undefined
       }
@@ -766,7 +778,7 @@ const Value = component$<SelectValueProps>(
 export type SelectContentProps = PropsOf<"div">;
 
 const Content = component$<SelectContentProps>(
-  ({ class: className, onToggle$, style, ...rest }) => {
+  ({ class: className, onToggle$, onMouseDown$, style, ...rest }) => {
     const ctx = useContext(selectContextId);
 
     const handleToggle$ = $((event: ToggleEvent, listbox: HTMLElement) => {
@@ -813,7 +825,7 @@ const Content = component$<SelectContentProps>(
         aria-label={ctx.ariaLabel}
         popover="auto"
         // A press on an option must not take the focus off the combobox (APG).
-        preventdefault:mousedown
+        onMouseDown$={[keepTriggerFocus, onMouseDown$]}
         onToggle$={[handleToggle$, onToggle$]}
         style={{
           positionAnchor: `--select-${ctx.contentId}`,
@@ -1080,7 +1092,7 @@ const HiddenSelect = component$<SelectHiddenSelectProps>(
     const cancelReport = sync$((e: Event) => e.preventDefault());
     const handleInvalid$ = $((_: Event, select: HTMLSelectElement) => {
       ctx.nativeInvalid.value = true;
-      // Colour alone is not a message (WCAG 1.4.1, 3.3.1; second agent's review).
+      // Color alone is not a message (WCAG 1.4.1, 3.3.1; second agent's review).
       ctx.nativeMessage.value = select.validationMessage;
       ctx.triggerRef.value?.focus();
     });

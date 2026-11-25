@@ -51,14 +51,47 @@
       U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
       U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
   }
+
+  /* A local fallback sized to Roboto's metrics, so the text does not move when Roboto arrives
+     (`font-display: swap`). The Qwik cookbook's "Fallback fonts" advice
+     (https://next.qwik.dev/docs/cookbook/fonts/), what fontaine generates. Values MEASURED 2026-11-23
+     in Chrome from our Roboto 400 file against Arial: Roboto ascent 0.928 / descent 0.244 em
+     (canvas `measureText` at 1000px); width ratio 0.9988 over the site's and playground's own
+     copy at 100px (other samples gave 0.98 to 1.003); overrides are divided by `size-adjust`, as
+     fontaine does. */
+  @font-face {
+    font-family: "Roboto Fallback";
+    font-weight: 400;
+    src:
+      local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Arimo"),
+      local("Helvetica Neue"), local("Helvetica");
+    size-adjust: 99.88%;
+    ascent-override: 92.91%;
+    descent-override: 24.43%;
+    line-gap-override: 0%;
+  }
+  /* The bold face, so 700 text is not faked from Arial Regular (review 2026-11-23). Width ratio
+     measured the same way against Roboto 700: 0.9400. Liberation Sans and Arimo have Arial's
+     metrics (Linux); Android falls through to its own Roboto. */
+  @font-face {
+    font-family: "Roboto Fallback";
+    font-weight: 700;
+    src:
+      local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"),
+      local("Arimo Bold"), local("Helvetica Neue Bold"), local("Helvetica Bold");
+    size-adjust: 94%;
+    ascent-override: 98.69%;
+    descent-override: 25.97%;
+    line-gap-override: 0%;
+  }
 }
 
 @theme static {
   --font-brand:
-    "Roboto", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Roboto", "Roboto Fallback", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-plain:
-    "Roboto", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Roboto", "Roboto Fallback", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono:
     "Fira Code Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",

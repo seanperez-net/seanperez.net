@@ -125,7 +125,7 @@ const fillVariants = tv({
         "bg-surface-container-low group-data-disabled/card:bg-surface group-data-disabled/card:opacity-38",
       filled:
         "bg-surface-container-highest group-data-disabled/card:bg-surface-variant group-data-disabled/card:opacity-38",
-      // M3 gives the outlined card no disabled container colour or opacity, only its outline.
+      // M3 gives the outlined card no disabled container color or opacity, only its outline.
       outlined: "bg-surface",
     },
   },
@@ -140,7 +140,7 @@ const outlineVariants = tv({
   ],
   variants: {
     focusable: {
-      // M3: the outlined card's focus outline colour is on-surface.
+      // M3: the outlined card's focus outline color is on-surface.
       true: "group-focus-visible/card:border-on-surface group-has-[>[data-card-action]:focus-visible]/card:border-on-surface",
       false: "",
     },
@@ -171,6 +171,11 @@ export type CardProps = {
   href?: string;
   /** Open in a new tab (`as="a"`; adds `rel="noopener noreferrer"`). */
   target?: "_blank";
+  /**
+   * The link's `rel` (`as="a"`), e.g. `"external"` for a page off the site; a new tab adds
+   * `noopener noreferrer` to it (as `UnstyledButton`). NEW 2026-11-24 (the chat's link card).
+   */
+  rel?: string;
   class?: ClassList;
   id?: string;
   style?: PropsOf<"div">["style"];
@@ -198,6 +203,7 @@ const Root = component$<CardProps>((props) => {
     dragged,
     href,
     target,
+    rel,
     class: className,
     ...rest
   } = { ...props };
@@ -239,7 +245,11 @@ const Root = component$<CardProps>((props) => {
         {...state}
         href={safe}
         target={target}
-        rel={target === "_blank" ? "noopener noreferrer" : undefined}
+        rel={
+          target === "_blank"
+            ? [rel, "noopener noreferrer"].filter(Boolean).join(" ")
+            : rel
+        }
         class={cls}
       >
         {layers}
@@ -280,8 +290,7 @@ export const cardHeaderVariants = tv({
   defaultVariants: { variant: "default" },
 });
 
-type HeaderProps = PropsOf<"header"> &
-  VariantProps<typeof cardHeaderVariants>;
+type HeaderProps = PropsOf<"header"> & VariantProps<typeof cardHeaderVariants>;
 
 const Header = component$<HeaderProps>((all) => {
   const { class: className, variant, ...rest } = { ...all };
@@ -321,7 +330,7 @@ const Description = component$<PropsOf<"p">>((all) => {
 
 /** Body block. `full` is edge to edge (a list, media), the others have the 16dp gutter. */
 export const cardContentVariants = tv({
-  base: "text-body-medium flex flex-col",
+  base: "flex flex-col text-body-medium",
   variants: {
     variant: {
       default: "gap-4 p-4",
@@ -386,7 +395,14 @@ type MediaProps = PropsOf<"div"> & {
 
 /** Edge-to-edge media (M3 anatomy: thumbnail, image, video). A direct child of `Card.Root`. */
 const Media = component$<MediaProps>((all) => {
-  const { class: className, src, alt = "", width, height, ...rest } = {
+  const {
+    class: className,
+    src,
+    alt = "",
+    width,
+    height,
+    ...rest
+  } = {
     ...all,
   };
   if (src) {

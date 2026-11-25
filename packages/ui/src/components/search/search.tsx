@@ -38,8 +38,13 @@ import { useBoundSignal } from "../../utils/use-bound-signal";
  * the ARIA ids (e-store: a module counter, which gives a new id whenever Root re-renders on the
  * client); the highlighted option is state (`activeId`) that `Search.Item` renders; the
  * full-screen bar is M3's filled 56dp container (e-store: an outlined 64dp bar). Left out: `look`,
- * `fused`, the `dense` size, the `leading` / `trailing` slots, `keyboardShortcut` (Cmd+K),
- * `onQueryChange$` (use `bind:query`).
+ * `fused`, the `dense` size, the `leading` / `trailing` slots, `onQueryChange$` (use `bind:query`).
+ *
+ * Site search (2026-11-24, owner-approved NEW parts, see search.md): `keyboardShortcut`
+ * (e-store's Cmd/Ctrl+K, default OFF here: a page may hold several searches), `showOnEmpty`
+ * (the view opens on an empty query, for recent searches), a `filters` slot outside the listbox
+ * (a chip row), `Search.Group` (a heading over options) and `Search.Item` `supportingText`,
+ * `keepOpen`, `onRemove$`, `disabled`.
  *
  * @see https://m3.material.io/components/search/specs
  * @see https://m3.material.io/components/search/guidelines
@@ -70,6 +75,8 @@ interface SearchContext {
    * icon); Escape on an empty field or focus leaving it empty turns it back.
    */
   expanded: Signal<boolean>;
+  /** The view opens with an empty query too (recent searches, suggestions). */
+  showOnEmpty: boolean;
 }
 
 export const searchContextId = createContextId<SearchContext>("search.context");
@@ -128,17 +135,23 @@ export const searchViewVariants = tv({
     docked: [
       // No option, no box (no empty 240dp card under the bar).
       "not-has-[[role=option]]:hidden",
-      "absolute top-full z-50 mt-1",
-      "max-h-[66vh] min-h-60 w-full max-w-180 overflow-y-auto overscroll-contain",
+      "absolute top-full z-50 mt-1 flex flex-col",
+      "max-h-[66vh] min-h-60 w-full max-w-180 overflow-hidden",
+      "rounded-xl bg-surface-container-high shadow-3",
+    ],
+    // The docked card's listbox: it scrolls, under the filters row.
+    dockedList: [
+      "min-h-0 flex-1 overflow-y-auto overscroll-contain py-2",
       // Our scrollbar (tokens/utilities.css); the default 20px track margin clears the 28dp corners.
       "scrollbar-pane",
-      "rounded-xl bg-surface-container-high py-2 shadow-3",
     ],
+    // The `filters` slot (a ChipGroup), outside the listbox; nothing projected, no row.
+    filters: ["not-has-[*]:hidden", "shrink-0 px-4 pt-3 pb-1"],
     // Full screen: M3 contained style, the view is surface-container-low.
     dialog: ["bg-surface-container-low!"],
     column: ["mx-auto", "flex", "h-full", "w-full", "max-w-180", "flex-col"],
     barRow: ["px-2", "pt-2", "sm:px-4", "sm:pt-3"],
-    // The focused bar in the full-screen view: filled, 56dp (M3 full-screen colour roles).
+    // The focused bar in the full-screen view: filled, 56dp (M3 full-screen color roles).
     bar: [
       "flex h-14 items-center gap-1 rounded-full ps-2 pe-2",
       "bg-surface-container-high text-on-surface-variant",
@@ -180,7 +193,20 @@ export const searchItemVariants = tv({
     // The keyboard's current option also gets an inward ring (focus stays in the input).
     "data-highlighted:outline-3 data-highlighted:-outline-offset-3 data-highlighted:outline-secondary",
     "[&>svg]:text-on-surface-variant",
+    // With supporting text: M3's two-line list item, 72dp (found with :has(), the CMS rule).
+    "has-[[data-search-supporting]]:min-h-18",
+    // `disabled` (a "no results" line): not chosen, no state layer.
+    "aria-disabled:cursor-default aria-disabled:text-on-surface-variant aria-disabled:hover:bg-transparent",
   ],
+});
+
+/** `Search.Group`: a heading over options (as Dropdown's group label, 48dp, label-large). */
+export const searchGroupVariants = tv({
+  slots: {
+    root: "py-1",
+    heading:
+      "flex h-12 items-center px-4 text-label-large text-on-surface-variant select-none",
+  },
 });
 
 // ─── Keyboard (shared by the docked bar and the full-screen input) ──────────
@@ -197,7 +223,12 @@ const preventSearchKeys = sync$(
       event.key === "ArrowUp" ||
       event.key === "Escape" ||
       // Enter chooses the highlighted option; it must not also submit a surrounding form.
-      (event.key === "Enter" && input.hasAttribute("aria-activedescendant"))
+      (event.key === "Enter" && input.hasAttribute("aria-activedescendant")) ||
+      // Delete removes a highlighted removable option (a recent search), not a character.
+      (event.key === "Delete" &&
+        document
+          .getElementById(input.getAttribute("aria-activedescendant") ?? "")
+          ?.querySelector("[data-search-remove]"))
     ) {
       event.preventDefault();
     }
@@ -218,10 +249,7 @@ const createKeyNav = (ctx: SearchContext, listId: string) =>
         } else if (ctx.expanded.value) {
           // `adaptive`: back to the icon, and focus with it (the bar is about to be hidden).
           ctx.expanded.value = false;
-          const root = ctx.rootRef.value;
-          requestAnimationFrame(() =>
-            root?.querySelector<HTMLElement>("[data-search-trigger]")?.focus(),
-          );
+          focusTriggerWhenShown(ctx.rootRef.value, 10);
         }
         return;
       }
@@ -237,8 +265,22 @@ const createKeyNav = (ctx: SearchContext, listId: string) =>
         document.getElementById(ctx.activeId.value)?.click();
       return;
     }
+    if (event.key === "Delete") {
+      // The highlighted option's remove button (`Search.Item onRemove$`), if it has one.
+      const remove = ctx.activeId.value
+        ? document
+            .getElementById(ctx.activeId.value)
+            ?.querySelector<HTMLElement>("[data-search-remove]")
+        : null;
+      if (remove) {
+        ctx.activeId.value = "";
+        remove.click();
+      }
+      return;
+    }
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    if (!ctx.open.value && ctx.query.value.trim()) ctx.open.value = true;
+    if (!ctx.open.value && (ctx.query.value.trim() || ctx.showOnEmpty))
+      ctx.open.value = true;
     const list = document.getElementById(listId);
     const options = Array.from(
       list?.querySelectorAll<HTMLElement>(
@@ -260,6 +302,23 @@ const createKeyNav = (ctx: SearchContext, listId: string) =>
   });
 
 /**
+ * A press in the result list must not move focus out of the input (APG combobox: focus stays on
+ * the combobox). Without this the press focuses the nearest focusable ancestor (a supporting
+ * pane is one), the Root's focus-out closes the docked list, the list unmounts under the pointer
+ * and the click never reaches the option (Chrome, 2026-11-24).
+ *
+ * A handler, not the bare `preventdefault:mousedown` attribute: qwikloader only listens to event
+ * types that some element has a handler for (`registerQwikLoaderEvent` runs from the handler path
+ * only; its defaults are `click` and `input`), so with no `onMouseDown$` on the page the attribute
+ * was never read (installed `@qwik.dev/core` 2.0.0-rc.5, `qwikloader.debug.js` `dispatch`,
+ * `core.mjs` `registerQwikLoaderEvent`). Touch: the compatibility mousedown comes after the touch
+ * ends and is prevented the same way; the click still fires.
+ */
+const keepInputFocus = sync$((event: MouseEvent) => {
+  event.preventDefault();
+});
+
+/**
  * Focuses an element that a state change is about to show: Qwik renders it on its own schedule,
  * so this tries once per frame (at most `frames` times) until the element takes focus.
  */
@@ -275,6 +334,63 @@ const focusWhenShown = (
   });
 };
 
+/**
+ * `adaptive`: focuses the Trigger once the collapse has shown it again (it is `display: none`
+ * while the bar is expanded, and Qwik re-renders on its own schedule: one frame was not always
+ * enough, Chrome 2026-11-24, focus fell to the body). Tries once per frame, at most `frames`.
+ */
+const focusTriggerWhenShown = (
+  root: HTMLElement | undefined,
+  frames: number,
+): void => {
+  requestAnimationFrame(() => {
+    const trigger = root?.querySelector<HTMLElement>("[data-search-trigger]");
+    trigger?.focus();
+    if (trigger && document.activeElement !== trigger && frames > 1)
+      focusTriggerWhenShown(root, frames - 1);
+  });
+};
+
+/**
+ * Opens the search as its entry point would (`Search.Trigger`, Cmd/Ctrl+K): docked, focus the
+ * bar; `adaptive` from 600px, expand the icon into the bar and focus it; otherwise the
+ * full-screen view. The width is read here, in a handler, never in render (L19).
+ */
+const openSearch = (ctx: SearchContext): void => {
+  if (ctx.layout === "docked") {
+    ctx.open.value = true;
+    ctx.inputRef.value?.focus();
+  } else if (
+    ctx.layout === "adaptive" &&
+    matchMedia("(min-width: 600px)").matches
+  ) {
+    // The input shows after this render, so it is focused on a later frame (as Menu does).
+    ctx.surface.value = "docked";
+    ctx.expanded.value = true;
+    if (ctx.showOnEmpty) ctx.open.value = true;
+    focusWhenShown(ctx.inputRef, 10);
+  } else {
+    ctx.surface.value = "fullscreen";
+    ctx.open.value = true;
+  }
+};
+
+/**
+ * Cmd/Ctrl+K must be prevented synchronously (Chrome on Windows / Linux focuses the address bar).
+ * A `sync$` closes over nothing, so it asks the DOM whether a search with the shortcut is on the
+ * page (e-store's pattern; the Qwik sync-events cookbook's data-attribute workaround).
+ */
+const preventShortcut = sync$((event: KeyboardEvent) => {
+  if (
+    (event.metaKey || event.ctrlKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === "k" &&
+    document.querySelector("[data-search-root][data-keyboard-shortcut]")
+  )
+    event.preventDefault();
+});
+
 // ─── Search.Root ─────────────────────────────────────────────────────────────
 
 export type SearchRootProps = PropsOf<"div"> & {
@@ -287,6 +403,18 @@ export type SearchRootProps = PropsOf<"div"> & {
    * bar. `adaptive`: full-screen from an icon below 600px, docked bar from 600px (M3).
    */
   layout?: SearchLayout;
+  /**
+   * Cmd+K / Ctrl+K opens this search (e-store's prop). Default `false` (e-store: `true`): a page
+   * may hold more than one search (the site's app bar and the Maps panel's), and only one may
+   * answer the shortcut.
+   */
+  keyboardShortcut?: boolean;
+  /**
+   * The view also opens with an empty query (focusing the docked bar opens it, at either size),
+   * for recent searches or suggestions (M3: the search view "can display recent searches"). With
+   * nothing to show it stays hidden. Default `false`: opens once there is text.
+   */
+  showOnEmpty?: boolean;
 };
 
 const Root = component$<SearchRootProps>(
@@ -294,6 +422,8 @@ const Root = component$<SearchRootProps>(
     "bind:open": bindOpen,
     "bind:query": bindQuery,
     layout = "fullscreen",
+    keyboardShortcut = false,
+    showOnEmpty = false,
     class: className,
     ...rest
   }) => {
@@ -308,7 +438,7 @@ const Root = component$<SearchRootProps>(
     const searchId = useId();
     const expanded = useSignal(false);
 
-    useContextProvider(searchContextId, {
+    const ctx: SearchContext = {
       open,
       query,
       searchId,
@@ -318,7 +448,34 @@ const Root = component$<SearchRootProps>(
       inputRef,
       rootRef,
       expanded,
-    });
+      showOnEmpty,
+    };
+    useContextProvider(searchContextId, ctx);
+
+    // Cmd/Ctrl+K (e-store's): two document listeners, the `sync$` one prevents the browser's
+    // default (only while a search with the shortcut is on the page), this one opens (only this
+    // search's own, when enabled).
+    useOnDocument("keydown", preventShortcut);
+    useOnDocument(
+      "keydown",
+      $((event: Event) => {
+        const key = event as KeyboardEvent;
+        if (
+          !keyboardShortcut ||
+          !(key.metaKey || key.ctrlKey) ||
+          key.altKey ||
+          key.shiftKey ||
+          key.key.toLowerCase() !== "k"
+        )
+          return;
+        // Already in the docked bar: select its text, as a second press in a browser's search does.
+        if (surface.value === "docked" && document.activeElement === inputRef.value) {
+          inputRef.value?.select();
+          return;
+        }
+        openSearch(ctx);
+      }),
+    );
 
     useTask$(({ track }) => {
       if (!track(open)) activeId.value = "";
@@ -343,6 +500,8 @@ const Root = component$<SearchRootProps>(
         role="search"
         data-search-root=""
         data-search-layout={layout}
+        // Read by `preventShortcut` (a `sync$` cannot close over the prop).
+        data-keyboard-shortcut={keyboardShortcut ? "" : undefined}
         class={[searchRootVariants({ layout }), className]}
         // Tab out of the search closes the docked list. A press elsewhere is the document
         // listener's: Safari does not focus a clicked button, so it has no `relatedTarget`.
@@ -447,13 +606,16 @@ const Bar = component$<SearchBarProps>(
       ctx.surface.value = "docked";
       ctx.query.value = value;
       ctx.activeId.value = "";
-      if (value.trim() && !ctx.open.value) ctx.open.value = true;
+      if ((value.trim() || ctx.showOnEmpty) && !ctx.open.value)
+        ctx.open.value = true;
     });
 
     const handleFocus$ = $(() => {
       ctx.surface.value = "docked";
-      // Compact opens on typing only (e-store's: a focus re-render there stole the focus).
-      if (size !== "compact" && !ctx.open.value) ctx.open.value = true;
+      // Compact opens on typing only (e-store's: a focus re-render there stole the focus), unless
+      // the view has something for an empty query (`showOnEmpty`).
+      if ((size !== "compact" || ctx.showOnEmpty) && !ctx.open.value)
+        ctx.open.value = true;
     });
 
     const handleClose$ = $(() => {
@@ -513,10 +675,14 @@ const Bar = component$<SearchBarProps>(
           disabled={disabled}
           aria-label={ariaLabel ?? placeholder}
           aria-autocomplete="list"
-          // The list renders only while open with a query: point at it only then.
-          aria-expanded={ctx.open.value && !!ctx.query.value.trim()}
+          // The list renders only while open with a query (or `showOnEmpty`): point at it only then.
+          aria-expanded={
+            ctx.open.value && (ctx.showOnEmpty || !!ctx.query.value.trim())
+          }
           aria-controls={
-            ctx.open.value && ctx.query.value.trim() ? resultsId : undefined
+            ctx.open.value && (ctx.showOnEmpty || ctx.query.value.trim())
+              ? resultsId
+              : undefined
           }
           aria-activedescendant={ctx.activeId.value || undefined}
           onInput$={handleInput$}
@@ -645,12 +811,18 @@ const View = component$<SearchViewProps>(
                     )}
                   </div>
                 </div>
+                {/* The chip row (`q:slot="filters"`): outside the listbox, which may own only
+                    options and groups; a Tab stop after the input. A press keeps the input's
+                    focus, as on an option. */}
+                <div class={styles.filters()} onMouseDown$={keepInputFocus}>
+                  {ctx.surface.value === "fullscreen" && <Slot name="filters" />}
+                </div>
                 <div
                   id={viewId}
                   role="listbox"
                   aria-label={resultsLabel}
                   // A press on an option must not take focus from the input (APG combobox).
-                  preventdefault:mousedown
+                  onMouseDown$={keepInputFocus}
                   class={[styles.list(), className]}
                 >
                   {ctx.surface.value === "fullscreen" && <Slot />}
@@ -662,15 +834,20 @@ const View = component$<SearchViewProps>(
         {ctx.layout !== "fullscreen" &&
           ctx.surface.value === "docked" &&
           ctx.open.value &&
-          ctx.query.value.trim() && (
-            <div
-              id={dockedId}
-              role="listbox"
-              aria-label={resultsLabel}
-              preventdefault:mousedown
-              class={[styles.docked(), className]}
-            >
-              <Slot />
+          (ctx.showOnEmpty || ctx.query.value.trim()) && (
+            <div class={styles.docked()}>
+              <div class={styles.filters()} onMouseDown$={keepInputFocus}>
+                <Slot name="filters" />
+              </div>
+              <div
+                id={dockedId}
+                role="listbox"
+                aria-label={resultsLabel}
+                onMouseDown$={keepInputFocus}
+                class={[styles.dockedList(), className]}
+              >
+                <Slot />
+              </div>
             </div>
           )}
       </>
@@ -708,23 +885,8 @@ const Trigger = component$<SearchTriggerProps>(
   }) => {
     const ctx = useContext(searchContextId);
     const open$ = $(async (event: PointerEvent, element: HTMLElement) => {
-      if (ctx.layout === "docked") {
-        ctx.open.value = true;
-        ctx.inputRef.value?.focus();
-      } else if (
-        ctx.layout === "adaptive" &&
-        matchMedia("(min-width: 600px)").matches
-      ) {
-        // From 600px the icon expands into the docked bar in place (read in a handler, never in
-        // render: L19). The input shows after this render, so it is focused on the next frame
-        // (as Menu does).
-        ctx.surface.value = "docked";
-        ctx.expanded.value = true;
-        focusWhenShown(ctx.inputRef, 10);
-      } else {
-        ctx.surface.value = "fullscreen";
-        ctx.open.value = true;
-      }
+      // From 600px `adaptive` expands the icon into the docked bar in place (`openSearch`).
+      openSearch(ctx);
       await onClick$?.(event, element);
     });
     return (
@@ -758,10 +920,28 @@ const Trigger = component$<SearchTriggerProps>(
 export type SearchItemProps = Omit<PropsOf<"div">, "onClick$" | "children"> & {
   /** The row's text. */
   label: string;
+  /** A second line (M3 two-line list item): a snippet, a description. */
+  supportingText?: string;
   /** A link: the router's `<Link>`. Without it the row is a plain option. */
   href?: string;
   /** A leading icon. */
   icon?: IconName;
+  /**
+   * Choosing the row runs `onClick$` and leaves the search open with its query (a "See all"
+   * row that switches the filter). Default `false`: choosing closes it.
+   */
+  keepOpen?: boolean;
+  /**
+   * Shows a trailing remove button (a recent search), also run by Delete while the row is
+   * highlighted. The button is not a Tab stop (focus stays in the input) and is hidden from
+   * assistive tech: the option announces the Delete key instead (`aria-keyshortcuts`).
+   */
+  onRemove$?: QRL<() => void>;
+  /** The remove button's hover label, before the row's label. Default "Remove". */
+  removeLabel?: string;
+  removeIcon?: IconName;
+  /** Not choosable (`aria-disabled`): a "no results" line. */
+  disabled?: boolean;
   onClick$?: QRL<(event: PointerEvent, element: HTMLElement) => void>;
 };
 
@@ -771,11 +951,28 @@ export type SearchItemProps = Omit<PropsOf<"div">, "onClick$" | "children"> & {
  * the M3 list styling) out of the page.
  */
 const Item = component$<SearchItemProps>(
-  ({ label, href, icon, class: className, onClick$, ...rest }) => {
+  ({
+    label,
+    supportingText,
+    href,
+    icon,
+    keepOpen = false,
+    onRemove$,
+    removeLabel = "Remove",
+    removeIcon = "close",
+    disabled = false,
+    class: className,
+    onClick$,
+    ...rest
+  }) => {
     const ctx = useContext(searchContextId);
     const id = useId();
     const nav = useNavigate();
-    const target = safeHref(href);
+    const target = disabled ? undefined : safeHref(href);
+    const remove$ = $(async () => {
+      if (ctx.activeId.value === id) ctx.activeId.value = "";
+      await onRemove$?.();
+    });
     // The Item navigates ITSELF, then closes. Through the router's `<Link>` the close ran first
     // (a Link calls `onClick$` before its own navigation handler), the docked list unmounted, and
     // the detached link never navigated (Chrome, 2026-11-23).
@@ -783,7 +980,13 @@ const Item = component$<SearchItemProps>(
       // A modified click (new tab, new window) is the browser's own: leave the search open.
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return;
+      if (disabled) return;
       await onClick$?.(event, element);
+      if (keepOpen) {
+        // The options under it are about to change (another filter, another query).
+        ctx.activeId.value = "";
+        return;
+      }
       if (target) {
         const url = new URL(target, location.href);
         if (url.origin === location.origin)
@@ -792,10 +995,15 @@ const Item = component$<SearchItemProps>(
       }
       ctx.open.value = false;
       ctx.query.value = "";
-      ctx.expanded.value = false;
+      if (ctx.expanded.value) {
+        // `adaptive`: the bar turns back into the icon, which takes the focus (as Escape does);
+        // the focused input is about to be hidden, which would drop focus to the body.
+        ctx.expanded.value = false;
+        focusTriggerWhenShown(ctx.rootRef.value, 10);
+      }
     });
     // Not focusable: focus stays in the input (APG combobox); the listbox stops a press moving it
-    // (`preventdefault:mousedown`). The highlighted option is `aria-selected="true"`, as in the
+    // (`keepInputFocus`). The highlighted option is `aria-selected="true"`, as in the
     // APG list-autocomplete examples.
     return (
       <div
@@ -803,6 +1011,8 @@ const Item = component$<SearchItemProps>(
         id={id}
         role="option"
         aria-selected={ctx.activeId.value === id ? "true" : "false"}
+        aria-disabled={disabled ? "true" : undefined}
+        aria-keyshortcuts={onRemove$ ? "Delete" : undefined}
         data-highlighted={ctx.activeId.value === id ? "" : undefined}
         class={[searchItemVariants(), className]}
         onClick$={choose$}
@@ -813,27 +1023,87 @@ const Item = component$<SearchItemProps>(
           <a
             href={target}
             tabIndex={-1}
-            class={ITEM_LABEL}
+            class={ITEM_TEXT}
             onClick$={preventPlainClick}
           >
-            {label}
+            <span class={ITEM_LABEL}>{label}</span>
+            {supportingText && (
+              <span data-search-supporting="" class={ITEM_SUPPORTING}>
+                {supportingText}
+              </span>
+            )}
           </a>
         ) : (
-          <span class={ITEM_LABEL}>{label}</span>
+          <span class={ITEM_TEXT}>
+            <span class={ITEM_LABEL}>{label}</span>
+            {supportingText && (
+              <span data-search-supporting="" class={ITEM_SUPPORTING}>
+                {supportingText}
+              </span>
+            )}
+          </span>
+        )}
+        {onRemove$ && (
+          // Not a Tab stop and hidden from assistive tech (focus stays in the input; the option
+          // names the Delete key). `stoppropagation:click`: the press must not choose the row.
+          <IconButton
+            icon={removeIcon}
+            label={`${removeLabel} ${label}`}
+            tabIndex={-1}
+            aria-hidden="true"
+            data-search-remove=""
+            stoppropagation:click
+            onClick$={remove$}
+          />
         )}
       </div>
     );
   },
 );
 
-/** The row's text: one line, cut with an ellipsis. */
-const ITEM_LABEL = "min-w-0 flex-1 truncate outline-none";
+/** The row's text column; each line is cut with an ellipsis. */
+const ITEM_TEXT = "flex min-w-0 flex-1 flex-col outline-none";
+const ITEM_LABEL = "truncate";
+/** M3 list supporting text: body-medium, on-surface-variant. */
+const ITEM_SUPPORTING = "truncate text-body-medium text-on-surface-variant";
 
 /** Stops a plain click following the link (the Item navigates); a modified click still does. */
 const preventPlainClick = sync$((event: MouseEvent) => {
   if (!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey))
     event.preventDefault();
 });
+
+// ─── Search.Group (new, not in e-store) ──────────────────────────────────────
+
+export type SearchGroupProps = PropsOf<"div"> & {
+  /** The heading over the group's options; it names the group. */
+  label: string;
+};
+
+/**
+ * Options under a heading (`role="group"`, named by it), inside the View's listbox: a listbox
+ * may own options and groups only (APG listbox, "grouped options" example: the heading is
+ * presentational). The keys move through every group's options as one list.
+ */
+const Group = component$<SearchGroupProps>(
+  ({ label, class: className, ...rest }) => {
+    const id = useId();
+    const styles = searchGroupVariants();
+    return (
+      <div
+        {...rest}
+        role="group"
+        aria-labelledby={id}
+        class={[styles.root(), className]}
+      >
+        <div id={id} role="presentation" class={styles.heading()}>
+          {label}
+        </div>
+        <Slot />
+      </div>
+    );
+  },
+);
 
 // ─── Compound export ─────────────────────────────────────────────────────────
 
@@ -843,4 +1113,5 @@ export const Search = {
   View,
   Trigger,
   Item,
+  Group,
 };

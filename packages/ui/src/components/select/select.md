@@ -10,17 +10,20 @@ options. Popover API + CSS anchor positioning, no headless library. From e-store
 
 ## Parts
 
-| Part                    | Element                                    |
-| ----------------------- | ------------------------------------------ |
-| `Select.Root`           | `<div>`, context, state                    |
-| `Select.Label`          | `<label for=trigger>`, floating            |
-| `Select.Trigger`        | `<button role="combobox" popovertarget>`   |
-| `Select.Value`          | the chosen option's label, or placeholder  |
-| `Select.Content`        | `<div role="listbox" popover="auto">`      |
-| `Select.Item`           | `<div role="option">`                      |
-| `Select.ItemIndicator`  | check on the chosen option                 |
-| `Select.SupportingText` | the line under the field (and the error)   |
-| `Select.HiddenSelect`   | native `<select>`: form value, no-JS field |
+| Part                    | Element                                     |
+| ----------------------- | ------------------------------------------- |
+| `Select.Root`           | `<div>`, context, state                     |
+| `Select.Label`          | `<label for=trigger>`, floating             |
+| `Select.Trigger`        | `<button role="combobox" popovertarget>`    |
+| `Select.Value`          | the chosen option's label, or placeholder   |
+| `Select.Content`        | `<div role="listbox" popover="auto">`       |
+| `Select.Item`           | `<div role="option">`                       |
+| `Select.ItemIndicator`  | check on the chosen option                  |
+| `Select.SupportingText` | the line under the field (and the error)    |
+| `Select.HiddenSelect`   | native `<select>`: form value, no-JS field  |
+| `Select.Group`          | `<div role="group">`, named by its label    |
+| `Select.GroupLabel`     | the group's heading row                     |
+| `Select.ErrorMessage`   | the error / validation message, `aria-live` |
 
 ## API
 
@@ -32,7 +35,8 @@ options. Popover API + CSS anchor positioning, no headless library. From e-store
 | `bind:value`                     | `Signal<string>`                                 | -            | Two-way value                                                                               |
 | `onValueChange$`                 | `QRL<(value: string) => void>`                   | -            | Only when the USER picks                                                                    |
 | `options`                        | `SelectOption[]` (`{ value, label, disabled? }`) | -            | Labels by value (a value set from outside shows its label), and the native select's options |
-| `variant`                        | `"outlined" \| "filled"`                         | `"outlined"` | May change after render                                                                     |
+| `variant`                        | `"outlined" \| "filled" \| "plain" \| "tonal"`   | `"outlined"` | May change after render; plain / tonal are e-store's (below)                                |
+| `density`                        | `"default" \| "compact"`                         | `"default"`  | `compact`: 36dp, plain and tonal only (below)                                               |
 | `disabled`, `required`           | `boolean`                                        | `false`      |                                                                                             |
 | `name`                           | `string`                                         | -            | Form key (on `HiddenSelect`)                                                                |
 | `error`                          | `string`                                         | -            | Shown by `SupportingText`; marks the combobox invalid (not while disabled)                  |
@@ -62,7 +66,11 @@ DOM focus stays on the combobox; the active option is `aria-activedescendant` (a
 | letters                       | open and go to the first match      | type-ahead (500ms buffer, repeat cycles)  |
 
 Disabled options are skipped. A mouse press on an option does not take focus off the combobox
-(`preventdefault:mousedown` on the listbox).
+(a `sync$` `onMouseDown$` on the listbox that prevents the default). FIXED 2026-11-24: it was
+a bare `preventdefault:mousedown` attribute, which qwikloader (rc.5) reads only for event types
+some element has a handler for (defaults `click`, `input`); on a page with no mousedown handler a
+press chose the option but moved focus to the nearest focusable ancestor (`<main>`), off the
+combobox. Same fix as Search.
 
 ## Look
 
@@ -93,7 +101,7 @@ token files and Chrome.
   picks; arrows do not wrap; PageUp / PageDown and Alt+ArrowUp added (APG).
 - The label rests at 28dp (the field's centre); e-store's `top-1/2` was half of the Root, which
   includes the supporting text.
-- Field colours as the text field tokens (e-store faded the whole trigger to 38% when disabled);
+- Field colors as the text field tokens (e-store faded the whole trigger to 38% when disabled);
   outlined uses `outline`, not `ring`.
 - The error replaces the supporting text and is referenced (`aria-describedby`,
   `aria-errormessage`); e-store printed it in a second, unreferenced line. `aria-required` added.
@@ -108,7 +116,7 @@ token files and Chrome.
 - Not done (second agent's points, left open): a form reset does not reset the select; the label
   does not float on focus alone (e-store's behaviour, not checked against material-web).
 - No z-index on the popover (top layer). Signals read in JSX.
-- Review 2026-11-23 (second pass), fixed and run in Chrome: the disabled colours keyed on
+- Review 2026-11-23 (second pass), fixed and run in Chrome: the disabled colors keyed on
   `group-has-disabled/select:`, which also matched `HiddenSelect`'s `<option disabled>`, so a
   Select with one disabled option drew its label, arrow and supporting text at 38%; they now key
   on the trigger's `:disabled`. A focused or open invalid field kept a `primary` label and arrow;
@@ -121,7 +129,7 @@ names the combobox through `aria-labelledby`, as a `display:none` label cannot t
 e-store's group had no name), `Select.GroupLabel`, `Select.ErrorMessage` (the description id,
 `aria-live`, the error or the native validation message). The list has `scrollbar-pane`.
 plain / tonal / compact are e-store's looks, NOT in M3, NOT PROOFED. Checked in Chrome:
-heights, sizes, names, tonal invalid colour, ArrowDown skips group labels, group names.
+heights, sizes, names, tonal invalid color, ArrowDown skips group labels, group names.
 
 ## Select or Dropdown
 

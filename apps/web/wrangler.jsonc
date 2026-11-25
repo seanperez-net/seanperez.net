@@ -23,6 +23,24 @@
     { "pattern": "seanperez.net", "custom_domain": true },
     { "pattern": "www.seanperez.net", "custom_domain": true },
   ],
+  // No `*.workers.dev` URL: it would reach this Worker with no Cloudflare Access app in front
+  // of /admin (wrangler's default is true). The site is only served on the custom domains.
+  "workers_dev": false,
+  /**
+   * The feed's posts (`migrations/`, table `post`), the profile (`profile`) and the contact
+   * form's messages (`message`, the only table a visitor writes to). The database existed, empty, since
+   * 2026-11-21. Migrations are applied by hand, never by the deploy:
+   * `pnpm wrangler d1 migrations apply seanperez-net --local` (dev) / `--remote` (the owner).
+   * An identifier, not a credential.
+   */
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "seanperez-net",
+      "database_id": "bd51b663-f4bf-4dab-96fc-42b4d1f8e3d4",
+      "migrations_dir": "migrations",
+    },
+  ],
   "observability": {
     "enabled": true,
   },
@@ -44,6 +62,26 @@
    * https://developers.cloudflare.com/workers/configuration/secrets/
    */
   // "vars": {  "MY_VARIABLE": "production_value" }
+  "vars": {
+    // The contact form's Turnstile SITE key: public by design (it is sent to every browser).
+    // EMPTY until the owner creates the widget (PLAN.md "Waiting on the owner"); while empty,
+    // /contact/ says the form is not open yet. The SECRET is `wrangler secret put
+    // TURNSTILE_SECRET_KEY`, never here. `.dev.vars` overrides both with Cloudflare's test keys.
+    "TURNSTILE_SITE_KEY": "",
+    // The hostnames Siteverify may report for a token (the widget's own domains).
+    "TURNSTILE_HOSTNAMES": "seanperez.net,www.seanperez.net",
+  },
+  /**
+   * Live nodes (Maps / Devices, 2026-11-24): ONE Durable Object, `NodeHub` (`src/nodes/node-hub.server.ts`,
+   * exported from `public/_worker.js`), that runs the demo fleet, keeps real devices' reports
+   * and fans them out to browsers over hibernating WebSockets. SQLite-backed: the only kind on
+   * Workers Free. The migration is applied by the next `wrangler deploy`. Devices post with the
+   * secret `NODE_INGEST_TOKEN` (`wrangler secret put NODE_INGEST_TOKEN`; `.dev.vars` locally).
+   */
+  "durable_objects": {
+    "bindings": [{ "name": "NODE_HUB", "class_name": "NodeHub" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["NodeHub"] }],
   /**
    * Service Bindings (communicate between multiple Workers)
    * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings

@@ -11,7 +11,7 @@ import type { IconName } from "../icon";
  * assist (an action), filter (a toggle, `aria-pressed`), input (a piece of user input, with an
  * optional remove button) and suggestion.
  * Specs: https://m3.material.io/components/chips/specs
- * Colours and sizes: material-web tokens v0_192 (`_md-comp-{assist,filter,input,suggestion}-chip.scss`).
+ * Colors and sizes: material-web tokens v0_192 (`_md-comp-{assist,filter,input,suggestion}-chip.scss`).
  *
  * Added 2026-11-23 from e-store: `size="sm"`, `appearance` (filter: outlined / tonal / text),
  * `shape="pill"`, `tone` (assist: default / primary / error). Only `md`, outlined, default shape
@@ -19,9 +19,9 @@ import type { IconName } from "../icon";
  * Left out: `ChipField` (a 600-line text field that makes chips; see chip.md).
  *
  * Changed from e-store (see chip.md "Where it differs"):
- * - The leading icon is an icon NAME (`IconName`), drawn at 18dp in M3's icon colour (primary;
+ * - The leading icon is an icon NAME (`IconName`), drawn at 18dp in M3's icon color (primary;
  *   on-surface-variant on an unselected input chip; on-secondary-container on a selected filter
- *   chip). e-store took JSX and painted it the label colour.
+ *   chip). e-store took JSX and painted it the label color.
  * - The elevated container is M3's `surface-container-low` (e-store: its own floating surface).
  * - Disabled styles also key on `aria-disabled`, so the input chip's `<span>` greys out.
  * - 48dp touch targets (`touch-target`) on the chip and the remove button.
@@ -60,8 +60,8 @@ export const chipVariants = tv({
         "has-[>[data-qds-chip-leading]]:ps-1.5 has-[>[data-qds-chip-trailing]]:pe-1.5",
       ],
     },
-    // Colours per type live in compoundVariants (`tone`, `appearance`): lite `tv()` does not
-    // merge, so two text / border colours side by side would win by stylesheet order.
+    // Colors per type live in compoundVariants (`tone`, `appearance`): lite `tv()` does not
+    // merge, so two text / border colors side by side would win by stylesheet order.
     type: {
       assist: "",
       filter: "aria-pressed:disabled:bg-on-surface/12",
@@ -99,7 +99,7 @@ export const chipVariants = tv({
       pill: "rounded-full",
     },
     /**
-     * Assist chips only (e-store's): label, icon and state-layer colour. `default` on-surface
+     * Assist chips only (e-store's): label, icon and state-layer color. `default` on-surface
      * (M3); `primary` for a chip showing a chosen value; `error` for one flagging a problem.
      * Theme roles, NOT in M3's chip tokens.
      */

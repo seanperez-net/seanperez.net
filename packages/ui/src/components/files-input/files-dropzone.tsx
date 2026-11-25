@@ -7,7 +7,7 @@ import { filesContextId } from "./files-context";
  * The drop zone: the field's container, under the transparent `Files.Input`. From e-store's
  * `components/files-input/files-dropzone.tsx` (2026-11-23), outlined and filled.
  *
- * Colours, widths and the filled state layer are TextField's (material-web
+ * Colors, widths and the filled state layer are TextField's (material-web
  * `tokens/versions/v0_192/_md-comp-{outlined,filled}-text-field.scss`): outlined 1dp `outline`,
  * hover `on-surface`, focus 3dp `primary`, error `error` (hover `on-error-container`), disabled
  * `on-surface` 12%; filled `surface-container-highest`, a 1dp `on-surface-variant` line (3dp
@@ -21,7 +21,7 @@ import { filesContextId } from "./files-context";
  *   `Files.Label`.
  * - The outline is a 1dp dashed `outline` (the text-field width; dashed marks a drop target,
  *   HOUSE: no M3 token), not a 2dp `::before` border; e-store's 38% disabled outline, unstyled
- *   filled line colour and missing hover layer follow the tokens above.
+ *   filled line color and missing hover layer follow the tokens above.
  * - `data-dragging` on Root (a drag with files over the zone): the focus look plus the hover layer
  *   (HOUSE: M3 has no drop-target state).
  * - Reduced motion turns the transitions off; logical utilities.

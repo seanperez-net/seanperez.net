@@ -1,6 +1,7 @@
-import { component$ } from "@qwik.dev/core";
+import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Avatar, Knobs, Layout, knob, useKnobs } from "../../index";
+import { Avatar, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 /** A picture that always loads: an inline SVG, so the demo fetches nothing. */
 const DEMO_IMAGE =
@@ -43,8 +44,17 @@ export default component$(() => {
       ["none", "online", "away", "busy", "offline"] as const,
       "none",
     ),
+    // Shown with neither a picture nor initials (clear the name to see it).
+    fallbackIcon: knob.select(["person", "account_circle"] as const, "person"),
+    decorative: knob.boolean(false),
+    // The edit badge (NEW 2026-11-24): sizes lg and up.
+    editable: knob.boolean(false, "Editable"),
+    badgeIcon: knob.select(["add", "photo_camera", "edit"] as const, "add"),
+    badgeLook: knob.select(["tonal", "filled"] as const, "tonal"),
     group: knob.boolean(false, "Group"),
   });
+
+  const pressed = useSignal(0);
 
   return (
     <>
@@ -59,12 +69,24 @@ export default component$(() => {
               knobs.values.tone === "seeded" ? undefined : knobs.values.tone
             }
             edge={knobs.values.edge}
+            fallbackIcon={knobs.values.fallbackIcon}
+            decorative={knobs.values.decorative}
             presence={
               knobs.values.presence === "none"
                 ? undefined
                 : knobs.values.presence
             }
+            editable={knobs.values.editable}
+            badgeIcon={knobs.values.badgeIcon}
+            badgeLook={knobs.values.badgeLook}
+            badgeLabel="Change photo"
+            onBadgeClick$={() => pressed.value++}
           />
+          {knobs.values.editable && (
+            <p class="text-body-medium text-on-surface-variant" role="status">
+              {`Badge pressed ${pressed.value} times`}
+            </p>
+          )}
           {knobs.values.group && (
             <Avatar.Group
               label="Attendees"

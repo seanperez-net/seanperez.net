@@ -7,6 +7,7 @@
 export interface PopoverTarget {
   readonly isConnected: boolean;
   matches(selectors: string): boolean;
+  removeAttribute(qualifiedName: string): void;
   showPopover(): void;
 }
 
@@ -17,6 +18,9 @@ export interface PopoverTarget {
  */
 export function openPopover(el: PopoverTarget): boolean {
   if (!el.isConnected) return false;
+  // Opened again while its exit plays: the exit is dropped and the enter transition runs back
+  // from where it is (see `closeAnimated`).
+  el.removeAttribute(CLOSING_ATTR);
   if (!el.matches(":popover-open")) el.showPopover();
   // A cancelled `beforetoggle` leaves it closed (HTML spec, showPopover).
   return el.matches(":popover-open");
@@ -40,12 +44,80 @@ export interface ModalTarget {
  */
 export function openModal(dialog: ModalTarget): boolean {
   if (!dialog.isConnected) return false;
+  // Opened again while its exit plays (see `closeAnimated`).
+  dialog.removeAttribute(CLOSING_ATTR);
   if (dialog.matches(":modal")) return true;
   if (dialog.matches(":popover-open")) dialog.hidePopover();
   if (dialog.open) dialog.removeAttribute("open");
   dialog.showModal();
   // A cancelled `beforetoggle` leaves it closed (HTML spec, showModal step 6).
   return dialog.matches(":modal");
+}
+
+/**
+ * Set on a top-layer element while its exit transition plays. Its CSS gives the closed look
+ * (`open:data-closing:...` classes) while it is still open, so it is still in the top layer,
+ * above the page, with its `::backdrop`.
+ */
+export const CLOSING_ATTR = "data-closing";
+
+/** What {@link closeAnimated} uses of an element; any `HTMLElement` is one. */
+export interface ClosingTarget {
+  readonly isConnected: boolean;
+  hasAttribute(qualifiedName: string): boolean;
+  setAttribute(qualifiedName: string, value: string): void;
+  removeAttribute(qualifiedName: string): void;
+  getAnimations?(options?: { subtree?: boolean }): Animation[];
+}
+
+/**
+ * Plays a top-layer element's exit transition, THEN takes it out of the top layer with `hide`
+ * (`dialog.close()`, `el.hidePopover()`). Removing it first (`close()` straight away) drops it
+ * from the top layer at once: the scrim is gone and only a browser that can transition `overlay`
+ * keeps it painted on top for the exit. Chrome can; Safari (iOS included) and Firefox cannot
+ * (MDN / caniuse `overlay`, 2026-11-24), so there the exit ran under the page or not at all.
+ *
+ * Waits on the transitions the attribute starts on the element itself and its `::backdrop`
+ * (`getAnimations()` also brings the style up to date, so they exist when read), never on its
+ * content's (a spinner inside would never end). A timeout ends the wait if one never finishes.
+ * Opened again before the exit ends (`openModal` / `openPopover` remove the attribute), it is
+ * not hidden. With reduced motion the durations are 0: nothing to wait for, it hides at once.
+ * Resolves with whether it hid the element. Material-web's dialog does the same with WAAPI
+ * (`dialog/internal/dialog.ts` `close()`: animate, then `dialog.close()`).
+ */
+export async function closeAnimated(
+  el: ClosingTarget,
+  hide: () => void,
+  timeoutMs = 600,
+): Promise<boolean> {
+  if (!el.isConnected) {
+    hide();
+    return true;
+  }
+  if (el.hasAttribute(CLOSING_ATTR)) return false;
+  el.setAttribute(CLOSING_ATTR, "");
+  const running = (el.getAnimations?.({ subtree: true }) ?? []).filter(
+    (animation) => {
+      const effect = animation.effect as KeyframeEffect | null;
+      const timing = effect?.getComputedTiming();
+      return (
+        effect?.target === el &&
+        timing?.endTime !== Infinity &&
+        animation.playState === "running"
+      );
+    },
+  );
+  if (running.length > 0) {
+    await Promise.race([
+      Promise.all(running.map((animation) => animation.finished.catch(() => {}))),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  }
+  // Re-opened while the exit played: leave it open.
+  if (!el.hasAttribute(CLOSING_ATTR)) return false;
+  hide();
+  el.removeAttribute(CLOSING_ATTR);
+  return true;
 }
 
 /**

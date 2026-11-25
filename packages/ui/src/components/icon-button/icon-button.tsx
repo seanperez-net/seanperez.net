@@ -1,5 +1,5 @@
 import { $, component$, sync$, useComputed$ } from "@qwik.dev/core";
-import type { QRL, Signal } from "@qwik.dev/core";
+import type { JSXOutput, QRL, Signal } from "@qwik.dev/core";
 import { tv } from "tailwind-variants/lite";
 import { Icon } from "../icon";
 import type { IconName, IconSize } from "../icon";
@@ -256,13 +256,28 @@ const iconSizeFor: Record<IconButtonSize, IconSize> = {
   xl: "lg",
 };
 
+/** The box an icon of your own (`icon` as JSX) is drawn in: the same size as the `Icon` it replaces. */
+const ownIconBoxFor: Record<IconButtonSize, string> = {
+  xs: "size-5",
+  sm: "size-6",
+  md: "size-6",
+  lg: "size-8",
+  xl: "size-10",
+};
+
 type IconButtonOwnProps = {
   /** Named, and passed on by name: a handler is never left to the `...rest` spread. */
   onClick$?: QRL<(event: PointerEvent, element: HTMLElement) => void>;
-  icon: IconName;
+  /**
+   * The icon: an `IconName`, or (e-store's type, `JSXOutput`) an icon of your own such as a brand
+   * mark (`<GithubIcon aria-hidden="true" />`), drawn in the same box and in the button's color.
+   * Mark your own icon decorative: `label` names the button. NEW here 2026-11-24 (social icon row);
+   * e-store's `icon` is `JSXOutput` only.
+   */
+  icon: IconName | JSXOutput;
   /** What the button does: its name for screen readers and its plain tooltip. */
   label: string;
-  /** M3 colour style. Defaults to "standard". */
+  /** M3 color style. Defaults to "standard". */
   look?: IconButtonLook;
   /** M3 Expressive size. Defaults to "sm" (40dp). */
   size?: IconButtonSize;
@@ -270,7 +285,7 @@ type IconButtonOwnProps = {
   width?: IconButtonWidth;
   /** M3 Expressive shape. Defaults to "rounded". */
   shape?: IconButtonShape;
-  /** A toggle: a click flips `selected`, shown by `aria-pressed`, colour and shape. */
+  /** A toggle: a click flips `selected`, shown by `aria-pressed`, color and shape. */
   toggle?: boolean;
   /** The toggle's state. Follows the prop when it changes. */
   selected?: boolean;
@@ -286,6 +301,14 @@ type IconButtonOwnProps = {
   flipIconInRtl?: boolean;
   /** Disabled but still focusable: `aria-disabled`, drawn as disabled, clicks do nothing. */
   softDisabled?: boolean;
+  /**
+   * Show `label` under the button (label-small), as the quick actions on a Google Contacts person
+   * page (Email, Chat, Video: 40dp tonal buttons, 11px / 500 caption, 62px cells, measured in
+   * Chrome 2026-11-24). NEW here (not M3, not e-store; owner asked for Google's page). The caption
+   * is hidden from screen readers (the button already carries `label`) and the tooltip is dropped
+   * (it would repeat the visible caption).
+   */
+  showLabel?: boolean;
 };
 
 /**
@@ -318,6 +341,7 @@ export const IconButton = component$<IconButtonProps>((props) => {
     labelSelected,
     flipIconInRtl,
     softDisabled,
+    showLabel,
     class: className,
     onClick$,
     ...rest
@@ -341,7 +365,7 @@ export const IconButton = component$<IconButtonProps>((props) => {
     : isToggle
       ? [flip$, onClick$]
       : onClick$;
-  return (
+  const button = (
     <UnstyledButton
       {...(rest as UnstyledButtonProps)}
       aria-label={
@@ -350,18 +374,52 @@ export const IconButton = component$<IconButtonProps>((props) => {
       // Its plain tooltip: `TooltipProvider` (in `Layout.Root`) shows the `aria-label` on hover
       // and keyboard focus. Replaces the native `title`, which cannot be styled and shows on
       // neither keyboard focus nor touch (MDN, `title` accessibility concerns).
-      data-tooltip=""
+      data-tooltip={showLabel ? undefined : ""}
       // A host's own `aria-pressed` (in `rest`) is kept when this is not a toggle (e-store's).
       aria-pressed={isToggle ? selected.value : rest["aria-pressed"]}
       aria-disabled={softDisabled || undefined}
       class={[iconButtonVariants({ look, size, width, shape }), className]}
       onClick$={click as typeof onClick$}
     >
-      <Icon
-        name={isToggle && iconSelected && selected.value ? iconSelected : icon}
-        size={iconSizeFor[size]}
-        class={flipIconInRtl ? "rtl:-scale-x-100" : undefined}
-      />
+      {isToggle && iconSelected && selected.value ? (
+        <Icon
+          name={iconSelected}
+          size={iconSizeFor[size]}
+          class={flipIconInRtl ? "rtl:-scale-x-100" : undefined}
+        />
+      ) : typeof icon === "string" ? (
+        <Icon
+          name={icon as IconName}
+          size={iconSizeFor[size]}
+          class={flipIconInRtl ? "rtl:-scale-x-100" : undefined}
+        />
+      ) : (
+        // Your own icon (as Button's `leadingIcon`): the Icon's box and color.
+        <span
+          class={[
+            ownIconBoxFor[size],
+            "inline-flex shrink-0 *:size-full *:fill-current",
+            flipIconInRtl && "rtl:-scale-x-100",
+          ]}
+        >
+          {icon}
+        </span>
+      )}
     </UnstyledButton>
   );
+  return showLabel ? (
+    <span class={captionVariants()}>
+      {button}
+      <span aria-hidden="true" class="text-label-small text-on-surface">
+        {isToggle && labelSelected && selected.value ? labelSelected : label}
+      </span>
+    </span>
+  ) : (
+    button
+  );
+});
+
+/** `showLabel`'s cell: the button over its caption, 62px wide (Google's quick actions). */
+const captionVariants = tv({
+  base: ["inline-flex", "min-w-[62px]", "flex-col", "items-center", "text-center"],
 });

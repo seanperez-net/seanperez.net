@@ -1,8 +1,8 @@
 /*
- * Status colours that are NOT Material 3 roles (M3 defines only `error`). From e-store's
+ * Status colors that are NOT Material 3 roles (M3 defines only `error`). From e-store's
  * `tokens/color/colors.css` (2026-11-23), which took the values from the Google Store's
  * `--bd-sys-color-positive` / `--bd-sys-color-warning`. Used by the avatar's presence ring and
- * glyph (online = positive, away = warning). Fixed values: they do not follow the source colour.
+ * glyph (online = positive, away = warning). Fixed values: they do not follow the source color.
  * NOT PROOFED against an M3 source (there is none); contrast against our surfaces checked only
  * by eye in Chrome.
  */

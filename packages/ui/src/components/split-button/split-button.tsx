@@ -22,7 +22,7 @@ import type { MenuContentProps } from "../menu";
  * except the icon offsets, which only the M3 specs page prints ("Menu icon offset when
  * unselected"), and the focused inner corner, which the page names ("The inner corners change
  * shape for hovered, focused, and pressed states") and the tokens do not.
- * Colours and type are the common buttons' (M3: "Split buttons use the same colors and state
+ * Colors and type are the common buttons' (M3: "Split buttons use the same colors and state
  * layers as buttons"), as in `button.tsx`.
  *
  * Per size, height / leading button sides / trailing button width (sides + icon) / inner corner
@@ -234,7 +234,7 @@ const splitButtonContextId = createContextId<{
 /* ------------------------------------------------------------------ */
 
 export type SplitButtonRootProps = PropsOf<"div"> & {
-  /** Button colour style. Default `filled`. */
+  /** Button color style. Default `filled`. */
   look?: SplitButtonLook;
   /** M3 size. Default `sm` (40dp). */
   size?: SplitButtonSize;

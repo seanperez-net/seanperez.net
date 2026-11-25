@@ -1,12 +1,14 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, List, Sheet, knob, useKnobs } from "../../index";
+import { Layout, List, Sheet } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
     show: knob.boolean(false, "show the standard sheet"),
     rows: knob.number(12, { min: 1, max: 40 }),
     label: knob.text("Places"),
+    handleLabel: knob.text("Resize sheet"),
   });
   const detent = useSignal("peek");
 
@@ -27,7 +29,11 @@ export default component$(() => {
         </div>
       </Knobs>
       {knobs.values.show && (
-        <Sheet label={knobs.values.label} bind:detent={detent}>
+        <Sheet
+          label={knobs.values.label}
+          handleLabel={knobs.values.handleLabel}
+          bind:detent={detent}
+        >
           <h2 q:slot="header" class="px-4 pb-2 text-title-medium">
             {knobs.values.label}
           </h2>

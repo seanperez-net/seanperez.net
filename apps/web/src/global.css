@@ -4,3 +4,5 @@
    source for Tailwind to scan for the classes its components use. */
 @import "@seanperez/ui/global";
 @source "../../../packages/ui/src";
+/* The chat package (`@seanperez/chat`, the Messages app): its classes too. */
+@source "../../../packages/chat/src";

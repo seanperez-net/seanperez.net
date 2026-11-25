@@ -21,8 +21,6 @@ import { rovingKeys } from "../../utils/roving-focus";
  * Specs: https://m3.material.io/components/radio-button/specs
  * Pattern: https://www.w3.org/WAI/ARIA/apg/patterns/radio/
  *
- * Also `Radio.Swatch` (e-store's colour / finish picker circle; not an M3 part, NOT PROOFED).
- *
  * Changed from e-store (see radio.md "Where it differs"):
  * - `{...rest}` first, the item's own handlers after it, consumer handlers composed by name
  *   (e-store spread `rest` last, so a consumer `onClick$` replaced the selection handler).
@@ -73,7 +71,7 @@ export const radioVariants = tv({
       "touch-target",
       // Disabled: on-surface at 38% (M3), no state layer.
       "group-aria-disabled/radio:border-on-surface/38 group-aria-disabled/radio:before:hidden",
-      // A disabled item that is chosen, or hovered, stays on-surface 38% (M3 disabled icon colour).
+      // A disabled item that is chosen, or hovered, stays on-surface 38% (M3 disabled icon color).
       "group-aria-disabled/radio:data-checked:border-on-surface/38",
       "group-aria-disabled/radio:group-hover/radio:border-on-surface/38",
       "group-aria-disabled/radio:group-hover/radio:data-checked:border-on-surface/38",
@@ -416,88 +414,4 @@ const Description = component$<RadioDescriptionProps>(
   },
 );
 
-/* ------------------------------------------------------------------ */
-/*  Radio.Swatch                                                      */
-/* ------------------------------------------------------------------ */
-
-/** SVG radii per size (e-store's): the colour disc and the selection ring around it. */
-const SWATCH_DIMS = {
-  sm: { viewBox: 24, fill: 8.5, ring: 11 },
-  md: { viewBox: 32, fill: 11.5, ring: 15 },
-  lg: { viewBox: 40, fill: 14.5, ring: 19 },
-} as const;
-
-export const radioSwatchVariants = tv({
-  base: "inline-flex shrink-0 items-center justify-center",
-  variants: {
-    size: {
-      sm: "size-6",
-      md: "size-8",
-      lg: "size-10",
-    },
-  },
-  defaultVariants: { size: "md" },
-});
-
-export type RadioSwatchSize = keyof typeof SWATCH_DIMS;
-
-export interface RadioSwatchProps extends Omit<PropsOf<"span">, "color"> {
-  /** The swatch's colour: any CSS colour. */
-  color: string;
-  /** sm 24px, md 32px (default), lg 40px. */
-  size?: RadioSwatchSize;
-}
-
-/**
- * A colour disc in place of the radio's dot, for a colour or finish picker (e-store's). Inside a
- * `Radio.Item` a 2px `on-surface` ring shows the choice; it also renders alone (a filter's colour
- * dot), so the item context is optional. Decorative: name the item with `Radio.Label` or
- * `aria-label` ("Midnight blue"), as the colour alone says nothing to a screen reader.
- * NOT PROOFED against M3 (M3 has no swatch); the ring is on `on-surface` at 3:1 or more against
- * `surface` in both themes (WCAG 1.4.11).
- */
-const Swatch = component$<RadioSwatchProps>(
-  ({ color, size = "md", class: className, ...rest }) => {
-    const item = useContext(radioItemContextId, null);
-    const dims = SWATCH_DIMS[size];
-    const centre = dims.viewBox / 2;
-    return (
-      <span
-        {...rest}
-        aria-hidden="true"
-        data-qds-radio-swatch=""
-        data-checked={item?.checked.value || undefined}
-        class={[radioSwatchVariants({ size }), className]}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${dims.viewBox} ${dims.viewBox}`}
-          class="size-full"
-        >
-          <g transform={`translate(${centre} ${centre})`}>
-            <circle fill={color} r={dims.fill} />
-            {/* A faint edge, so a white or very light colour still reads as a disc. */}
-            <circle
-              fill="none"
-              stroke="currentColor"
-              stroke-width="0.5"
-              r={dims.fill}
-              class="text-outline-variant"
-            />
-            {item?.checked.value && (
-              <circle
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                r={dims.ring}
-                class="text-on-surface"
-              />
-            )}
-          </g>
-        </svg>
-      </span>
-    );
-  },
-);
-
-export const Radio = { Group, Item, Indicator, Swatch, Label, Description };
+export const Radio = { Group, Item, Indicator, Label, Description };

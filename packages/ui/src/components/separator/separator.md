@@ -9,11 +9,11 @@ From e-store's `Separator` (`components/separator/separator.tsx`: a `<div>` with
 
 ## API
 
-| Prop | Type | Default | |
-|---|---|---|---|
-| `orientation` | `"horizontal" \| "vertical"` | `"horizontal"` | `aria-orientation` is set only when vertical (horizontal is the role's default) |
-| `variant` | `"fullWidth" \| "inset" \| "middleInset"` | `"fullWidth"` | logical margins (`ms-4`, `mx-4`; vertical: `mt-4`, `my-4`) |
-| `decorative` | `boolean` | `false` | `role="none"`: purely visual, hidden from assistive tech (e-store's default kept) |
+| Prop          | Type                                      | Default        |                                                                                   |
+| ------------- | ----------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `orientation` | `"horizontal" \| "vertical"`              | `"horizontal"` | `aria-orientation` is set only when vertical (horizontal is the role's default)   |
+| `variant`     | `"fullWidth" \| "inset" \| "middleInset"` | `"fullWidth"`  | logical margins (`ms-4`, `mx-4`; vertical: `mt-4`, `my-4`)                        |
+| `decorative`  | `boolean`                                 | `false`        | `role="none"`: purely visual, hidden from assistive tech (e-store's default kept) |
 
 Vertical dividers stretch to their flex row (`self-stretch`).
 

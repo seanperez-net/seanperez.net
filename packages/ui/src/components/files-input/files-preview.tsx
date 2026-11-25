@@ -1,10 +1,23 @@
-import { component$, useContext } from "@qwik.dev/core";
+import { component$, sync$, useContext } from "@qwik.dev/core";
 import { Icon } from "../icon";
 import type { IconName } from "../icon";
 import { IconButton } from "../icon-button";
 import { filesContextId, filesPromptId } from "./files-context";
 
 /** The default strings of `Files.Preview` (CMS rule: every string is a prop with a default). */
+
+/**
+ * Cancels `dragover` and `drop` on the file row, which sits above the input: a file dropped there
+ * must not open in the tab. A `sync$` handler, not bare `preventdefault:dragover` /
+ * `preventdefault:drop` attributes: qwikloader (installed `@qwik.dev/core` 2.0.0-rc.5,
+ * `qwikloader.debug.js` `dispatch` / `addEventOrRoot`) only reads those attributes while handling
+ * an event type some element has a handler for. `drop` was registered (the input's `onDrop$`),
+ * `dragover` never was, so the row was not a drop target and a drop on it opened the file.
+ */
+const refuseDrop = sync$((event: DragEvent) => {
+  event.preventDefault();
+});
+
 export const DEFAULT_FILES_PREVIEW_LABELS = {
   prompt: "Click or drag and drop file",
   promptMultiple: "Click or drag and drop files",
@@ -105,8 +118,8 @@ export const FilesPreview = component$<FilesPreviewProps>(
                     class="flex w-full min-w-0 items-center justify-center"
                     // The remove button sits above the input: a file dropped on it must not
                     // make the browser open the file (it is not a drop target).
-                    preventdefault:dragover
-                    preventdefault:drop
+                    onDragOver$={refuseDrop}
+                    onDrop$={refuseDrop}
                   >
                     <span class="truncate text-body-small text-on-surface group-has-disabled/files:text-on-surface/38">
                       {name}

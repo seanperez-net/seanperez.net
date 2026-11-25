@@ -1,23 +1,22 @@
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  Button,
-  IconButton,
-  Knobs,
-  Layout,
-  Tooltip,
-  knob,
-  useKnobs,
-} from "../../index";
+import { Button, IconButton, Layout, Tooltip } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
     variant: knob.select(["plain", "rich"] as const, "plain"),
-    side: knob.select(["top", "bottom", "left", "right"] as const, "top"),
+    // `default`: no `side` prop (M3: plain above, rich below).
+    side: knob.select(
+      ["default", "top", "bottom", "left", "right"] as const,
+      "default",
+    ),
     text: knob.text("Grants access to the shared folder"),
     subhead: knob.text("Rich tooltip"),
     actions: knob.select(["none", "one", "two"] as const, "one"),
     persistent: knob.boolean(false, "persistent (rich, opens on click)"),
+    type: knob.select(["description", "label"] as const, "description"),
+    delay: knob.number(700, { min: 0, max: 2000, step: 100 }, "delay (ms)"),
   });
 
   return (
@@ -37,24 +36,33 @@ export default component$(() => {
           </div>
         </section>
         <Knobs knobs={knobs}>
-          {/* Remounted per variant, so `persistent` (read once by the Root) applies. */}
+          {/* Every option applies live: no remount key. */}
           <Tooltip.Root
-            key={`${knobs.values.variant}-${knobs.values.persistent}`}
             id="tooltip-demo"
+            type={knobs.values.type}
+            delay={knobs.values.delay}
             persistent={
               knobs.values.variant === "rich" && knobs.values.persistent
             }
           >
             <Tooltip.Trigger>
+              {/* `label`: the tip repeats the control's name, so the control is not
+                  described by it. */}
               <Button
                 look="outlined"
                 label="Share"
-                aria-describedby="tooltip-demo"
+                aria-describedby={
+                  knobs.values.type === "description"
+                    ? "tooltip-demo"
+                    : undefined
+                }
               />
             </Tooltip.Trigger>
             <Tooltip.Content
               variant={knobs.values.variant}
-              side={knobs.values.side}
+              side={
+                knobs.values.side === "default" ? undefined : knobs.values.side
+              }
               subhead={knobs.values.subhead || undefined}
             >
               {knobs.values.text}

@@ -26,9 +26,9 @@ import type {
  *   large 96 / 28 / 36 / 28-28 / 16 / headline-small
  *   default: M3's BASELINE extended FAB (56 / 16 / 24 / 16-20 / 12 / label-large, min width 80),
  *   "no longer recommended" (use small); e-store's extended FAB is this one.
- * Colours: the six M3 Expressive styles, and the baseline `surface` (no longer recommended).
+ * Colors: the six M3 Expressive styles, and the baseline `surface` (no longer recommended).
  * Elevation: level 3, level 4 on hover. State layer 8% hover, 10% focus, 10% pressed, in the
- * icon colour. M3 lists no disabled state for FABs, so none is drawn and `disabled` is not a prop.
+ * icon color. M3 lists no disabled state for FABs, so none is drawn and `disabled` is not a prop.
  */
 export const fabVariants = tv({
   slots: {
@@ -53,7 +53,7 @@ export const fabVariants = tv({
       "duration-medium-2",
       "ease-emphasized",
       "motion-reduce:transition-none",
-      // State layer: 8% hover, 10% focus, 10% pressed, in the icon colour (M3).
+      // State layer: 8% hover, 10% focus, 10% pressed, in the icon color (M3).
       "before:absolute",
       "before:inset-0",
       "before:rounded-[inherit]",
@@ -245,7 +245,7 @@ type FABOwnProps = {
    * staying as the accessible name (M3: an extended FAB may collapse on scroll). Default `true`.
    */
   extended?: boolean;
-  /** M3 colour style. Default `primary` (M3 "primary container"). */
+  /** M3 color style. Default `primary` (M3 "primary container"). */
   color?: FABColor;
   /**
    * `small` (40, not recommended) / `default` (56) / `medium` (80) / `large` (96). Extended:

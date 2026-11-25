@@ -55,7 +55,7 @@ Ported 2026-11-23 from e-store's `components/tabs/` (Root / List / Trigger / Con
 | ------- | -------- | ------------------------- |
 | `value` | `string` | The trigger it belongs to |
 
-## Measurements and colours (PROOFED 2026-11-23, M3 token tables in Chrome; measured in Chrome)
+## Measurements and colors (PROOFED 2026-11-23, M3 token tables in Chrome; measured in Chrome)
 
 | Item                             | M3                                                                      | Ours                                                                                     |
 | -------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |

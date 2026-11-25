@@ -1,6 +1,7 @@
 import { Slot, component$ } from "@qwik.dev/core";
 import type { PropsOf } from "@qwik.dev/core";
 import { Link } from "@qwik.dev/router";
+import type { PrefetchStrategy } from "@qwik.dev/router";
 import { tv } from "tailwind-variants/lite";
 import { Badge, badgeSpokenText } from "../badge";
 import { Icon } from "../icon";
@@ -130,6 +131,13 @@ export type NavigationRailItemProps = Omit<PropsOf<"a">, "children"> & {
   badge?: number | boolean;
   /** What a screen reader hears after the label (`Badge.Badge label`). */
   badgeLabel?: string;
+  /**
+   * When the router's `Link` fetches the destination's JavaScript: the router's default
+   * `"visible"` (as soon as the rail shows it), or `"intent"` (hover or focus), `"commit"`,
+   * `"off"`. `"intent"` for a heavy destination (a map) few visitors open. NEW 2026-11-24 (perf
+   * audit), not in e-store; the router's own prop name and type.
+   */
+  prefetchBundles?: PrefetchStrategy;
 };
 
 /** A destination: an icon in a pill, its label under it. */
@@ -140,6 +148,7 @@ const NavigationRailItem = component$<NavigationRailItemProps>(
     current = false,
     badge,
     badgeLabel,
+    prefetchBundles,
     class: className,
     ...rest
   }) => {
@@ -149,6 +158,7 @@ const NavigationRailItem = component$<NavigationRailItemProps>(
     return (
       <Link
         {...rest}
+        prefetchBundles={prefetchBundles}
         // ONE `aria-current="page"` per page: a destination that holds the page in its
         // sub-navigation is `"section"`, announced as `aria-current="true"` (WAI-ARIA: the current
         // item of a set), and drawn as current.

@@ -58,25 +58,25 @@ PROOFED 2026-11-23 against the token file, ARIA in HTML and Chrome.
 
 - No `aria-checked` on the input (e-store sets it).
 - The 40dp state layer and 48dp target are there with a label too, and the state layer is painted
-  on the circle with the token colours (e-store: only without a label, always `on-surface`).
-- Hover / focus / pressed outline `on-surface`; disabled colours per the tokens (e-store faded the
+  on the circle with the token colors (e-store: only without a label, always `on-surface`).
+- Hover / focus / pressed outline `on-surface`; disabled colors per the tokens (e-store faded the
   whole box, so a disabled checked box stayed `primary`).
 - Label gap 8dp (the ring reaches 5dp past the circle).
 
 Added 2026-11-23:
 
-| Prop                | Type                 | Default | What                                                                                                                                          |
-| ------------------- | -------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `accentColor`       | CSS colour           |         | The checked fill. From e-store                                                                                                                |
-| `checkmarkColor`    | `auto` or CSS colour | `auto`  | `auto`: black or white by WCAG luminance of `accentColor` (`contrastingCheckmark`, exported). From e-store                                    |
-| `uncheckedColor`    | CSS colour           |         | The unchecked outline. From e-store                                                                                                           |
-| `uncheckedBgColor`  | CSS colour           |         | The unchecked fill. From e-store                                                                                                              |
-| `touch-state-layer` | `boolean`            | `true`  | The 40dp state layer; off where a row paints one. From e-store                                                                                |
-| `error`             | `boolean`            |         | M3 error: `error` outline / fill, `on-error` mark, `error` state layer, `aria-invalid` on the input (not while disabled). NEW, not in e-store |
+| Prop                | Type                | Default | What                                                                                                                                          |
+| ------------------- | ------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accentColor`       | CSS color           |         | The checked fill. From e-store                                                                                                                |
+| `checkmarkColor`    | `auto` or CSS color | `auto`  | `auto`: black or white by WCAG luminance of `accentColor` (`contrastingCheckmark`, exported). From e-store                                    |
+| `uncheckedColor`    | CSS color           |         | The unchecked outline. From e-store                                                                                                           |
+| `uncheckedBgColor`  | CSS color           |         | The unchecked fill. From e-store                                                                                                              |
+| `touch-state-layer` | `boolean`           | `true`  | The 40dp state layer; off where a row paints one. From e-store                                                                                |
+| `error`             | `boolean`           |         | M3 error: `error` outline / fill, `on-error` mark, `error` state layer, `aria-invalid` on the input (not while disabled). NEW, not in e-store |
 
-The colours reach the box as CSS variables (`--checkbox-accent`, ...) over the M3 roles, as
+The colors reach the box as CSS variables (`--checkbox-accent`, ...) over the M3 roles, as
 e-store's. `error` PROOFED 2026-11-23 against material-web `_md-comp-checkbox.scss` `*-error-*`
-tokens; the colour props have no M3 source (NOT PROOFED). Checked in Chrome: error both states,
-custom colours checked and unchecked, `bind:checked` still flips.
-Left out: Layout-driven density (our Layout has no compact mode), `touch-wrapper` (the 48dp
+tokens; the color props have no M3 source (NOT PROOFED). Checked in Chrome: error both states,
+custom colors checked and unchecked, `bind:checked` still flips.
+Left out: Layout-driven density (our `Layout.Root layoutMode="compact"` changes margins and corners only, not control density), `touch-wrapper` (the 48dp
 target is always there), `CheckboxUnstyled` (a headless copy, not a variant).

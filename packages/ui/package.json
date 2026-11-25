@@ -12,7 +12,8 @@
       "require": "./lib/index.qwik.cjs"
     },
     "./tokens": "./src/tokens/tokens.css",
-    "./global": "./src/global.css"
+    "./global": "./src/global.css",
+    "./fonts/*": "./src/tokens/typeface/fonts/*"
   },
   "files": [
     "lib",
@@ -47,7 +48,7 @@
     "@eslint/js": "latest",
     "@fontsource/roboto": "^5.3.0",
     "@qwik.dev/core": "2.0.0-rc.5",
-    "@qwik.dev/router": "latest",
+    "@qwik.dev/router": "2.0.0-rc.5",
     "@tailwindcss/vite": "^4.1.4",
     "@types/node": "25.6.0",
     "eslint": "10.0.3",

@@ -2,6 +2,7 @@ export {
   Search,
   searchBarVariants,
   searchContextId,
+  searchGroupVariants,
   searchItemVariants,
   searchRootVariants,
   searchTriggerVariants,
@@ -9,6 +10,7 @@ export {
 } from "./search";
 export type {
   SearchBarProps,
+  SearchGroupProps,
   SearchItemProps,
   SearchLayout,
   SearchRootProps,

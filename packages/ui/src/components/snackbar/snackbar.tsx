@@ -30,7 +30,7 @@ import type { IconName } from "../icon";
  *
  * e-store's `Snackbar` (a `Snackbar.Root` provider with a one-at-a-time queue, `useSnackbar()`
  * with `showSnackbar$` / `closeSnackbar$`, a `popover="manual"` container kept above later
- * overlays by `stayOnTop`, `role="status"`, Escape, the inverse colours) made smaller: one live
+ * overlays by `stayOnTop`, `role="status"`, Escape, the inverse colors) made smaller: one live
  * region that is always in the page, no `top` / `end` positions and no class overrides. See
  * `snackbar.md`.
  *

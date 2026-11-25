@@ -8,13 +8,13 @@ button.
 
 ## Sizes
 
-| What                 | Value                                                                    |
-| -------------------- | ------------------------------------------------------------------------ |
-| Height               | 64px (`--layout-app-bar-height`)                                         |
-| Side insets          | `--layout-margin`: 16px, 24px from 600px. 0 at the start beside a rail   |
-| Columns              | leading (auto), title (auto, at most 256px), pane (1fr), trailing (auto) |
-| Title                | `text-title-large`, 12px padding either side, one line                   |
-| Leading and trailing | 40px buttons hung 8px into the inset, so a 24px icon is on the margin    |
+| What                 | Value                                                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Height               | 64px (`--layout-app-bar-height`)                                                                                                                            |
+| Side insets          | `--layout-margin`: 16px, 24px from 600px. 0 at the start beside a rail, 16px at the end beside a companion rail                                             |
+| Columns              | leading (auto), title (auto, at most 256px), pane (1fr), trailing (auto)                                                                                    |
+| Title                | `text-title-large`, one line; the gaps around it are grid tracks (`--layout-app-bar-title-inset` before, title inset + `--layout-app-bar-pane-inset` after) |
+| Leading and trailing | 40px buttons hung 8px into the inset, so a 24px icon is on the margin                                                                                       |
 
 The bar has no padding of its own: the insets are grid tracks (`layout-appbar-rulers`).
 
@@ -37,8 +37,7 @@ themselves.
 
 ## Styles
 
-`topAppBarVariants` (tv) slots: `root`, `row`, `leading`, `title`, `titleLink`, `pane`,
-`trailing`.
+`topAppBarVariants` (tv) slots: `root`, `leading`, `title`, `titleLink`, `pane`, `trailing`.
 
 ## Usage
 

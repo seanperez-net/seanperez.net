@@ -1,14 +1,7 @@
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  FAB,
-  Knobs,
-  Layout,
-  fabColors,
-  fabSizes,
-  knob,
-  useKnobs,
-} from "../../index";
+import { FAB, Layout, fabColors, fabSizes } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({

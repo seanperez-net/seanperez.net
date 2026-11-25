@@ -6,7 +6,7 @@ files (thumbnails for images), a remove button per file, supporting text and an 
 
 - M3: there is NO file-input component in Material 3 (m3.material.io components list, read
   2026-11-23). The field follows the M3 TEXT FIELD
-  (https://m3.material.io/components/text-fields/specs) through our `TextField`, whose colours were
+  (https://m3.material.io/components/text-fields/specs) through our `TextField`, whose colors were
   checked against material-web `tokens/versions/v0_192/_md-comp-{outlined,filled}-text-field.scss`.
 - MDN: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file
 
@@ -77,8 +77,11 @@ Every string and icon is a prop with a default (CMS rule); the strings are expor
   Chrome: both fire the input's activation `click`).
 - Drop: native. The transparent input covers the zone, and a file input takes dropped files
   itself (fills `files`, fires `input` and `change`); no `dragover` / `drop` handlers, nothing to
-  `preventDefault`. The remove buttons sit ABOVE the input, so their wrapper has
-  `preventdefault:dragover` / `preventdefault:drop` (else a file dropped on one opens in the tab).
+  `preventDefault`. The remove buttons sit ABOVE the input, so their wrapper cancels `dragover`
+  and `drop` with a `sync$` `onDragOver$` / `onDrop$` (else a file dropped on one opens in the
+  tab). FIXED 2026-11-24: these were bare `preventdefault:` attributes, which qwikloader (rc.5)
+  reads only for event types some element has a handler for; `dragover` had none, so the row was
+  not a drop target (found by reading `qwikloader.debug.js`, not by a drop in Chrome).
 - `accept` is a hint to the picker; a DROPPED file is not filtered by it (MDN, "accept"). Check
   type and size in `onChange$` and on the server.
 - Remove: the input's `files` rebuilt from a `DataTransfer` without that file (MDN: the only way
@@ -138,7 +141,7 @@ Changed (PROOFED 2026-11-23 against the sources named; reviewed by a second agen
   nothing); `fileIcon` for non-images; Blob thumbnails too.
 - New: remove buttons (`removable`, `removeIcon`, `removeLabel`), `promptIcon`, drag state
   (`data-dragging`), form reset, `aria-label` on Root.
-- Colours from the text-field tokens (as `TextField`): outlined 1dp (e-store 2dp `::before`
+- Colors from the text-field tokens (as `TextField`): outlined 1dp (e-store 2dp `::before`
   border), disabled outline 12% (e-store 38%), filled line `on-surface-variant` and hover layer.
   The dash itself is HOUSE (marks a drop target; no M3 token).
 - No `aria-disabled` on Root's `<div>` (ARIA in HTML); a disabled field is not marked invalid.

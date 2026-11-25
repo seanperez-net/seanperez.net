@@ -6,7 +6,7 @@ A main action and a menu of related ones, side by side. M3 Expressive. From e-st
 
 - M3: https://m3.material.io/components/split-button/specs (read in Chrome 2026-11-23)
 - Tokens: material-web `_md-comp-split-button-{xsmall,small,medium,large,xlarge}.scss` (v34.0.21);
-  colours, type and icons are the common buttons' (`button.tsx`), as M3 says
+  colors, type and icons are the common buttons' (`button.tsx`), as M3 says
 - APG: https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/
 
 ## API
@@ -34,7 +34,7 @@ props. M3: label + icon, label, or icon only (then give it `aria-label`).
 | xl   | 136    | 64 / 64       | 136 (50)              | 12 / 20                               | -6          |
 
 2dp between the halves; outer corners full. Open: the trigger's inner corners go full, its icon
-centres and turns over; its colour does not change (M3). Label type, icon size and gap as the
+centres and turns over; its color does not change (M3). Label type, icon size and gap as the
 common button of the same size. Outline 1 / 1 / 1 / 2 / 3dp. 48dp targets.
 
 ## ARIA and keys
@@ -61,7 +61,7 @@ ring, raised over the other.
 
 ## Proof
 
-- Sizes, paddings, widths, corners at rest and open, icon sizes, colours, disabled, outline:
+- Sizes, paddings, widths, corners at rest and open, icon sizes, colors, disabled, outline:
   PROOFED 2026-11-23 against M3 specs and material-web tokens. The icon offsets and the FOCUSED
   inner corner are in the M3 specs page only ("Menu icon offset when unselected"; "The inner
   corners change shape for hovered, focused, and pressed states"), not in the tokens: PROOFED

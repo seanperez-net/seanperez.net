@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, Select, knob, useKnobs } from "../../index";
+import { Button, Layout, Select } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type { SelectOption } from "../../index";
 
 const fruits: SelectOption[] = [
@@ -111,13 +112,12 @@ export default component$(() => {
           <p class="text-body-medium text-on-surface-variant">
             bind:value is "{fruit.value}"
           </p>
-          <button
-            type="button"
-            class="justify-self-start text-body-medium text-primary underline"
+          <Button
+            look="text"
+            label="Set the value to mango from outside"
+            class="justify-self-start"
             onClick$={() => (fruit.value = "mango")}
-          >
-            Set the value to mango from outside
-          </button>
+          />
         </div>
       </Knobs>
     </>

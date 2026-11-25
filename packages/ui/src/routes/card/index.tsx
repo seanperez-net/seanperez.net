@@ -4,13 +4,11 @@ import {
   Button,
   Card,
   IconButton,
-  Knobs,
   Layout,
   TextField,
   cardVariantNames,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 /** A plain picture for the demo (no image files in the playground). */
 const picture = (hue: number) =>
@@ -28,6 +26,13 @@ export default component$(() => {
       ["container", "link card", "button card"] as const,
       "container",
     ),
+    rounded: knob.select(["md", "pane"] as const, "md"),
+    // Header / Content / Footer `variant` (M3 adaptive design: start or centre aligned).
+    align: knob.select(
+      ["start", "centered"] as const,
+      "start",
+      "align (parts)",
+    ),
     media: knob.boolean(true),
     disabled: knob.boolean(false),
     dragged: knob.boolean(false),
@@ -43,23 +48,34 @@ export default component$(() => {
           {knobs.values.kind === "container" && (
             <Card.Root
               variant={knobs.values.variant}
+              rounded={knobs.values.rounded}
               disabled={knobs.values.disabled}
               dragged={knobs.values.dragged}
             >
               {knobs.values.media && (
                 <Card.Media src={picture(200)} width={320} height={180} />
               )}
-              <Card.Header>
+              <Card.Header
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <Card.Title>{knobs.values.headline}</Card.Title>
                 <Card.Description>{knobs.values.subhead}</Card.Description>
               </Card.Header>
-              <Card.Content>
+              <Card.Content
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <p class="text-on-surface-variant">
                   A short walk on the ice with a guide. Boots are provided.
                 </p>
                 <TextField label="Your name" disabled={knobs.values.disabled} />
               </Card.Content>
-              <Card.Footer>
+              <Card.Footer
+                variant={knobs.values.align === "centered" ? "centered" : "end"}
+              >
                 <IconButton
                   icon="star"
                   iconSelected="star_filled"
@@ -85,6 +101,7 @@ export default component$(() => {
               as="link"
               href="/card/"
               variant={knobs.values.variant}
+              rounded={knobs.values.rounded}
               disabled={knobs.values.disabled}
               dragged={knobs.values.dragged}
               aria-labelledby="card-demo-title"
@@ -92,13 +109,21 @@ export default component$(() => {
               {knobs.values.media && (
                 <Card.Media src={picture(30)} width={320} height={180} />
               )}
-              <Card.Header>
+              <Card.Header
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <Card.Title id="card-demo-title">
                   {knobs.values.headline}
                 </Card.Title>
                 <Card.Description>{knobs.values.subhead}</Card.Description>
               </Card.Header>
-              <Card.Content>
+              <Card.Content
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <p class="text-on-surface-variant">
                   The whole card is one link.
                 </p>
@@ -109,6 +134,7 @@ export default component$(() => {
             <Card.Root
               interactive
               variant={knobs.values.variant}
+              rounded={knobs.values.rounded}
               disabled={knobs.values.disabled}
               dragged={knobs.values.dragged}
             >
@@ -121,13 +147,21 @@ export default component$(() => {
               {knobs.values.media && (
                 <Card.Media src={picture(280)} width={320} height={180} />
               )}
-              <Card.Header>
+              <Card.Header
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <Card.Title id="card-demo-button-title">
                   {knobs.values.headline}
                 </Card.Title>
                 <Card.Description>{knobs.values.subhead}</Card.Description>
               </Card.Header>
-              <Card.Content>
+              <Card.Content
+                variant={
+                  knobs.values.align === "centered" ? "centered" : "default"
+                }
+              >
                 <p id="card-demo-button-text" class="text-on-surface-variant">
                   The whole card is one button: pressed {clicks.value} times.
                 </p>

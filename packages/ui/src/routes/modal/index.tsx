@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Button, Knobs, Layout, Modal, knob, useKnobs } from "../../index";
+import { Button, Layout, Modal } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
@@ -11,12 +12,18 @@ export default component$(() => {
     title: knob.text("Delete this page?"),
     paragraphs: knob.number(1, { min: 1, max: 30 }),
     closeOnOutsideClick: knob.boolean(true),
+    alert: knob.boolean(false, "alert (alertdialog)"),
     icon: knob.select(
       ["none", "info", "mail"] as const,
       "none",
       "icon (center)",
     ),
     dividers: knob.boolean(false),
+    padding: knob.select(
+      ["default", "none"] as const,
+      "default",
+      "padding (section)",
+    ),
     actionLabel: knob.text("Save", "actionLabel (bar)"),
     dragHandle: knob.boolean(true, "dragHandle (bottom)"),
   });
@@ -30,6 +37,7 @@ export default component$(() => {
           bind:open={open}
           position={knobs.values.position}
           closeOnOutsideClick={knobs.values.closeOnOutsideClick}
+          alert={knobs.values.alert}
         >
           <Modal.Trigger>Open</Modal.Trigger>
           <Modal.Content>
@@ -59,7 +67,10 @@ export default component$(() => {
                 onAction$={() => (open.value = false)}
               />
             )}
-            <Modal.Section dividers={knobs.values.dividers}>
+            <Modal.Section
+              dividers={knobs.values.dividers}
+              padding={knobs.values.padding}
+            >
               {Array.from({ length: knobs.values.paragraphs }, (_, index) => (
                 <p key={index} class="pb-4 text-body-medium">
                   Paragraph {index + 1}. With enough of these the section

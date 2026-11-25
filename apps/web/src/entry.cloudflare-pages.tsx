@@ -12,6 +12,7 @@ import {
   type PlatformCloudflarePages as PlatformCloudflareWorkers,
 } from "@qwik.dev/router/middleware/cloudflare-pages";
 import render from "./entry.ssr";
+import { handleNodesApi } from "./nodes/node-api.server";
 
 declare global {
   // `Env` is generated from wrangler.jsonc into worker-configuration.d.ts (`pnpm cf-typegen`).
@@ -22,6 +23,16 @@ declare global {
   };
 }
 
-const fetch = createQwikRouter({ render });
+const qwikRouter = createQwikRouter({ render });
+
+/**
+ * Departure (QWIK-DEFAULTS.md 2026-11-24, "live nodes"): `/api/nodes*` is answered here, before
+ * the Qwik router (WebSocket upgrades and device POSTs; `src/nodes/node-api.server.ts`).
+ */
+const fetch: typeof qwikRouter = async (request, env, ctx) =>
+  (await handleNodesApi(request, env as unknown as Env, ctx)) ??
+  qwikRouter(request, env, ctx);
 
 export { fetch };
+// The Durable Object class must be exported from the Worker's main module (`public/_worker.js`).
+export { NodeHub } from "./nodes/node-hub.server";

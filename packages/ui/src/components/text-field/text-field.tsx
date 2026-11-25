@@ -109,7 +109,7 @@ export const textFieldVariants = tv({
       ],
       /*
        * e-store's: an underline only. 1px, hover `on-surface`, focus 2px `primary`, error `error`,
-       * disabled 38%. Its colour at rest and its height follow `density` (compoundVariants).
+       * disabled 38%. Its color at rest and its height follow `density` (compoundVariants).
        */
       plain: [
         "before:pointer-events-none",
@@ -218,7 +218,7 @@ export const TextField = component$<TextFieldProps>(
     const fieldId = idProp ?? generatedId;
     const descriptionId = `${fieldId}-description`;
     const hasDescription = !!(error || supportingText);
-    // A disabled field is not validated: its error keeps the disabled colours (M3 disabled tokens
+    // A disabled field is not validated: its error keeps the disabled colors (M3 disabled tokens
     // win) and the input is not marked invalid.
     const invalid = !!error && !disabled;
     const compact = density === "compact";

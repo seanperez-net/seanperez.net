@@ -36,7 +36,7 @@ export const sliderVariants = tv({
       "[--slider-gap:6px]",
       "[--slider-inner:2px]",
       // Windows High Contrast repaints backgrounds as Canvas, which would hide every part; keep
-      // them and use system colours instead (per part below). NOT checked in forced colours.
+      // them and use system colors instead (per part below). NOT checked in forced colors.
       "forced-colors:[forced-color-adjust:none]",
     ],
     // The native thumb is 48px along the track (a finger-sized target: iOS Safari only drags a
@@ -253,7 +253,7 @@ export const sliderVariants = tv({
         iconMoved: ["[@container(inline-size<48px)]:flex"],
       },
     },
-    /** Which track segment: its colour and whether it clips its end stop. */
+    /** Which track segment: its color and whether it clips its end stop. */
     tone: {
       active: {
         segment: [
@@ -331,6 +331,11 @@ export type SliderProps = Omit<
   step?: number;
   /** Show a stop at every step (keep the steps few). */
   stops?: boolean;
+  /**
+   * The stop on the inactive track's end (M3 Expressive). `false` leaves it out, as
+   * material-web's `md-slider` (no stop) in the Material Web catalog's theme menu. Default true.
+   */
+  endStops?: boolean;
   /** Standard / centered: the value, two-way. */
   "bind:value"?: Signal<number>;
   /** Standard / centered: the value without a bound signal (default min, centered: the middle). */
@@ -429,6 +434,7 @@ export const Slider = component$<SliderProps>(
     max = 100,
     step = 1,
     stops = false,
+    endStops = true,
     "bind:value": givenValue,
     value: valueProp,
     "bind:start": givenStart,
@@ -729,17 +735,21 @@ export const Slider = component$<SliderProps>(
 
           {segments.value.before && (
             <span class={styles.value.inactive} style={segments.value.before}>
-              <span
-                class={styles.value.endStop}
-                style={{ insetInlineStart: "4px" }}
-              />
+              {endStops && (
+                <span
+                  class={styles.value.endStop}
+                  style={{ insetInlineStart: "4px" }}
+                />
+              )}
             </span>
           )}
           <span class={styles.value.inactive} style={segments.value.after}>
-            <span
-              class={styles.value.endStop}
-              style={{ insetInlineEnd: "4px" }}
-            />
+            {endStops && (
+              <span
+                class={styles.value.endStop}
+                style={{ insetInlineEnd: "4px" }}
+              />
+            )}
           </span>
           {/* After the inactive segments, so the icon that moves past the handle paints over them. */}
           <span class={styles.value.active} style={segments.value.active}>

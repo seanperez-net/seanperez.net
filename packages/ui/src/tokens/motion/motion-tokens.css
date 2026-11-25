@@ -60,7 +60,7 @@
   /* Spring durations (pair with spring easing above) */
   --transition-duration-spring-fast: 350ms;
   --transition-duration-spring-default: 500ms;
-  --transition-duration-spring-slow: 650ms;
+  --transition-duration-spring-slow: 650ms; /* Expressive slow spatial; Standard slow spatial is 750ms (m3 motion/overview/specs, 2026-11-24) */
   --transition-duration-spring-fast-effects: 150ms;
   --transition-duration-spring-default-effects: 200ms;
   --transition-duration-spring-slow-effects: 300ms;

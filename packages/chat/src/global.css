@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* The chat demo route's styles only (`pnpm dev` in this package): the UI library's global
+   styles (Material 3 tokens, dark variant, breakpoints, page base), and both packages' sources
+   for Tailwind to scan. The published `lib/` ships NO CSS: the app's own stylesheet imports
+   `@seanperez/ui/global` and adds an `@source` for this package (`apps/web/src/global.css`). */
+@import "@seanperez/ui/global";
+@source "../../ui/src";
+@source "./";

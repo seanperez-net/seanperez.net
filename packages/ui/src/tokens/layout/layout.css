@@ -71,6 +71,10 @@
   transition:
     grid-template-columns 300ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)),
     grid-template-rows 300ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  /* Rule L23: no track animation under reduced motion (2026-11-24). */
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 
   grid-template-columns:
     [frame-start] var(--layout-scaffold-margin-start, var(--layout-margin))
@@ -384,6 +388,31 @@
   }
 }
 
+/* ── Slide, not reflow (NEW 2026-11-24, not in e-store) ─────────────────────
+ * A region that opens and closes by its scaffold track (the docked drawer, the supporting pane
+ * from 840px) moves in as a surface of its final size, clipped by the growing track, instead of
+ * laying its content out again at every width (owner 2026-11-24: "the text looks like its sliding
+ * out of the drawer not apearing in the drawer as it grows"; M3 transition patterns, "Beyond
+ * screen bounds": the navigation drawer and sheets "slide on and off screen without changing
+ * shape", read 2026-11-24).
+ *
+ * `layout-slide` on the region (the track's grid item): `overflow: clip`, which clips like
+ * `hidden` but is NOT a scroll container (MDN `overflow`), so it never shows a scrollbar and a
+ * focused row cannot scroll it sideways mid-transition. The region sets `--layout-slide-size`.
+ * `layout-slide-content` on its one content box: always that size (min = max, so neither a row
+ * flex box nor a column one squeezes it), so the scroller inside never narrows: no horizontal
+ * bar, no text reflow. Which edge it rides on is the region's alignment: the drawer's moving
+ * edge is its end (`justify-end`: it slides out from behind the rail), the supporting pane's is
+ * its start (the default). Both are logical, so right-to-left mirrors with no extra rule. */
+@utility layout-slide {
+  overflow: clip;
+}
+@utility layout-slide-content {
+  inline-size: var(--layout-slide-size);
+  min-inline-size: var(--layout-slide-size);
+  max-inline-size: var(--layout-slide-size);
+}
+
 /* ── Footer and companion rail ruler grids ────────────────────────────────── */
 @utility layout-footer-rulers {
   display: grid;
@@ -427,8 +456,50 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* ── Full-bleed pane (`Layout.Pane bleed`, from e-store's layout.css, ported 2026-11-23) ─────────
+ * The content fills the whole pane box (a map): the body row is the pane's height, no insets, no
+ * header gap (a `Layout.PaneHeader` stacks above the content), no scroll (`overflow: hidden`, the
+ * pane's rounding clips the content), `overscroll-behavior: contain`, `position: relative` for
+ * overlays. Changed from e-store: the bottom inset is 0 too (e-store's pane has no bottom
+ * padding of its own; ours does, which left a strip under the map). Unlayered, so these beat
+ * the `layout-pane-rulers` utility and the pane's `overflow-y-auto`. */
+.layout-pane-rulers[data-qds-pane-bleed] {
+  --layout-pane-rulers-body: minmax(0, 1fr);
+  position: relative;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding-block: 0;
+  padding-inline: 0;
+  scroll-padding-block-start: 0;
+  row-gap: 0;
+}
+.layout-pane-rulers[data-qds-pane-bleed] > :not(.pane-header-bleed) {
+  grid-column: inset-start / inset-end;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* ── Scrollbar track margin (from e-store's layout.css) ──────────────────────
  * A pane's sticky header covers its top corner: the track starts below the header instead. */
 .scrollbar-pane:has(> .pane-header-bleed) {
   --scrollbar-track-margin-start: var(--layout-pane-header);
+}
+
+/* ── List-detail (`Layout.ListDetail`, NEW 2026-11-24) ────────────────────────────────────────
+ * M3 list-detail is TWO panes with the 24dp spacer between them. As the ONE root of the primary
+ * pane (`Layout.Pane bleed`), the `<main>` paints no surface: the list and the detail panes are
+ * the surfaces, on the scaffold's `surface-container`, like the primary and supporting panes. In
+ * full screen the `<main>` is the screen, so it takes the scaffold's colour behind the panes.
+ * The back arrow of a `Layout.PaneHeader backHref` (`data-pane-header-back`) shows in single-pane
+ * only (M3: "Back button: Appears in detail view only for single-pane layouts"). */
+[data-pane="primary"]:has(> [data-qds-list-detail]) {
+  background-color: transparent;
+}
+[data-pane="primary"]:has(> [data-qds-list-detail]):fullscreen {
+  background-color: var(--color-surface-container);
+}
+@container list-detail (min-width: 43rem) {
+  [data-qds-list-detail] [data-pane-header-back] {
+    display: none;
+  }
 }

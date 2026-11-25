@@ -23,9 +23,9 @@ import {
  * - Outside-month days are shown only when `outsideDays` (M3 docked picker), and are not
  *   interactive (M3 modal picker: blank).
  * - Range days: the two ends are filled `primary` circles, the days between `on-secondary-
- *   container` on a `secondary-container` band (M3 range selection colour roles).
- * - The state layer is one overlay in the day's text colour at 8% (hover) / 10% (focus, press),
- *   which is each state's token colour (M3 date pickers tokens).
+ *   container` on a `secondary-container` band (M3 range selection color roles).
+ * - The state layer is one overlay in the day's text color at 8% (hover) / 10% (focus, press),
+ *   which is each state's token color (M3 date pickers tokens).
  *
  * @see https://m3.material.io/components/date-pickers/specs
  * @see https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/examples/datepicker-dialog/
@@ -49,7 +49,7 @@ export const calendarGridVariants = tv({
     day: [
       "relative inline-flex size-10 items-center justify-center rounded-full",
       "text-on-surface tabular-nums",
-      // State layer, in the text colour (its token colour in every state).
+      // State layer, in the text color (its token color in every state).
       "after:absolute after:inset-0 after:rounded-full after:bg-current after:opacity-0",
       "after:transition-opacity after:duration-short-2 motion-reduce:after:transition-none",
       "group-hover/day:after:opacity-8 group-focus-visible/day:after:opacity-10",

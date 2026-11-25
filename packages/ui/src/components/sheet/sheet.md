@@ -16,6 +16,7 @@ the live-region announcement, raising the detent when keyboard focus lands below
 | `onDetentChange$`       | —                                                     |                                               |
 | `label`                 | "Sheet"                                               | the region's name                             |
 | `handleLabel`           | "Resize sheet"                                        | the drag handle's name                        |
+| `id`, `class`           |                                                       | on the sheet element (no other host props)    |
 | `q:slot="header"`       |                                                       | above the body; drags the sheet too           |
 
 Handle: a button (`aria-expanded`, in the tab order). Enter / Space cycle the detents,

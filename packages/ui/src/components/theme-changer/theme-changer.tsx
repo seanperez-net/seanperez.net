@@ -20,26 +20,32 @@ import type { IconName } from "../icon";
 import { ToggleGroup } from "../toggle-group";
 
 /**
- * Material 3 theme controls: pick a source colour (a swatch, or HCT sliders with a strip
- * showing each axis) and a colour mode. After e-store's `ThemeChanger`.
+ * Material 3 theme controls: pick a source color (a swatch, or HCT sliders with a strip
+ * showing each axis) and a color mode. After e-store's `ThemeChanger`.
  * https://m3.material.io/styles/color/dynamic/choosing-a-source
  *
  * Pure UI: it only writes the theme context's two signals (or the ones bound into it). The
- * theme provider (`Layout.Root`, or `ThemeRoot`) generates the colours, applies and saves them.
+ * theme provider (`Layout.Root`, or `ThemeRoot`) generates the colors, applies and saves them.
  */
 export const themeChangerVariants = tv({
   slots: {
-    root: ["grid", "content-start", "gap-6", "text-on-surface"],
+    // 16dp between blocks and between sliders (owner, 2026-11-24: "tighten the theme gaps", so the
+    // side pane fits without scrolling). e-store's are 24 / 20 (`gap-6` / `gap-5`).
+    root: ["grid", "content-start", "gap-4", "text-on-surface"],
     section: [
       "grid",
-      "gap-5",
+      "gap-4",
       "rounded-xl",
       "bg-surface-variant",
       "p-4",
       "text-on-surface-variant",
     ],
     hexRow: ["flex", "items-center", "gap-3"],
-    hexLabel: ["flex-1", "text-body-large"],
+    // The label, with Reset colors as a small second line under it (owner, 2026-11-24: "put the
+    // reset colors small ... in the Source color as a second line there its taking to much space
+    // where it is now"). Was a full-size text button on its own row at the end.
+    hexText: ["grid", "flex-1", "justify-items-start", "gap-1"],
+    hexLabel: ["text-body-large"],
     hexSwatch: [
       "relative",
       "size-12",
@@ -58,14 +64,18 @@ export const themeChangerVariants = tv({
       "cursor-pointer",
     ],
     sliderRow: ["grid", "gap-1"],
-    sliderLabel: ["flex", "justify-between", "text-label-large"],
+    sliderLabel: ["text-label-large"],
     gradient: ["h-6", "rounded-full", "border", "border-current"],
-    modeRow: ["flex", "justify-center"],
-    reset: ["justify-self-start"],
+    // A text button's 12dp side padding, pulled back so its text lines up with the label.
+    reset: ["-ms-3"],
   },
 });
 
-/** The three mode buttons, in e-store's order. Plain data: a CMS can relabel them. */
+/**
+ * The three mode buttons, in e-store's order, which is also the Material Web catalog's (dark,
+ * auto, light; its auto icon `brightness_medium`, e-store's `computer`). Plain data: a CMS can
+ * relabel them.
+ */
 export type ThemeModeOption = {
   value: ColorMode;
   label: string;
@@ -74,14 +84,14 @@ export type ThemeModeOption = {
 
 export const DEFAULT_MODE_OPTIONS: ThemeModeOption[] = [
   { value: "dark", label: "Dark", icon: "dark_mode" },
-  { value: "auto", label: "Device default", icon: "computer" },
+  { value: "auto", label: "Device default", icon: "brightness_medium" },
   { value: "light", label: "Light", icon: "light_mode" },
 ];
 
 export type ThemeChangerProps = Omit<PropsOf<"div">, "children"> & {
-  /** The source colour signal. Defaults to the theme context's. */
+  /** The source color signal. Defaults to the theme context's. */
   "bind:color"?: Signal<string>;
-  /** The colour mode signal. Defaults to the theme context's. */
+  /** The color mode signal. Defaults to the theme context's. */
   "bind:mode"?: Signal<ColorMode>;
   /** The swatch row's words. */
   colorLabel?: string;
@@ -91,21 +101,30 @@ export type ThemeChangerProps = Omit<PropsOf<"div">, "children"> & {
   /** The mode group's name for screen readers. */
   modeLabel?: string;
   modeOptions?: ThemeModeOption[];
-  /** The button that goes back to the built-in colours. */
+  /** The button that goes back to the built-in colors. */
   resetLabel?: string;
+  /** Show that button (e-store's). The Material Web catalog's theme menu has none. */
+  reset?: boolean;
+  /**
+   * Show the color mode button (default). `false` where light / dark has its own control
+   * elsewhere (the site: the rail and the drawer footer), so it is in one place only.
+   */
+  mode?: boolean;
 };
 
 export const ThemeChanger = component$<ThemeChangerProps>(
   ({
     "bind:color": givenColor,
     "bind:mode": givenMode,
-    colorLabel = "Source colour",
+    colorLabel = "Source color",
     hueLabel = "Hue",
     chromaLabel = "Chroma",
     toneLabel = "Tone",
-    modeLabel = "Colour mode",
+    modeLabel = "Color mode",
     modeOptions = DEFAULT_MODE_OPTIONS,
-    resetLabel = "Reset colours",
+    resetLabel = "Reset colors",
+    reset = true,
+    mode: showMode = true,
     class: className,
     ...rest
   }) => {
@@ -116,9 +135,9 @@ export const ThemeChanger = component$<ThemeChangerProps>(
       "auto",
     );
 
-    // The sliders keep their own HCT values. Going hex -> HCT -> hex is not exact (a colour
+    // The sliders keep their own HCT values. Going hex -> HCT -> hex is not exact (a color
     // outside sRGB is clamped), so reading the sliders back from the hex on every move would
-    // make them jump. `written` is the hex the sliders last produced: only a colour that came
+    // make them jump. `written` is the hex the sliders last produced: only a color that came
     // from somewhere else (the swatch, a saved theme, reset) moves them.
     const hct = useStore({ hue: 0, chroma: 0, tone: 0, written: "" });
     useTask$(({ track }) => {
@@ -155,36 +174,59 @@ export const ThemeChanger = component$<ThemeChangerProps>(
       { axis: "tone", label: toneLabel, max: 100, gradient: toneGradient },
     ] as const;
 
+    // The Material Web catalog's theme menu, in its order (`catalog/src/components/
+    // theme-changer.ts`, read 2026-11-24): the source color block, the HCT block (label, slider,
+    // gradient; no numbers, the slider's value indicator shows the value while it is moved), the
+    // mode segmented button across the full width with the selected check, outside any block.
     return (
       <div {...rest} class={[styles.root(), className]}>
         <div class={styles.section()}>
-          <label class={styles.hexRow()}>
-            <span class={styles.hexLabel()}>{colorLabel}</span>
+          {/* Not a wrapping <label>: Reset is a button, and a button inside the label of the
+            color input would be an interactive element inside another one. */}
+          <div class={styles.hexRow()}>
+            <div class={styles.hexText()}>
+              <label for={`${id}-color`} class={styles.hexLabel()}>
+                {colorLabel}
+              </label>
+              {reset && (
+                <Button
+                  look="text"
+                  size="xs"
+                  label={resetLabel}
+                  class={styles.reset()}
+                  disabled={!color.value}
+                  onClick$={() => (color.value = "")}
+                />
+              )}
+            </div>
             <span
               class={styles.hexSwatch()}
               style={{ backgroundColor: color.value || DEFAULT_SOURCE_COLOR }}
             >
               <input
+                id={`${id}-color`}
                 type="color"
                 class={styles.hexInput()}
                 value={color.value || DEFAULT_SOURCE_COLOR}
                 onInput$={(_, input) => (color.value = input.value)}
               />
             </span>
-          </label>
+          </div>
+        </div>
+        <div class={styles.section()}>
           {sliders.map((slider) => (
             <div key={slider.axis} class={styles.sliderRow()}>
-              <span class={styles.sliderLabel()}>
-                <span id={`${id}-${slider.axis}`}>{slider.label}</span>
-                <span aria-hidden="true">{Math.round(hct[slider.axis])}</span>
+              <span id={`${id}-${slider.axis}`} class={styles.sliderLabel()}>
+                {slider.label}
               </span>
-              {/* M3 slider, standard xs; the number above stands in for a value indicator. */}
               <Slider
                 aria-labelledby={`${id}-${slider.axis}`}
                 min={0}
                 max={slider.max}
                 step={1}
                 value={Math.round(hct[slider.axis])}
+                valueIndicator
+                endStops={false}
                 onValueChange$={(value) => setAxis$(slider.axis, value)}
               />
               <span
@@ -194,28 +236,25 @@ export const ThemeChanger = component$<ThemeChangerProps>(
             </div>
           ))}
         </div>
-        <div class={styles.section()}>
-          <div class={styles.modeRow()}>
-            <ToggleGroup.Root bind:value={mode} aria-label={modeLabel}>
-              {modeOptions.map((option) => (
-                <ToggleGroup.Item
-                  key={option.value}
-                  value={option.value}
-                  icon={option.icon}
-                  aria-label={option.label}
-                  title={option.label}
-                />
-              ))}
-            </ToggleGroup.Root>
-          </div>
-        </div>
-        <Button
-          look="text"
-          label={resetLabel}
-          class={styles.reset()}
-          disabled={!color.value}
-          onClick$={() => (color.value = "")}
-        />
+        {showMode && (
+          <ToggleGroup.Root
+            bind:value={mode}
+            aria-label={modeLabel}
+            fullWidth
+            checkmark
+          >
+            {modeOptions.map((option) => (
+              <ToggleGroup.Item
+                key={option.value}
+                value={option.value}
+                icon={option.icon}
+                aria-label={option.label}
+                // The global plain tooltip (`TooltipProvider`), not `title`.
+                data-tooltip=""
+              />
+            ))}
+          </ToggleGroup.Root>
+        )}
       </div>
     );
   },

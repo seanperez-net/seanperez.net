@@ -79,10 +79,10 @@ const email = useSignal("");
 
 PROOFED 2026-11-23 against the material-web token files above, ARIA in HTML, Chrome.
 
-- Disabled colours per the tokens; e-store's disabled rules read `aria-disabled`, which no element
+- Disabled colors per the tokens; e-store's disabled rules read `aria-disabled`, which no element
   carried, so most never applied. State is read from the input (`:disabled`, `aria-invalid`), and
   the wrapper `<div>` carries no ARIA (a generic element takes neither attribute).
-- A disabled field with an `error` is not marked invalid (disabled colours win).
+- A disabled field with an `error` is not marked invalid (disabled colors win).
 - Filled: line `on-surface-variant` (e-store `outline`), hover state layer, hover label stays
   `on-surface-variant`; error hover `on-error-container` for the label too.
 - The placeholder appears on focus (e-store hid it always).
@@ -112,12 +112,12 @@ Added 2026-11-23 from e-store (NOT in M3, NOT PROOFED against M3; checked in Chr
 Left out: `ide` (e-store's code-editor look) and `feel` (store.google.com). Not in e-store either:
 the M3 character counter and the trailing error icon.
 
-## The floated label on a coloured container
+## The floated label on a colored container
 
 An outlined field's floated label covers the outline with a patch of `--field-bg` (default
 `surface`), e-store's mechanism. A container with any other fill MUST set `--field-bg` to its own
-colour, or the patch shows as a box (seen 2026-11-23 on the knobs panel, which now sets it).
-e-store's `Card` sets it from its variant; we have no Card yet. The same holds for `Select` and
+color, or the patch shows as a box (seen 2026-11-23 on the knobs panel, before it became a `Card`).
+`Card` sets it from its variant (e-store's), and the knobs frame is an outlined `Card`. The same holds for `Select` and
 `Combobox`.
 The `.bg-surface*` rules in `tokens/utilities.css` match the plain class only: a fill set under a
 variant (`md:bg-surface`, `max-md:bg-surface-container-low`) must set the variable under the same

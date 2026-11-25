@@ -74,7 +74,10 @@ export const tooltipContentVariants = tv({
       // M3 rich: surface-container, level 2, 12dp corners; 12dp top, 8dp bottom, 16dp sides.
       rich: {
         root: [
-          "flex",
+          // `open:` only: a bare `flex` beat the UA's `[popover]:not(:popover-open)
+          // { display: none }`, so a CLOSED rich tip stayed in the page as an invisible
+          // (opacity 0) box over its control and swallowed its hover and clicks.
+          "open:flex",
           "flex-col",
           "gap-1",
           "rounded-md",
@@ -109,9 +112,9 @@ type TooltipContext = {
   contentId: string;
   triggerRef: Signal<HTMLElement | undefined>;
   contentRef: Signal<HTMLElement | undefined>;
-  delay: number;
-  type: TooltipType;
-  persistent: boolean;
+  delay: Readonly<Signal<number>>;
+  type: Readonly<Signal<TooltipType>>;
+  persistent: Readonly<Signal<boolean>>;
   hideTimer: Signal<number | undefined>;
 };
 
@@ -142,7 +145,10 @@ export type TooltipRootProps = {
 
 /** Holds the state; renders no element. */
 const Root = component$<TooltipRootProps>((props) => {
-  const reactive: Pick<TooltipRootProps, "open"> = props;
+  const reactive: Pick<
+    TooltipRootProps,
+    "open" | "delay" | "type" | "persistent"
+  > = props;
   const open = useBoundSignal(
     props["bind:open"],
     props.open ?? false,
@@ -151,14 +157,19 @@ const Root = component$<TooltipRootProps>((props) => {
   const triggerRef = useSignal<HTMLElement>();
   const contentRef = useSignal<HTMLElement>();
   const hideTimer = useSignal<number>();
+  // Signals, not the values at creation: a change of `delay`, `type` or `persistent` applies
+  // to the mounted tip (read in JSX and in the handlers), no remount needed.
+  const delay = useComputed$(() => reactive.delay ?? 700);
+  const type = useComputed$<TooltipType>(() => reactive.type ?? "description");
+  const persistent = useComputed$(() => reactive.persistent ?? false);
   useContextProvider(tooltipContextId, {
     open,
     contentId: props.id,
     triggerRef,
     contentRef,
-    delay: props.delay ?? 700,
-    type: props.type ?? "description",
-    persistent: props.persistent ?? false,
+    delay,
+    type,
+    persistent,
     hideTimer,
   });
   return <Slot />;
@@ -210,16 +221,20 @@ const Trigger = component$<TooltipTriggerProps>(
     const ctx = useContext(tooltipContextId);
     const showTimer = useSignal<number>();
 
+    // The hover and focus handlers are always attached and do nothing for a persistent tip
+    // (M3: hovering does not trigger it, a click does), so `persistent` can change live.
     const enter$ = $((_: Event, el: Element) => {
+      if (ctx.persistent.value) return;
       clearTimer(showTimer);
       clearTimer(ctx.hideTimer);
       if (!el.hasAttribute("data-tooltip-hover")) return;
       showTimer.value = window.setTimeout(() => {
         showTimer.value = undefined;
         if (el.hasAttribute("data-tooltip-hover")) ctx.open.value = true;
-      }, ctx.delay);
+      }, ctx.delay.value);
     });
     const leave$ = $((_: Event, el: Element) => {
+      if (ctx.persistent.value) return;
       clearTimer(showTimer);
       clearTimer(ctx.hideTimer);
       ctx.hideTimer.value = window.setTimeout(() => {
@@ -230,11 +245,14 @@ const Trigger = component$<TooltipTriggerProps>(
       }, HIDE_AFTER_MS);
     });
     const focus$ = $((_: Event, el: Element) => {
+      if (ctx.persistent.value) return;
       clearTimer(showTimer);
       clearTimer(ctx.hideTimer);
       if (el.hasAttribute("data-tooltip-focus")) ctx.open.value = true;
     });
     const blur$ = $((event: FocusEvent) => {
+      // A persistent tip is closed by light dismiss (`popover="auto"`), not by blur.
+      if (ctx.persistent.value) return;
       clearTimer(showTimer);
       // Tab from the control into the tip's own buttons keeps it (focus order: control, tip).
       const to = event.relatedTarget as Node | null;
@@ -247,6 +265,7 @@ const Trigger = component$<TooltipTriggerProps>(
       ctx.open.value = false;
     });
     const toggle$ = $(() => {
+      if (!ctx.persistent.value) return;
       // A click on the control first light-dismisses the open tip (pointerdown is outside the
       // `popover="auto"`); that click is the close, not a reopen.
       const closedAt = Number(ctx.contentRef.value?.dataset.closedAt ?? 0);
@@ -260,13 +279,14 @@ const Trigger = component$<TooltipTriggerProps>(
         ref={ctx.triggerRef}
         class={["inline-flex", className]}
         data-tooltip-trigger=""
-        // M3: hovering does not trigger a persistent rich tooltip; a click does.
-        onPointerEnter$={ctx.persistent ? undefined : [markHover, enter$]}
-        onPointerLeave$={ctx.persistent ? undefined : [unmarkHover, leave$]}
-        onFocusIn$={ctx.persistent ? undefined : [markFocus, focus$]}
-        onFocusOut$={ctx.persistent ? undefined : [unmarkFocus, blur$]}
+        // M3: hovering does not trigger a persistent rich tooltip; a click does (the handlers
+        // check `ctx.persistent`).
+        onPointerEnter$={[markHover, enter$]}
+        onPointerLeave$={[unmarkHover, leave$]}
+        onFocusIn$={[markFocus, focus$]}
+        onFocusOut$={[unmarkFocus, blur$]}
         onKeyDown$={key$}
-        onClick$={ctx.persistent ? [toggle$, onClick$] : onClick$}
+        onClick$={[toggle$, onClick$]}
       >
         <Slot />
       </span>
@@ -400,8 +420,8 @@ const Content = component$<TooltipContentProps>(
           ref={ctx.contentRef}
           id={ctx.contentId}
           role="tooltip"
-          popover={ctx.persistent ? "auto" : "manual"}
-          aria-hidden={ctx.type === "label" ? "true" : undefined}
+          popover={ctx.persistent.value ? "auto" : "manual"}
+          aria-hidden={ctx.type.value === "label" ? "true" : undefined}
           data-tooltip-content=""
           data-variant={variant}
           class={[v.root(), className]}

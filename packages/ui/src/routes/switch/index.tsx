@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, Switch, knob, useKnobs } from "../../index";
+import { Layout, Switch } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const checked = useSignal(true);

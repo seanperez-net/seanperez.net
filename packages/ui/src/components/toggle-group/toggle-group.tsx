@@ -21,7 +21,7 @@ import type { IconName } from "../icon";
  */
 export const toggleGroupVariants = tv({
   slots: {
-    root: ["inline-flex", "shrink-0", "items-stretch", "rounded-full"],
+    root: ["items-stretch", "rounded-full"],
     item: [
       "relative",
       "inline-flex",
@@ -32,7 +32,10 @@ export const toggleGroupVariants = tv({
       // state layer takes the item's rounded ends itself instead of `overflow-hidden`.
       "touch-target",
       "border",
-      "border-outline-variant",
+      // M3 outlined segmented button: `outline-color` = md.sys.color.outline (material-web
+      // tokens v0_192, read 2026-11-24). e-store has outline-variant, which nearly vanishes on
+      // surface-container in dark (owner 2026-11-24).
+      "border-outline",
       "text-on-surface",
       "cursor-pointer",
       "select-none",
@@ -73,15 +76,26 @@ export const toggleGroupVariants = tv({
       outlined: { item: ["bg-transparent"] },
       tonal: { item: ["bg-surface-container-highest"] },
     },
-    /** Height and type scale together (M3 Expressive: 32, 40, 48dp). */
+    /** Height and type scale together (M3 Expressive: 32, 40, 56dp). */
     size: {
       xs: { item: ["h-8", "px-3", "text-label-medium"] },
       sm: { item: ["h-10", "px-4", "text-label-large"] },
       // M3 connected button group, medium: 56dp (e-store and this file had 48).
       md: { item: ["h-14", "px-6", "text-title-medium"] },
     },
+    /**
+     * Fill the container: equal segments across its whole width. PROOFED 2026-11-24 against
+     * material-web's segmented button set (`labs/segmentedbuttonset/internal/_shared.scss`:
+     * `display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; width: 100%`), as the
+     * Material Web catalog's theme menu shows it, and M3's "Segment width: container width /
+     * total segments" (m3.material.io/components/segmented-buttons/specs).
+     */
+    fullWidth: {
+      true: { root: ["grid", "w-full", "auto-cols-fr", "grid-flow-col"] },
+      false: { root: ["inline-flex", "shrink-0"] },
+    },
   },
-  defaultVariants: { look: "outlined", size: "sm" },
+  defaultVariants: { look: "outlined", size: "sm", fullWidth: false },
 });
 
 export type ToggleGroupLook = "outlined" | "tonal";
@@ -93,6 +107,8 @@ type ToggleGroupContextValue = {
   // (plain values were copied once). The same as `Modal`'s `position`.
   look: Readonly<Signal<ToggleGroupLook>>;
   size: Readonly<Signal<ToggleGroupSize>>;
+  fullWidth: Readonly<Signal<boolean>>;
+  checkmark: Readonly<Signal<boolean>>;
   onValueChange$?: QRL<(value: string) => void>;
 };
 
@@ -109,6 +125,14 @@ export type ToggleGroupRootProps = PropsOf<"div"> & {
   onValueChange$?: QRL<(value: string) => void>;
   look?: ToggleGroupLook;
   size?: ToggleGroupSize;
+  /** Fill the container's width with equal segments (M3 segmented button set). */
+  fullWidth?: boolean;
+  /**
+   * M3's selected check: the chosen segment shows a check before its icon (with a label, the
+   * check replaces the icon). M3 segmented button; off by default for the connected button
+   * group look this component also serves.
+   */
+  checkmark?: boolean;
 };
 
 /** The group. Give it an `aria-label`. Arrow keys move between its items. */
@@ -119,6 +143,8 @@ const ToggleGroupRoot = component$<ToggleGroupRootProps>(
     onValueChange$,
     look: givenLook,
     size: givenSize,
+    fullWidth: givenFullWidth,
+    checkmark: givenCheckmark,
     onKeyDown$,
     class: className,
     ...rest
@@ -126,10 +152,14 @@ const ToggleGroupRoot = component$<ToggleGroupRootProps>(
     const value = useBoundSignal(givenValue, initialValue);
     const look = useComputed$<ToggleGroupLook>(() => givenLook ?? "outlined");
     const size = useComputed$<ToggleGroupSize>(() => givenSize ?? "sm");
+    const fullWidth = useComputed$(() => givenFullWidth ?? false);
+    const checkmark = useComputed$(() => givenCheckmark ?? false);
     useContextProvider(toggleGroupContextId, {
       value,
       look,
       size,
+      fullWidth,
+      checkmark,
       onValueChange$,
     });
     return (
@@ -140,6 +170,7 @@ const ToggleGroupRoot = component$<ToggleGroupRootProps>(
           toggleGroupVariants({
             look: look.value,
             size: size.value,
+            fullWidth: fullWidth.value,
           }).root(),
           className,
         ]}
@@ -183,7 +214,28 @@ const ToggleGroupItem = component$<ToggleGroupItemProps>(
           if (group.onValueChange$) group.onValueChange$(value);
         }}
       >
-        {icon && <Icon name={icon} size="dense" />}
+        {/* M3's selected check (`checkmark`), material-web's path and 2px stroke
+            (`labs/segmentedbutton/internal/segmented-button.ts`, `_shared.scss`), 18dp as the
+            icon. With a label it replaces the icon, as material-web hides the icon then. */}
+        {group.checkmark.value && group.value.value === value && (
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            class="size-[18px] shrink-0"
+            data-qds-toggle-group-check=""
+          >
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              d="M1.73,12.91 8.1,19.28 22.79,4.59"
+            />
+          </svg>
+        )}
+        {icon &&
+          !(label && group.checkmark.value && group.value.value === value) && (
+            <Icon name={icon} size="dense" />
+          )}
         {label}
         <Slot />
       </button>

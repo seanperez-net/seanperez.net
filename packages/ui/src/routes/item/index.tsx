@@ -1,15 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  Avatar,
-  Checkbox,
-  Item,
-  Knobs,
-  Layout,
-  Switch,
-  knob,
-  useKnobs,
-} from "../../index";
+import { Avatar, Checkbox, Item, Layout, Switch } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 const heading = "text-title-small text-on-surface-variant";
 
@@ -38,6 +30,11 @@ export default component$(() => {
     supportingLines: knob.select(["auto", "one"], "auto"),
     headlineLines: knob.select(["one", "auto"], "one"),
     selected: knob.boolean(false),
+    selectedFill: knob.boolean(true),
+    // `as="button"`: the whole row is one button, so the checkbox and switch (controls of their
+    // own) are not rendered inside it.
+    as: knob.select(["section", "button"], "section"),
+    disabled: knob.boolean(false, "disabled (button)"),
   });
 
   return (
@@ -64,7 +61,8 @@ export default component$(() => {
                     <Avatar name="Ada Lovelace" decorative />
                   ) : knobs.values.start === "image" ? (
                     <Thumb />
-                  ) : knobs.values.start === "checkbox" ? (
+                  ) : knobs.values.start === "checkbox" &&
+                    knobs.values.as !== "button" ? (
                     <Checkbox aria-label="Choose this row" />
                   ) : undefined
                 }
@@ -72,7 +70,8 @@ export default component$(() => {
                   knobs.values.end === "icon" ? "chevron_right" : undefined
                 }
                 end={
-                  knobs.values.end === "switch" ? (
+                  knobs.values.end === "switch" &&
+                  knobs.values.as !== "button" ? (
                     <Switch aria-label="Turn on" bind:checked={wifi} />
                   ) : undefined
                 }
@@ -83,6 +82,9 @@ export default component$(() => {
                 supportingLines={knobs.values.supportingLines}
                 headlineLines={knobs.values.headlineLines}
                 selected={knobs.values.selected}
+                selectedFill={knobs.values.selectedFill}
+                as={knobs.values.as}
+                disabled={knobs.values.disabled}
               />
             </div>
           </section>

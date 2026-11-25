@@ -5,6 +5,9 @@
 /server
 # Open Graph cards: drawn by `pnpm og` (scripts/og.ts) on every build
 /public/og
+# App icons and favicon.ico: drawn by `pnpm icons` (scripts/icons.ts) on every build
+/public/icons
+/public/favicon.ico
 
 # Development
 node_modules
@@ -48,3 +51,7 @@ lerna-debug.log*
 # Cloudflare
 functions/**/*.js
 .wrangler/
+
+# Playwright
+/test-results/
+/playwright-report/

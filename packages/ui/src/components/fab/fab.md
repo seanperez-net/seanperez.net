@@ -31,7 +31,7 @@ From e-store's `components/fab/` (2026-11-23).
 | `large`   | 96 / 28 / 36                               | 96 / 28 / 36 / 28-28 / 16 / headline-small                                                                             |
 
 Collapsed (`extended={false}`): the extended FAB's height and corner, square, icon centred.
-States: elevation 3, 4 hovered, 3 focused and pressed; state layer in the icon colour, 8% hover,
+States: elevation 3, 4 hovered, 3 focused and pressed; state layer in the icon color, 8% hover,
 10% focus, 10% pressed; the M3 outward focus ring (`focus-ring`). 48dp target (`touch-target`).
 
 Exports: `FAB`, `fabVariants` (slots `root`, `label`; variants `color`, `size`, `form`),
@@ -55,9 +55,9 @@ the name. Enter / Space activate.
 
 ## Proof
 
-- Sizes, corners, icons, paddings, gaps, type, colours, elevation: PROOFED 2026-11-23 against the
+- Sizes, corners, icons, paddings, gaps, type, colors, elevation: PROOFED 2026-11-23 against the
   M3 spec pages and material-web tokens, and measured in Chrome (every size and form, all seven
-  colours, light and dark).
+  colors, light and dark).
 - No disabled state: PROOFED (M3 states list: enabled, hovered, focused, pressed).
 - Collapse padding `(height - icon) / 2`: derived from the tokens (it equals the medium extended
   FAB's own 26dp sides); the morph timing (medium-2, emphasized) is e-store's, NOT PROOFED (M3

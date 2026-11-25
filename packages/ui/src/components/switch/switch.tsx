@@ -14,7 +14,7 @@ import type { IconName } from "../icon";
  * OURS, kept over e-store's nine-part compound (compared 2026-11-23, see switch.md): the native
  * checkbox with `role="switch"` IS the track and the control, so Space, form submission,
  * `disabled`, `required` and the label association are the browser's. Taken from e-store: the
- * `icons` / `showOnlySelectedIcon` options, the `focus-ring` utility and the focus colours.
+ * `icons` / `showOnlySelectedIcon` options, the `focus-ring` utility and the focus colors.
  *
  * Track 52 x 32 with a 2dp outline. Off: 16dp handle in `outline`. On: `primary` track, 24dp
  * handle in `on-primary`. With icons the handle is 24dp in both states. Pressed: 28dp.
@@ -62,7 +62,7 @@ export const switchVariants = tv({
       "peer-checked:before:bg-primary",
       "peer-hover:before:opacity-hover peer-focus-visible:before:opacity-focus peer-active:before:opacity-pressed",
       "peer-disabled:before:hidden",
-      // Hover, focus and pressed handle colours (M3: the same for all three).
+      // Hover, focus and pressed handle colors (M3: the same for all three).
       "peer-hover:bg-on-surface-variant peer-focus-visible:bg-on-surface-variant peer-active:bg-on-surface-variant",
       "peer-checked:bg-on-primary",
       "peer-checked:peer-hover:bg-primary-container peer-checked:peer-focus-visible:bg-primary-container peer-checked:peer-active:bg-primary-container",
@@ -228,7 +228,9 @@ export const Switch = component$<SwitchProps>((props) => {
           role="switch"
           bind:checked={checkedSig}
           aria-labelledby={
-            hasText && label ? (rest["aria-labelledby"] ?? labelId) : rest["aria-labelledby"]
+            hasText && label
+              ? (rest["aria-labelledby"] ?? labelId)
+              : rest["aria-labelledby"]
           }
           aria-describedby={describedByIds}
           aria-invalid={error && !rest.disabled ? "true" : undefined}

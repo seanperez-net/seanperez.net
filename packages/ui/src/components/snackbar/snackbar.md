@@ -6,7 +6,7 @@ accessibility read in Chrome 2026-11-23).
 
 From e-store's `Snackbar` (`Snackbar.Root` provider with a queue, `useSnackbar()` returning
 `showSnackbar$` / `closeSnackbar$`, `popover="manual"` container kept above later overlays by
-`stayOnTop`, `role="status"` polite live region, Escape, inverse colours).
+`stayOnTop`, `role="status"` polite live region, Escape, inverse colors).
 
 ```tsx
 <Snackbar.Root>
@@ -49,7 +49,7 @@ the cross-Root wait loop (one Root here), the JavaScript full-width check (CSS b
 
 ## Proof
 
-- PROOFED 2026-11-23: M3 specs (colours, 48 / 68dp, corners, level 3, padding), guidelines (one
+- PROOFED 2026-11-23: M3 specs (colors, 48 / 68dp, corners, level 3, padding), guidelines (one
   at a time, queue, auto-dismiss, actions do not auto-dismiss), accessibility (polite, Esc,
   Alt+G); WAI-ARIA `status`; `stayOnTop` against the HTML top-layer order.
 - Not tested: screen reader announcement.

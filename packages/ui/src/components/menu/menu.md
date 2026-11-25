@@ -10,15 +10,18 @@ button (`Menu.Trigger`) opening a `role="menu"` popover in the top layer.
 
 ## Parts
 
-| Part              | Element                          | Role / attributes                                                         |
-| ----------------- | -------------------------------- | ------------------------------------------------------------------------- |
-| `Menu.Root`       | `<div>`                          | Context: ids, refs, `open`                                                |
-| `Menu.Trigger`    | `<button>`                       | `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `popovertarget` |
-| `Menu.Content`    | `<div>`                          | `role="menu"`, `popover="auto"`, `aria-labelledby` the trigger            |
-| `Menu.Item`       | `<div>` / `<a>`                  | `role="menuitem"`, `tabindex="-1"`; `href` makes a real link              |
-| `Menu.RadioGroup` | `<div>`                          | `role="group"` (name it with `aria-label`), shared value                  |
-| `Menu.RadioItem`  | `<div>` / `<button type=submit>` | `role="menuitemradio"`, `aria-checked`; `name` makes a no-JS submit       |
-| `Menu.Separator`  | `<hr>`                           | implicit `separator`                                                      |
+| Part              | Element                          | Role / attributes                                                                                       |
+| ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Menu.Root`       | `<div>`                          | Context: ids, refs, `open`                                                                              |
+| `Menu.Trigger`    | `<button>`                       | `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `popovertarget`                               |
+| `Menu.Content`    | `<div>`                          | `role="menu"`, `popover="auto"`, `aria-labelledby` the trigger                                          |
+| `Menu.Item`       | `<div>` / `<a>`                  | `role="menuitem"`, `tabindex="-1"`; `href` makes a real link                                            |
+| `Menu.RadioGroup` | `<div>`                          | `role="group"` (name it with `aria-label`), shared value                                                |
+| `Menu.RadioItem`  | `<div>` / `<button type=submit>` | `role="menuitemradio"`, `aria-checked`; `name` makes a no-JS submit                                     |
+| `Menu.Separator`  | `<hr>`                           | implicit `separator`                                                                                    |
+| `Menu.Sub`        | `<div role="none">`              | Context: one submenu (2026-11-24, e-store's)                                                            |
+| `Menu.SubTrigger` | `<div>`                          | `role="menuitem"`, `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`; `submenuIcon`, `openDelay`, `checked` (NEW 2026-11-24: the checked fill as `data-checked`, never `aria-checked`) |
+| `Menu.SubContent` | `<div>`                          | `Menu.Content` with `side="end"`                                                                        |
 
 ## API
 
@@ -32,7 +35,7 @@ button (`Menu.Trigger`) opening a `role="menu"` popover in the top layer.
   trigger, flipping when it would leave the window; the last fallback scrolls
   (`tokens/components/menu.css`).
 - `Menu.Item`: `size` `default` (min 48dp) / `dense` (min 32dp), `disabled`, `closeOnSelect`
-  (default `true`), `href`, `target`, `onClick$`.
+  (default `true`), `href`, `target`, `onClick$`, `onKeyDown$` (run after the menu's keys).
 - `Menu.RadioGroup`: `value?: Signal<string>`, `onValueChange$`.
 - `Menu.RadioItem`: `value` (required), `disabled`, `closeOnSelect` (default `true`), `name`,
   `checkedHighlight` (default `true`: `surface-container-highest` fill when checked).
@@ -94,3 +97,51 @@ const sort = useSignal("name");
   </Menu.Content>
 </Menu.Root>;
 ```
+
+## Submenus (ported 2026-11-24 from e-store's `Menu.Sub`, 2026-11-11)
+
+Structure and names as e-store's: a `SubContent` is a nested `popover="auto"` in its parent's DOM
+(opening it keeps the parent open; hiding the root hides it); choosing a row closes the ROOT
+(`rootContentRef`); hovering another row of the same menu closes a sibling's open submenu.
+Playground: `/menu/` ("Share"). The site uses it since 2026-11-24 for the account menu's Busy
+durations (`account-menu.md` "Busy durations"); `SubTrigger checked` (NEW) gives a row whose
+submenu holds the current choice the checked fill.
+
+Fixed from e-store (review agent 2026-11-24, then run in Chrome):
+
+- Hover opens without moving focus (`data-qds-menu-focus="none"`); e-store's open handler focused
+  the submenu's first row on hover.
+- Tab closes the whole menu tree (APG), from a row of any level (`menu-keys.ts`); e-store had no
+  Tab handling, and ours closed only the submenu.
+- Open-on-first / open-on-last focus counts only the menu's OWN rows (a submenu's rows are in its
+  DOM).
+- A last placement fallback, `--qds-menu-scroll-below-end` (below the trigger row, end edges
+  lined up): at 360-390px the account menu leaves too little room beside it. Run at 390px: the
+  submenu flipped to the start side (151px).
+- A keyboard-made click (`detail` 0) does not open it twice; the keys open it with the first row
+  focused; ArrowLeft closes it and focuses its trigger.
+
+Keyboard run in Chrome 2026-11-24 (account menu, before the owner switched it to a segmented
+row): Enter opens the menu on "Theme", Right opens the submenu on "Light", Down, Left back to
+"Theme", Enter / Space open it on the first row, Enter chooses and closes all with focus on the
+trigger, Escape closes one level, Tab closes all. Not run: RTL (Left / Right are not mirrored),
+touch, Safari / Firefox (`position-try`).
+
+M3, read 2026-11-24 at m3.material.io/components/menus/guidelines: "Submenus should open next
+to the parent menu item without overlapping it"; "best used on large screens"; on compact
+windows "consider adapting menus into bottom sheets". The narrow fallback overlaps the parent: a
+known departure.
+
+## Control rows (`data-qds-menu-row`, `menuRowKeys`, NEW 2026-11-24)
+
+A group of controls inside a menu that is not a menu row (the account menu's segmented theme
+button): mark it `data-qds-menu-row` and give it `onKeyDown$={menuRowKeys}`. It is then one stop
+in the menu's Up / Down / Home / End (at its pressed control, else its first button), its own
+Left / Right stay its own, and Tab closes the menu tree as from a row. Not in e-store.
+
+## Width (PROOFED 2026-11-24)
+
+m3.material.io/components/menus/specs, read in Chrome 2026-11-24: "Container width 112dp min,
+280dp max". `Menu.Content` is `min-w-28 max-w-70` (112 / 280px). Rows are not clipped or
+shortened: no row has an overflow or ellipsis rule. (The "…" the owner saw was the account menu's
+own label text, now "Theme colors".)

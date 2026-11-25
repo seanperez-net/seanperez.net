@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, TimePicker, knob, useKnobs } from "../../index";
+import { Layout, TimePicker } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const time = useSignal("07:30");
@@ -52,4 +53,4 @@ export default component$(() => {
   );
 });
 
-export const head: DocumentHead = { title: "Time picker" };
+export const head: DocumentHead = { title: "Time picker: @seanperez/ui" };

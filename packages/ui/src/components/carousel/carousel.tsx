@@ -42,6 +42,17 @@ const PAD = 16;
 const SWIPE_THRESHOLD = 30;
 const SWIPE_RATIO = 1.2;
 
+
+/**
+ * A swipe must not start a native drag of a slide's link or text. A `sync$` handler, not the bare
+ * `preventdefault:dragstart` attribute: qwikloader (installed `@qwik.dev/core` 2.0.0-rc.5,
+ * `qwikloader.debug.js` `dispatch` / `addEventOrRoot`) only reads that attribute while handling an
+ * event type some element has a handler for, and nothing registered `dragstart`.
+ */
+const cancelDragStart = sync$((event: DragEvent) => {
+  event.preventDefault();
+});
+
 export type CarouselVariant =
   | "multi-browse"
   | "uncontained"
@@ -87,14 +98,17 @@ function scrollTrackTo(el: HTMLElement, slide: HTMLElement, smooth: boolean) {
     return;
   }
   const rtl = cs.direction === "rtl";
-  const pad = parseFloat(rtl ? cs.scrollPaddingRight : cs.scrollPaddingLeft) || 0;
+  const pad =
+    parseFloat(rtl ? cs.scrollPaddingRight : cs.scrollPaddingLeft) || 0;
   const delta = rtl ? a.right - b.right + pad : a.left - b.left - pad;
   el.scrollTo({ left: el.scrollLeft + delta, behavior });
 }
 
 /** "{index} of {count}" filled in (M3 accessibility: items read "N of M"). */
 function fillLabel(template: string, index: number, count: number): string {
-  return template.replace("{index}", String(index)).replace("{count}", String(count));
+  return template
+    .replace("{index}", String(index))
+    .replace("{count}", String(count));
 }
 
 /**
@@ -170,7 +184,8 @@ function applyLayout(
   if (variant === "center-aligned-hero" && n < 3) {
     // One item: large. Two: the current one large, the other small (reviewer 2026-11-23: the
     // sliced pattern left a lone small item).
-    pattern = n === 1 ? ["large"] : idx === 0 ? ["large", "small"] : ["small", "large"];
+    pattern =
+      n === 1 ? ["large"] : idx === 0 ? ["large", "small"] : ["small", "large"];
     start = 0;
   } else if (variant === "center-aligned-hero" && len === 3) {
     if (idx === 0) {
@@ -260,11 +275,15 @@ const revealFocusedSlide = sync$((e: FocusEvent, sc: HTMLElement) => {
   if (cs.flexDirection === "column") {
     if (a.top >= b.top - 0.5 && a.bottom <= b.bottom + 0.5) return;
     const pad = parseFloat(cs.scrollPaddingTop) || 0;
-    sc.scrollTo({ top: sc.scrollTop + a.top - b.top - pad, behavior: "instant" });
+    sc.scrollTo({
+      top: sc.scrollTop + a.top - b.top - pad,
+      behavior: "instant",
+    });
   } else {
     if (a.left >= b.left - 0.5 && a.right <= b.right + 0.5) return;
     const rtl = cs.direction === "rtl";
-    const pad = parseFloat(rtl ? cs.scrollPaddingRight : cs.scrollPaddingLeft) || 0;
+    const pad =
+      parseFloat(rtl ? cs.scrollPaddingRight : cs.scrollPaddingLeft) || 0;
     const delta = rtl ? a.right - b.right + pad : a.left - b.left - pad;
     sc.scrollTo({ left: sc.scrollLeft + delta, behavior: "instant" });
   }
@@ -347,16 +366,17 @@ const rootVariants = tv({
   },
 });
 
-/** The track. Its fill is M3's container colour, `surface` (which also sets `--field-bg`). */
+/** The track. Its fill is M3's container color, `surface` (which also sets `--field-bg`). */
 const trackVariants = tv({
-  base: "bg-surface relative flex select-none",
+  base: "relative flex bg-surface select-none",
   variants: {
     variant: {
       // Contained: no native scroll; swipe through pointer events. Items vertically centred.
-      "multi-browse": "scroll-ps-4 items-center overflow-hidden py-2 [touch-action:pan-y]",
-      hero: "scroll-ps-4 items-center overflow-hidden py-2 [touch-action:pan-y]",
+      "multi-browse":
+        "[touch-action:pan-y] scroll-ps-4 items-center overflow-hidden py-2",
+      hero: "[touch-action:pan-y] scroll-ps-4 items-center overflow-hidden py-2",
       "center-aligned-hero":
-        "scroll-ps-4 items-center overflow-hidden py-2 [touch-action:pan-y]",
+        "[touch-action:pan-y] scroll-ps-4 items-center overflow-hidden py-2",
       // Uncontained: 16dp leading padding only, items bleed past the trailing edge (M3).
       uncontained:
         "scroll-ps-4 items-center gap-2 overflow-x-auto overscroll-x-contain scroll-smooth py-2 ps-4 motion-reduce:scroll-auto",
@@ -376,7 +396,7 @@ const trackVariants = tv({
 
 const itemVariants = tv({
   base: [
-    "bg-surface relative shrink-0 cursor-pointer overflow-hidden",
+    "relative shrink-0 cursor-pointer overflow-hidden bg-surface",
     // State layer (M3: on-surface, hover 8%, focus 10%, pressed 10%).
     "before:pointer-events-none before:absolute before:inset-0 before:z-10 before:rounded-[inherit] before:bg-on-surface before:opacity-0 before:content-['']",
     "before:transition-opacity before:duration-short-4",
@@ -389,21 +409,21 @@ const itemVariants = tv({
     "[&_video]:pointer-events-none [&_video]:size-full [&_video]:object-cover",
     // Disabled (M3: 38%). On the content, not the item, so the outlined item's outline keeps
     // its own disabled value (outline at 12%; reviewer 2026-11-23). The fill is the track's
-    // colour, so fading it changes nothing.
+    // color, so fading it changes nothing.
     "aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:*:opacity-38",
   ],
   variants: {
     variant: {
       // Contained: width animates; the ring goes outward (the track's margins give it room).
       "multi-browse":
-        "focus-ring ease-standard rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 motion-reduce:transition-none",
-      hero: "focus-ring ease-standard rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 motion-reduce:transition-none",
+        "focus-ring rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 ease-standard motion-reduce:transition-none",
+      hero: "focus-ring rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 ease-standard motion-reduce:transition-none",
       "center-aligned-hero":
-        "focus-ring ease-standard rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 motion-reduce:transition-none",
+        "focus-ring rounded-xl transition-[width,margin,opacity,box-shadow] duration-medium-2 ease-standard motion-reduce:transition-none",
       // Scrolling: the scroller clips at its edges, so the ring goes inward.
       uncontained: "focus-ring-inward rounded-xl",
       "uncontained-multi": "focus-ring-inward rounded-xl",
-      "full-screen": "focus-ring-inward h-full w-full snap-start",
+      "full-screen": "h-full w-full focus-ring-inward snap-start",
     },
     /** M3's "with outline" token set: a 1dp `outline` border, `on-surface` on focus. */
     outlined: {
@@ -488,7 +508,11 @@ const Root = component$<CarouselRootProps>((props) => {
     if (target === activeIndex.value) return;
     activeIndex.value = target;
     if (announce)
-      announcement.value = fillLabel(itemLabel.value, target + 1, slides.length);
+      announcement.value = fillLabel(
+        itemLabel.value,
+        target + 1,
+        slides.length,
+      );
     onIndexChange$?.(target);
   });
 
@@ -517,7 +541,8 @@ const Root = component$<CarouselRootProps>((props) => {
     const relayout = () => {
       const n = slidesOf(el).length;
       itemCount.value = n;
-      if (activeIndex.value > Math.max(n - 1, 0)) activeIndex.value = Math.max(n - 1, 0);
+      if (activeIndex.value > Math.max(n - 1, 0))
+        activeIndex.value = Math.max(n - 1, 0);
       if (isContained(v)) applyLayout(el, activeIndex.value, v, max);
     };
     relayout();
@@ -547,7 +572,10 @@ const Root = component$<CarouselRootProps>((props) => {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries)
-          ratios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+          ratios.set(
+            entry.target,
+            entry.isIntersecting ? entry.intersectionRatio : 0,
+          );
         const slides = slidesOf(el);
         let best = -1;
         let ratio = 0;
@@ -603,7 +631,7 @@ const Root = component$<CarouselRootProps>((props) => {
             (props.variant === "uncontained" ||
               props.variant === "uncontained-multi"),
         })}
-        preventdefault:dragstart
+        onDragStart$={cancelDragStart}
         onFocusIn$={revealFocusedSlide}
         onClick$={(event: MouseEvent) => {
           const el = trackRef.value;
@@ -614,7 +642,9 @@ const Root = component$<CarouselRootProps>((props) => {
           ) as HTMLElement | null;
           if (!el || !slide || slide.parentElement !== el) return;
           if (slide.getAttribute("aria-disabled") === "true") return;
-          const slides = Array.from(el.children).filter((c) => c.matches(SLIDE));
+          const slides = Array.from(el.children).filter((c) =>
+            c.matches(SLIDE),
+          );
           const i = slides.indexOf(slide);
           if (i !== -1 && i !== activeIndex.value && isContained(variant.value))
             goTo(i, true);
@@ -664,12 +694,18 @@ const Root = component$<CarouselRootProps>((props) => {
             const cs = getComputedStyle(el);
             if (cs.overflowX !== "hidden" || cs.flexDirection === "column")
               return;
-            if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) >= 5)
+            if (
+              Math.abs(e.deltaX) > Math.abs(e.deltaY) &&
+              Math.abs(e.deltaX) >= 5
+            )
               e.preventDefault();
           }),
           $((e: WheelEvent, el: HTMLElement) => {
             if (!isContained(variant.value)) return;
-            if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 5)
+            if (
+              Math.abs(e.deltaX) <= Math.abs(e.deltaY) ||
+              Math.abs(e.deltaX) < 5
+            )
               return;
             const now = Date.now();
             if (now - lastWheel.value < 300) return;
@@ -726,7 +762,9 @@ const Item = component$<CarouselItemProps>((props) => {
         itemVariants({
           variant: ctx.variant.value,
           outlined: !!props.outlined,
-          snap: ctx.variant.value === "uncontained" || ctx.variant.value === "uncontained-multi",
+          snap:
+            ctx.variant.value === "uncontained" ||
+            ctx.variant.value === "uncontained-multi",
         }),
         className,
       ]}

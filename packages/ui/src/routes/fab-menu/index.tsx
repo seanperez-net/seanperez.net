@@ -2,14 +2,12 @@ import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import {
   FABMenu,
-  Knobs,
   Layout,
   fabMenuColors,
   fabMenuLayouts,
   fabSizes,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
@@ -25,6 +23,8 @@ export default component$(() => {
       "above",
       "placement (menu layout)",
     ),
+    // `disabled` on the last item.
+    disabledItem: knob.boolean(false, "disabled (New favourite)"),
   });
 
   return (
@@ -47,7 +47,11 @@ export default component$(() => {
           <FABMenu.Content>
             <FABMenu.Item icon="mail" label="New message" />
             <FABMenu.Item icon="notifications" label="New reminder" />
-            <FABMenu.Item icon="star" label="New favourite" />
+            <FABMenu.Item
+              icon="star"
+              label="New favourite"
+              disabled={knobs.values.disabledItem}
+            />
           </FABMenu.Content>
         </FABMenu.Root>
       </Knobs>

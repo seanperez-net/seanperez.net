@@ -18,7 +18,8 @@ Put `data-tooltip` on a control that has an `aria-label`; the tip shows that lab
 `aria-hidden="true"` with no `aria-describedby`: the control's name is already its `aria-label`,
 so a screen reader hears it once (e-store's `type="label"`).
 
-- Hover (mouse / pen): shows after 700ms (e-store's delay; M3 gives none). Keyboard focus
+- Hover (mouse / pen): shows after `TooltipProvider delay` ms (default 700, e-store's delay; M3
+  gives none). Keyboard focus
   (`:focus-visible`): at once. A click that focuses it does not show it.
 - Leaves 1.5s after the pointer leaves the control (M3), stays while the pointer is on the tip
   (WCAG 1.4.13 hoverable), leaves at once on blur or on a press of the control.
@@ -49,15 +50,17 @@ is an option for the owner.
 </Tooltip.Root>
 ```
 
-| Part / prop                                                                 |                                                                                             |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `Root` `id`                                                                 | the tip's id; put it in the control's `aria-describedby` (server HTML)                      |
-| `Root` `delay` (700), `open`, `bind:open`, `type` (`description` / `label`) | e-store's                                                                                   |
-| `Root` `persistent`                                                         | M3 persistent rich tooltip: opens on click, `popover="auto"` light dismiss                  |
-| `Content` `variant`                                                         | `plain` (inverse-surface, body-small, 4dp corners) or `rich`                                |
-| `Content` `side`                                                            | `top` (plain default) / `bottom` (rich default) / `left` / `right`; moves to stay on screen |
-| `Content` `subhead`                                                         | rich: title-small, on-surface-variant                                                       |
-| `q:slot="actions"`                                                          | rich: up to two `Button look="text"`                                                        |
+| Part / prop                                                                 |                                                                                                   |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `Root` `id`                                                                 | the tip's id; put it in the control's `aria-describedby` (server HTML)                            |
+| `Root` `delay` (700), `open`, `bind:open`, `type` (`description` / `label`) | e-store's                                                                                         |
+| `Root` `delay`, `type`, `persistent`                                        | reactive (2026-11-23): signals read in JSX and in the handlers, a change applies live             |
+| `Trigger`                                                                   | a `<span>` (`inline-flex`) around the control; `onClick$`; the control carries `aria-describedby` |
+| `Root` `persistent`                                                         | M3 persistent rich tooltip: opens on click, `popover="auto"` light dismiss                        |
+| `Content` `variant`                                                         | `plain` (inverse-surface, body-small, 4dp corners) or `rich`                                      |
+| `Content` `side`                                                            | `top` (plain default) / `bottom` (rich default) / `left` / `right`; moves to stay on screen       |
+| `Content` `subhead`                                                         | rich: title-small, on-surface-variant                                                             |
+| `q:slot="actions"`                                                          | rich: up to two `Button look="text"`                                                              |
 
 Rich: `surface-container`, level 2, 12dp corners, padding 12 / 16 / 8 (12 without actions),
 body-medium on-surface-variant, starts at the control's middle and extends to the inline end.
@@ -71,6 +74,13 @@ closes it again (the light dismiss on pointerdown is not undone by the click). `
 shows the tip once the page is live (`qinit`). The provider and the component close each other:
 one tip at a time.
 
+Fixed 2026-11-23: the rich variant set `display: flex` unconditionally, which beat the UA rule
+`[popover]:not(:popover-open) { display: none }`, so a CLOSED rich tip stayed in the page as an
+invisible (opacity 0) box over its control and took its hover and clicks. Now `open:flex`.
+`delay`, `type` and `persistent` became reactive the same day (the playground no longer remounts
+the Root with a `key`); the hover and focus handlers are always attached and do nothing while
+`persistent`, the click handler does nothing unless `persistent`.
+
 M3 gives rich tooltips `role="tooltip"`; the second-agent review suggested a non-modal
 `role="dialog"` when a rich tip has buttons (APG: a tooltip never takes focus). Kept as M3 says;
 an open question for the owner.
@@ -83,7 +93,7 @@ wrapping).
 
 ## Proof
 
-- PROOFED 2026-11-23: M3 specs (colours, type, sizes, padding, 1.5s), APG tooltip pattern,
+- PROOFED 2026-11-23: M3 specs (colors, type, sizes, padding, 1.5s), APG tooltip pattern,
   WCAG 2.2 1.4.13, MDN `title` and popover; Qwik rc.5 `useOnDocument` (qwikloader captures
   document events). Second agent reviewed the provider: fixes applied (scroll follows instead
   of hiding, Escape stays dismissed and does not close a dialog, stale label after a press,

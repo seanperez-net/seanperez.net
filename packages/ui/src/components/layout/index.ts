@@ -1,7 +1,10 @@
-export { Layout, layoutVariants } from "./layout";
+export { Layout, layoutVariants, openCompanion } from "./layout";
 export type {
   LayoutAppBarProps,
   LayoutCompanionRailProps,
+  LayoutDetailPaneProps,
+  LayoutListDetailProps,
+  LayoutListPaneProps,
   LayoutDrawerItemProps,
   LayoutDrawerProps,
   LayoutFooterProps,
@@ -21,5 +24,6 @@ export type {
   LayoutDrawerItem,
   LayoutDrawerType,
   LayoutMode,
+  LayoutPrefetch,
   LayoutRailItem,
 } from "./layout-context";

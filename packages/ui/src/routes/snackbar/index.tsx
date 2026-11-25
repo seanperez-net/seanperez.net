@@ -1,14 +1,7 @@
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  Button,
-  Knobs,
-  Layout,
-  Snackbar,
-  knob,
-  useKnobs,
-  useSnackbar,
-} from "../../index";
+import { Button, Layout, Snackbar, useSnackbar } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 /** The page's button: it must sit inside `Snackbar.Root` to reach `useSnackbar()`. */
 const ShowButton = component$<{

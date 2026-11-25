@@ -1,7 +1,7 @@
 # Toolbar
 
 Material Design 3 Expressive toolbars: docked and floating (horizontal or vertical), standard
-and vibrant colours, with a FAB beside a floating one. Ported 2026-11-23 from e-store's
+and vibrant colors, with a FAB beside a floating one. Ported 2026-11-23 from e-store's
 `components/toolbar/` (Root / Item / Divider, `variant`, `colorScheme`, `itemStyle`).
 
 - **M3 spec**: https://m3.material.io/components/toolbars/specs (token sets "Toolbar - Docked",
@@ -14,7 +14,7 @@ and vibrant colours, with a FAB beside a floating one. Ported 2026-11-23 from e-
 | Part              | Element                                        | What                                                            |
 | ----------------- | ---------------------------------------------- | --------------------------------------------------------------- |
 | `Toolbar.Root`    | `<div>` group > `<div role="toolbar">` + `fab` | The container; `class` on the group, other props on the toolbar |
-| `Toolbar.Item`    | `<button>`                                     | An icon button in the toolbar's colours                         |
+| `Toolbar.Item`    | `<button>`                                     | An icon button in the toolbar's colors                          |
 | `Toolbar.Divider` | `<div role="separator">`                       | Between groups of actions                                       |
 
 Any other control (our `IconButton` with `width="wide"`, `Button`, `TextField`) may go in the
@@ -43,7 +43,7 @@ slot too (M3: "slots can be populated by buttons, icon buttons, ... text fields"
 | `type`                                | `"button" \| "submit" \| "reset"` | `"button"`   | e-store's: submit a form with the native `form` attribute                                      |
 | `onClick$`, `disabled`                |                                   |              |                                                                                                |
 
-## Measurements and colours (PROOFED 2026-11-23: M3 tokens in Chrome, measured in Chrome)
+## Measurements and colors (PROOFED 2026-11-23: M3 tokens in Chrome, measured in Chrome)
 
 | Item              | M3                                                                                                                  | Ours (measured)                                                                                |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -56,10 +56,10 @@ slot too (M3: "slots can be populated by buttons, icon buttons, ... text fields"
 | Vibrant           | container `primary-container`, icon `on-primary-container`, selected `surface-container` / `on-surface`             | same                                                                                           |
 | Filled            | `primary` / `on-primary`                                                                                            | same                                                                                           |
 | Disabled          | icon `on-surface` 38%                                                                                               | same                                                                                           |
-| State layer       | the icon colour, 8 / 10 / 10                                                                                        | `before:bg-current`                                                                            |
+| State layer       | the icon color, 8 / 10 / 10                                                                                         | `before:bg-current`                                                                            |
 
 NOT PROOFED: item size 48dp (e-store's; the spec image is consistent: 8 + 48 + 8 = 64); floating
-elevation level 2 (e-store's; the token prints no value); the vibrant divider colour
+elevation level 2 (e-store's; the token prints no value); the vibrant divider color
 (`on-primary-container` 20%, e-store's; M3 gives none); the exact docked arrangement in compact
 windows ("evenly spaced": ours `justify-between`).
 

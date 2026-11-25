@@ -1,0 +1,175 @@
+/*
+ * The map's overlay, scoped to `[data-map-view]` (`map-view.tsx`'s wrapper: the map and our
+ * controls). Adopted by `map-view.tsx` right AFTER MapLibre's stylesheet, so equal-specificity
+ * rules here win by order. New, 2026-11-24 (not in e-store, which draws its own credits strip;
+ * see PLAN.md); a fresh agent reviewed the approach.
+ *
+ * - Our controls (`map-controls.tsx`, the library's vertical floating Toolbar) are placed here,
+ *   on our own `[data-map-controls]` wrapper; the Toolbar itself is used through its props only.
+ * - MapLibre's attribution (a licence requirement) and scale stay MapLibre's DOM, restyled in M3
+ *   roles: `body-small` on a `surface-container` chip, `on-surface-variant` text.
+ * - Inset: everything sits `--layout-margin` (16 compact, 24 from medium) in from the pane's
+ *   edges. That clears the pane's rounded corner (`--layout-pane-radius`, at most 28: a 28 arc
+ *   cuts at most 8.2px into the diagonal, so a box 16 in from both edges never meets it).
+ * - Logical corners: MapLibre's corners are physical (`top: 0; right: 0`, no RTL rules, maplibre-gl
+ *   6.19.0 `dist/maplibre-gl.css`). Here they are logical, so `bottom-right` means block-end /
+ *   inline-end and swaps sides under `dir="rtl"`, as our controls do.
+ * - The info glyph: Material Symbols Outlined `info` 24px, weight 400, fonts.gstatic.com
+ *   (2026-11-24), as a CSS mask (MapLibre paints a fixed-colour SVG background).
+ */
+@reference "../global.css";
+
+[data-map-view] {
+  --map-ctrl-inset: var(--layout-margin, 16px);
+  --map-ctrl-gap: 8px;
+  /* The layout's "Show side panel" tab below 600px (`Layout` `sheetTrigger`: an `h-10` button). */
+  --map-sheet-tab: 40px;
+  --map-icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960'%3E%3Cpath d='M440-280h80v-240h-80v240Zm68.5-331.5Q520-623 520-640t-11.5-28.5Q497-680 480-680t-28.5 11.5Q440-657 440-640t11.5 28.5Q463-600 480-600t28.5-11.5ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z'/%3E%3C/svg%3E");
+}
+
+/* ── Our controls: the top-end corner ─────────────────────────────────────────────────────── */
+[data-map-controls] {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: var(--map-ctrl-inset);
+  inset-inline-end: var(--map-ctrl-inset);
+}
+
+/* ── Pseudo full screen (no Fullscreen API: iPhone Safari, a refusing iframe) ─────────────────
+   MapLibre's `pseudo` option did the same: the element fixed over the viewport. */
+[data-map-view][data-map-fullscreen="pseudo"] {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+}
+[data-map-view]:fullscreen,
+[data-map-view][data-map-fullscreen="pseudo"] {
+  background-color: var(--color-surface-container);
+}
+
+/* ── MapLibre's corners: logical, inset, a column with an 8dp gap ─────────────────────────── */
+[data-map-view]
+  :is(
+    .maplibregl-ctrl-top-left,
+    .maplibregl-ctrl-top-right,
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right
+  ) {
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--map-ctrl-gap);
+  max-inline-size: calc(100% - 2 * var(--map-ctrl-inset));
+}
+[data-map-view] .maplibregl-ctrl-top-left {
+  inset-block-start: var(--map-ctrl-inset);
+  inset-inline-start: var(--map-ctrl-inset);
+  align-items: start;
+}
+[data-map-view] .maplibregl-ctrl-top-right {
+  inset-block-start: var(--map-ctrl-inset);
+  inset-inline-end: var(--map-ctrl-inset);
+  align-items: end;
+}
+[data-map-view] .maplibregl-ctrl-bottom-left {
+  inset-block-end: var(--map-ctrl-inset);
+  inset-inline-start: var(--map-ctrl-inset);
+  align-items: start;
+}
+[data-map-view] .maplibregl-ctrl-bottom-right {
+  inset-block-end: var(--map-ctrl-inset);
+  inset-inline-end: var(--map-ctrl-inset);
+  align-items: end;
+}
+/* Below 600px the layout's "Show side panel" tab (fixed at the window's inline end,
+   `--layout-margin` + 8px up) sits on the pane's bottom-end corner: the bottom-end column (scale,
+   credits) ends a gap before it. Not in full screen, which covers the tab. */
+@media (width < 600px) {
+  [data-map-view]:not(:fullscreen, [data-map-fullscreen]) .maplibregl-ctrl-bottom-right {
+    inset-inline-end: calc(var(--map-sheet-tab) + var(--map-ctrl-gap));
+    max-inline-size: calc(
+      100% - var(--map-ctrl-inset) - var(--map-sheet-tab) - var(--map-ctrl-gap)
+    );
+  }
+}
+[data-map-view] .maplibregl-ctrl {
+  margin: 0;
+  float: none;
+}
+
+/* ── Scale and attribution: body-small on a surface-container chip ─────────────────────────── */
+[data-map-view] .maplibregl-ctrl-scale {
+  @apply text-body-small;
+  padding-inline: 6px;
+  border-color: currentColor;
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+}
+[data-map-view] .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  @apply text-body-small;
+  margin: 0;
+  padding-block: 2px;
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-container);
+  color: var(--color-on-surface-variant);
+}
+[data-map-view] .maplibregl-ctrl-attrib a {
+  @apply focus-ring;
+  border-radius: var(--radius-xs);
+  color: inherit;
+}
+/* Compact (MapLibre: a map 640px wide or less): open at load, folded behind the info button on
+   the first drag, as OSMF's attribution guidelines allow ("may use a mechanism to fade/collapse
+   the attribution" on map interaction). A 32dp pill, the button at its end. */
+@media screen {
+  [data-map-view] .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact {
+    min-block-size: 32px;
+    min-inline-size: 32px;
+    margin: 0;
+    padding-block: 6px;
+    padding-inline: 0 32px;
+    box-sizing: border-box;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface-variant);
+  }
+  [data-map-view] .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show {
+    padding-inline: 12px 36px;
+    border-radius: var(--radius-lg);
+  }
+  [data-map-view] .maplibregl-ctrl-attrib.maplibregl-compact::after {
+    content: none;
+  }
+}
+/* The info button: 32dp visual, 48dp target, our focus ring, state layers 8 / 10 %. */
+[data-map-view] .maplibregl-ctrl-attrib-button {
+  @apply touch-target focus-ring;
+  inset: auto;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-full);
+  background: none;
+  color: inherit;
+}
+[data-map-view] .maplibregl-ctrl-attrib-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: currentColor;
+  mask: var(--map-icon-info) center / 20px no-repeat;
+}
+[data-map-view] .maplibregl-ctrl-attrib-button:focus {
+  box-shadow: none;
+}
+@media (hover: hover) {
+  [data-map-view] .maplibregl-ctrl-attrib-button:hover {
+    background-color: color-mix(in srgb, currentColor 8%, transparent);
+  }
+}
+[data-map-view] .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button {
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+}

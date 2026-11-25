@@ -1,0 +1,91 @@
+/**
+ * Contact form messages in D1 (binding `DB`, table `message`, `migrations/0003_create_message.sql`).
+ * The contact action writes through `saveMessage`; everything else is /admin only (behind
+ * `requireAdmin`). Every value goes in as a bound parameter (`?`), never into the SQL text.
+ */
+
+export interface Message {
+  id: number;
+  name: string;
+  email: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+/** A row in the inbox: the start of the body, not all of it. */
+export type MessageSummary = Omit<Message, "body" | "email"> & { preview: string };
+
+/**
+ * At most this many messages are kept per UTC day (owner, 2026-11-24: simple abuse limits, no
+ * IP storage). Turnstile stops most bots; this caps what a person (or a solved challenge) can
+ * pile into the table in a day. Trade-off (second agent's review, accepted for a demo): whoever
+ * passes Turnstile 20 times in a day blocks other senders until midnight UTC.
+ */
+export const MESSAGES_PER_DAY = 20;
+
+/** Midnight UTC of `now`, as the same ISO text `created_at` holds. */
+const startOfDay = (now: Date) => `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+
+/**
+ * Store one message, unless today's cap is reached. ONE statement, so the count and the insert
+ * cannot interleave with another request's: `INSERT ... SELECT ... WHERE (count) < cap` inserts
+ * no row when the day is full, and `meta.changes` (D1Result, developers.cloudflare.com/d1/
+ * worker-api/return-object/) says which happened.
+ */
+export async function saveMessage(
+  db: D1Database,
+  input: { name: string; email: string; body: string },
+): Promise<"saved" | "full"> {
+  const now = new Date();
+  const result = await db
+    .prepare(
+      `INSERT INTO message (name, email, body, created_at)
+       SELECT ?, ?, ?, ?
+       WHERE (SELECT COUNT(*) FROM message WHERE created_at >= ?) < ?`,
+    )
+    .bind(input.name, input.email, input.body, now.toISOString(), startOfDay(now), MESSAGES_PER_DAY)
+    .run();
+  return result.meta.changes > 0 ? "saved" : "full";
+}
+
+// --- /admin only (behind `requireAdmin`) ---------------------------------------------------
+
+/** Characters of the body shown in the inbox row (the row clamps it to one line). */
+const PREVIEW = 160;
+/** The inbox shows the newest this many. */
+const LIST_LIMIT = 200;
+
+export async function listMessages(db: D1Database): Promise<MessageSummary[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT id, name, substr(body, 1, ?) AS preview, created_at, read_at
+       FROM message ORDER BY created_at DESC, id DESC LIMIT ?`,
+    )
+    .bind(PREVIEW, LIST_LIMIT)
+    .all<MessageSummary>();
+  return results;
+}
+
+export async function unreadCount(db: D1Database): Promise<number> {
+  const row = await db
+    .prepare("SELECT COUNT(*) AS n FROM message WHERE read_at IS NULL")
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+export async function getMessage(db: D1Database, id: number): Promise<Message | null> {
+  return db.prepare("SELECT * FROM message WHERE id = ?").bind(id).first<Message>();
+}
+
+/** Marks it read the first time only (opening it again keeps the first time). */
+export async function markRead(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare("UPDATE message SET read_at = ? WHERE id = ? AND read_at IS NULL")
+    .bind(new Date().toISOString(), id)
+    .run();
+}
+
+export async function deleteMessage(db: D1Database, id: number): Promise<void> {
+  await db.prepare("DELETE FROM message WHERE id = ?").bind(id).run();
+}

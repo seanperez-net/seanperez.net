@@ -16,8 +16,8 @@ Root, Trigger, Content, Item.
 | `menu` (default) | "On web, a FAB menu is a combination of a FAB and a menu component. The FAB opens the menu", which "inherits its states and specs from the baseline menu"; 4dp gap recommended.                                                                                                                                                                    | `Menu.Root` / `Menu.Trigger unstyled` / `Menu.Content side align="end"` / `Menu.Item` |
 | `stacked`        | The M3 Expressive FAB menu: the FAB becomes a 56dp round close button in its top-trailing corner; up to six 56dp pill items (the medium button's measurements, 24dp sides, 24dp icon, 8dp gap, title-medium) stack above it 4dp apart, 8dp over the close button; close button 20dp icon, level 3; items level 0 (4 hovered, 3 focused / pressed). | a `popover="auto"` `<div>` anchored to the FAB                                        |
 
-Colour sets (M3: primary, secondary, tertiary): the FAB is the set's container colour, the
-close button the set's colour, the items the container colour.
+Color sets (M3: primary, secondary, tertiary): the FAB is the set's container color, the
+close button the set's color, the items the container color.
 
 ## API
 
@@ -69,7 +69,7 @@ the M3 accessibility page's name for it), both `stacked` only; `onToggle$`, `<di
 
 ## Proof
 
-- Both layouts, measurements, colours, focus order: PROOFED 2026-11-23 against the M3 specs and
+- Both layouts, measurements, colors, focus order: PROOFED 2026-11-23 against the M3 specs and
   accessibility pages and the material-web tokens; run in Chrome (menu: flip, 4dp gap, end
   alignment, ArrowUp to the last enabled item, Escape back to the FAB; stacked: close button on
   the FAB's corner, focus on it, Tab order, an item closes and refocuses the FAB, a short window
@@ -92,7 +92,7 @@ the M3 accessibility page's name for it), both `stacked` only; `onToggle$`, `<di
   that swaps its icon for `close`. It is neither of M3's: the web form uses the baseline menu
   (surface container), the Expressive form separate pill items and a separate close button.
 - The trigger is a real FAB (`fabVariants`, any FAB `size`, extended); e-store's is a 56dp copy.
-- Colour sets are M3's three; e-store's `surface` and `surface-lowest` (Google Calendar's, not
+- Color sets are M3's three; e-store's `surface` and `surface-lowest` (Google Calendar's, not
   M3) are left out, as are `extended="nav"`, the Trigger's `trailing` and `closeIconName` (the
   close icon is `Content closeIcon`), JSX icons, the ripple and the anchor polyfill.
 - The menu layout's keyboard is Menu's (type-ahead, Tab closes, focus returns only when it was

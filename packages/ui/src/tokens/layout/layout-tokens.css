@@ -17,13 +17,17 @@
 
   /* Gap between two panes. */
   --layout-pane-spacer: 24px;
+  /* M3's fixed pane in a fixed-and-flexible layout (list-detail's list): 360dp by default
+     (m3.material.io/foundations/layout/breakpoints/expanded, read 2026-11-24). e-store's token
+     name (`--layout-pane-fixed`); its large-window 412dp step is not taken. */
+  --layout-pane-fixed: 360px;
 
   /* Navigation rail (leading) and its docked drawer. */
   --layout-rail-width: 88px;
   --layout-nav-width: 256px;
   --layout-drawer-width: 360px;
   /* e-store's floating drawer card (and the docked one): 240px wide (e-store's `w-60` and its
-     md-density docked width), on e-store's `--layout-drawer-bg`. The colour is e-store's choice
+     md-density docked width), on e-store's `--layout-drawer-bg`. The color is e-store's choice
      (owner 2026-11-23: "the drawer has a different color then the rail and the top app bar"),
      not an M3 role for a floating card; it equals M3's modal drawer role. */
   --layout-drawer-panel-width: 240px;

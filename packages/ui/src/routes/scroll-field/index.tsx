@@ -1,13 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  IconButton,
-  Knobs,
-  Layout,
-  ScrollField,
-  knob,
-  useKnobs,
-} from "../../index";
+import { IconButton, Layout, ScrollField } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type { ScrollFieldMode, ScrollFieldValue } from "../../index";
 
 const units = ["oz", "L", "mL", "cup"] as const;

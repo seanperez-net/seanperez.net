@@ -183,6 +183,14 @@ function startPressAnimation(
   rs.growAnimation?.cancel();
   rs.fadeAnimation?.cancel();
 
+  // Reduced motion (not in e-store): WAAPI animations ignore CSS media queries, so the check is
+  // here. No ripple is drawn; the press state (`data-pressed`) still applies.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    rs.growAnimation = null;
+    rs.fadeAnimation = null;
+    return;
+  }
+
   const { width, height } = surface.getBoundingClientRect();
   const size = rippleGeometry(width, height);
   // Nothing to draw on a hidden surface; the press state (`data-pressed`) still applies.
@@ -234,6 +242,11 @@ function fadeOutRipple(surface: HTMLElement, rs: RippleState) {
   surface.removeAttribute("data-pressed");
   // Cancel any existing fade-in, start fade-out (375ms linear, matching material-web)
   rs.fadeAnimation?.cancel();
+  // Nothing was drawn (reduced motion, hidden surface): nothing to fade.
+  if (!rs.growAnimation) {
+    rs.fadeAnimation = null;
+    return;
+  }
   rs.fadeAnimation = surface.animate(
     { opacity: [0.12, 0] },
     {

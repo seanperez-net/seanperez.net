@@ -17,7 +17,7 @@ Material 3 chips: assist, filter, input, suggestion. From e-store's `components/
 | `size`              | `"md" \| "sm"`                                    | `"md"`       | `sm`: 24dp pill (e-store's, not M3)                     |
 | `appearance`        | `"outlined" \| "tonal" \| "text"`                 | `"outlined"` | Filter only; tonal / text e-store's (not M3)            |
 | `shape`             | `"default" \| "pill"`                             | `"default"`  | `md` corners: 8dp or full                               |
-| `tone`              | `"default" \| "primary" \| "error"`               | `"default"`  | Assist only: label, icon and state-layer colour         |
+| `tone`              | `"default" \| "primary" \| "error"`               | `"default"`  | Assist only: label, icon and state-layer color          |
 | `leadingIcon`       | `IconName`                                        |              | 18dp icon before the label                              |
 | `selected`          | `boolean`                                         | `false`      | Filter: starting state                                  |
 | `bind:selected`     | `Signal<boolean>`                                 |              | Filter: two-way state                                   |
@@ -44,7 +44,7 @@ Material 3 chips: assist, filter, input, suggestion. From e-store's `components/
   Left / Right (or Up / Down when vertical; mirrored in RTL), Home, End move between chips,
   wrapping (the shared `utils/roving-focus.ts`, `rovingKeys`); Backspace / Delete removes the focused input chip and focus moves to the chip in its place.
 
-## Sizes and colours (M3)
+## Sizes and colors (M3)
 
 32dp high, 8dp corners, 16dp side padding (8dp beside a leading icon or trailing action; input
 chips 12dp at the start), `label-large`, 18dp icons, 1dp `outline` border. Assist label
@@ -65,8 +65,8 @@ pointer (`touch-target`). Focus: `focus-ring`.
 
 ## Where it differs from e-store
 
-- `leadingIcon` is an icon NAME drawn at 18dp in M3's icon colour; e-store took JSX and painted it
-  the label colour (M3: assist / filter / suggestion icons are `primary`).
+- `leadingIcon` is an icon NAME drawn at 18dp in M3's icon color; e-store took JSX and painted it
+  the label color (M3: assist / filter / suggestion icons are `primary`).
 - `label` prop added (CMS rule: text as a prop); children still work.
 - Elevated container `surface-container-low` (M3); e-store used its own floating surface.
 - Disabled also keys on `aria-disabled`, so the input chip's `<span>` dims (e-store's `disabled:`
@@ -86,10 +86,10 @@ pointer (`touch-target`). Focus: `focus-ring`.
   `appearance` (filter: `outlined` M3, `tonal`, `text`), `shape` (`default` 8dp, `pill`), `tone`
   (assist: `default`, `primary`, `error`). Only md / outlined / default / default are M3; the rest
   are e-store's store looks, NOT PROOFED. Checked in Chrome: heights, radii, paddings, type
-  sizes, colours of every tone and appearance both states, icon sizes.
+  sizes, colors of every tone and appearance both states, icon sizes.
 - Left out: `ChipField` (e-store's 600-line chip-making text field; a component of its own, not a
   variant of Chip, for the owner to decide).
 
-PROOFED 2026-11-23: material-web chip tokens (sizes, colours), APG toolbar, Qwik rc.5. Checked in
-Chrome: sizes and colours measured, filter toggle (Space), arrows, Backspace removal and focus
+PROOFED 2026-11-23: material-web chip tokens (sizes, colors), APG toolbar, Qwik rc.5. Checked in
+Chrome: sizes and colors measured, filter toggle (Space), arrows, Backspace removal and focus
 handoff, Tab leaves the group, focus ring, elevated, disabled, dark mode.

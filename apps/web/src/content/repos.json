@@ -1,0 +1,16 @@
+[
+  {
+    "name": "seanperez.net",
+    "description": "monorepo",
+    "language": "TypeScript",
+    "url": "https://github.com/seanperez-net/seanperez.net",
+    "pushedAt": "2026-11-24T02:15:33Z"
+  },
+  {
+    "name": "seanperez-net.github.io",
+    "description": "git site",
+    "language": "CSS",
+    "url": "https://github.com/seanperez-net/seanperez-net.github.io",
+    "pushedAt": "2026-11-24T02:15:31Z"
+  }
+]

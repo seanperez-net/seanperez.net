@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, Search, knob, useKnobs } from "../../index";
+import { Layout, Search } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type { IconName } from "../../index";
 
 const fruits: { label: string; icon: IconName }[] = [

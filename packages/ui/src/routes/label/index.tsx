@@ -1,6 +1,7 @@
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Label, Layout, knob, useKnobs } from "../../index";
+import { Label, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({ text: knob.text("Email address") });

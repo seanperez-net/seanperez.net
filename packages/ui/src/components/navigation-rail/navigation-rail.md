@@ -10,25 +10,26 @@ and puts the menu button in its header.
 
 `NavigationRail.Root`
 
-| Prop         | Type             | Default | What                |
-| ------------ | ---------------- | ------- | ------------------- |
-| `aria-label` | `string`         | `Main`  | The landmark's name |
+| Prop         | Type             | Default | What                                                            |
+| ------------ | ---------------- | ------- | --------------------------------------------------------------- |
+| `aria-label` | `string`         | `Main`  | The landmark's name                                             |
 | `onKeyDown$` | QRL              |         | Runs after the arrow-key handler (`rovingKeys`), passed by name |
-| ...rest      | `PropsOf<"nav">` |         |                     |
+| ...rest      | `PropsOf<"nav">` |         |                                                                 |
 
 Slots: `header` (a menu button, on the app bar's row), default (`NavigationRail.Item`s),
 `footer` (a theme toggle).
 
 `NavigationRail.Item`
 
-| Prop         | Type                | Default  | What                                                                                                               |
-| ------------ | ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| `icon`       | `IconName`          | required | The 24px icon in the pill                                                                                          |
-| `label`      | `string`            | required | The text under the icon                                                                                            |
+| Prop         | Type                   | Default  | What                                                                                                                                                   |
+| ------------ | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `icon`       | `IconName`             | required | The 24px icon in the pill                                                                                                                              |
+| `label`      | `string`               | required | The text under the icon                                                                                                                                |
 | `current`    | `boolean \| "section"` | `false`  | `true`: the page (`aria-current="page"`). `"section"`: the page is in this destination's sub-navigation (`aria-current="true"`). Both drawn as current |
-| `badge`      | `number \| boolean` |          | M3 badge on the icon (`Badge`): a count (none at 0) or `true` for the dot. e-store's `NavButton badge`, 2026-11-23 |
-| `badgeLabel` | `string`            |          | What a screen reader hears after the label (default "{n} notifications" / "New notification")                      |
-| ...rest      | `PropsOf<"a">`      |          | `href`, ...                                                                                                        |
+| `badge`      | `number \| boolean`    |          | M3 badge on the icon (`Badge`): a count (none at 0) or `true` for the dot. e-store's `NavButton badge`, 2026-11-23                                     |
+| `badgeLabel` | `string`               |          | What a screen reader hears after the label (default "{n} notifications" / "New notification")                                                          |
+| `prefetchBundles` | `PrefetchStrategy` | router default (`"visible"`) | The router `Link`'s prop: when the destination's JavaScript is fetched. `"intent"` (hover / focus) for a heavy destination; `Layout.Root railItems` passes it per item. NEW 2026-11-24 (perf audit: the Maps item fetched MapLibre on every page), not in e-store |
+| ...rest      | `PropsOf<"a">`         |          | `href`, ...                                                                                                                                            |
 
 Each item's pill carries `data-rail-pill`: `Layout.Drawer`'s floating card points its arrow at
 it. `Layout.Rail` adds `onMouseEnter$` / `onFocus$` to the items (the floating drawer, e-store's
@@ -36,7 +37,9 @@ it. `Layout.Rail` adds `onMouseEnter$` / `onFocus$` to the items (the floating d
 
 ## ARIA
 
-A `<nav>` landmark of links. The current destination has `aria-current="page"`.
+A `<nav>` landmark of links. The current destination has `aria-current="page"`; a destination
+that holds the page in its sub-navigation (`current="section"`) has `aria-current="true"`.
+Arrow keys move between the header, the destinations and the footer (`rovingKeys`, `data-roving`).
 
 ## Styles
 

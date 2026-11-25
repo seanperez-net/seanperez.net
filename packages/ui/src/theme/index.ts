@@ -10,5 +10,6 @@ export {
   THEME_CSS_KEY,
   THEME_STORAGE_KEY,
   THEME_STYLE_ID,
+  syncThemeColorMeta,
 } from "./theme-storage";
 export type { ColorMode } from "./theme-storage";

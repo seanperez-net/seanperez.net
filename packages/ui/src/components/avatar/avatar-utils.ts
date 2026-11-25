@@ -18,14 +18,23 @@ const TONES: readonly AvatarTone[] = ["primary", "secondary", "tertiary"];
  *
  * Letters are taken by code point, so a surrogate pair is never cut in half. Empty or
  * whitespace-only input gives `""`.
+ *
+ * Only letters and numbers make initials (Unicode `\p{L}` / `\p{N}`, so "Cami Muñoz" gives "CM"):
+ * punctuation and symbols inside a word are skipped, a word with none is dropped, and text in
+ * angle brackets is dropped first, so a name that holds markup ("Bo <b>Bold</b> Faker", from an
+ * imported contacts file) gives "BB", never "B<". Added 2026-11-24 (an imported name showed "B<");
+ * e-store's helper has no such filter.
  */
 export function initialsOf(name: string | null | undefined): string {
   let source = (name ?? "").trim();
   if (!source) return "";
   const at = source.indexOf("@");
   if (at > 0 && !/\s/.test(source)) source = source.slice(0, at);
-  source = source.replace(/^@+/, "");
-  const words = source.split(/[\s._+-]+/).filter(Boolean);
+  source = source.replace(/^@+/, "").replace(/<[^>]*>/g, " ");
+  const words = source
+    .split(/[\s._+-]+/)
+    .map((word) => (word.match(/[\p{L}\p{N}]\p{M}*/gu) ?? []).join(""))
+    .filter(Boolean);
   if (words.length === 0) return "";
   const letters =
     words.length > 1
@@ -36,7 +45,7 @@ export function initialsOf(name: string | null | undefined): string {
 
 /**
  * A stable tone for a seed (a name, an email or an id): the same seed always draws the same
- * colour, on the server and in the browser. Theme roles only, never a hex value, so the colour
+ * color, on the server and in the browser. Theme roles only, never a hex value, so the color
  * follows the theme and dark mode. An empty seed is `primary`.
  */
 export function avatarTone(seed: string | null | undefined): AvatarTone {

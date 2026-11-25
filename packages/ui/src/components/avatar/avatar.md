@@ -2,7 +2,7 @@
 
 A person's or brand's picture, with initials (or an icon) as the fallback, an optional presence
 ring and glyph, and a group with a `+N` counter. From e-store's `components/avatar/` (ported in
-full 2026-11-23): Material 3 sizes and colours with a Base UI-shaped compound API.
+full 2026-11-23): Material 3 sizes and colors with a Base UI-shaped compound API.
 
 - **M3**: there is no avatar page. The sizes come from the components that hold one: top app bar
   trailing avatar 32dp, search bar 30dp, list item leading 40dp; full circle; initials in
@@ -23,26 +23,32 @@ full 2026-11-23): Material 3 sizes and colours with a Base UI-shaped compound AP
 
 Helpers (Qwik-free, `avatar-utils.ts`): `initialsOf(name)` (two letters: first two words, or a
 word's first two letters, an email's local part, a handle without `@`; never splits a surrogate
-pair) and `avatarTone(seed)` (`primary` / `secondary` / `tertiary` from an FNV-1a hash; same seed,
-same colour).
+pair; letters and numbers only, text in `<...>` dropped, so "Bo <b>Bold</b> Faker" gives "BB" and
+"Cami Muñoz" "CM": 2026-11-24, an imported name showed "B<") and `avatarTone(seed)` (`primary` / `secondary` / `tertiary` from an FNV-1a hash; same seed,
+same color).
 
 ## API: `Avatar` (props only)
 
-| Prop             | Type                                                  | Default       | What                                                                |
-| ---------------- | ----------------------------------------------------- | ------------- | ------------------------------------------------------------------- |
-| `src`            | `string \| null`                                      |               | Unset, empty or failing: the fallback shows                         |
-| `name`           | `string`                                              |               | The initials, the tone seed and the accessible name                 |
-| `alt`            | `string`                                              | `name`        | The image's text and the fallback's label                           |
-| `seed`           | `string`                                              | `name ?? alt` | What the tone comes from (an id survives a rename)                  |
-| `size`           | see below                                             | `md`          |                                                                     |
-| `tone`           | `"primary" \| "secondary" \| "tertiary" \| "neutral"` | from `seed`   |                                                                     |
-| `edge`           | `"none" \| "hairline"`                                | `none`        | A 1px `outline-variant` box-shadow ring hugging the circle          |
-| `fallbackIcon`   | `IconName`                                            | `person`      | With neither a picture nor initials                                 |
-| `delay`          | `number` (ms)                                         | `0`           | `Avatar.Fallback delay`                                             |
-| `decorative`     | `boolean`                                             | `false`       | Hidden from screen readers (the name is beside it, or on a control) |
-| `presence`       | `"online" \| "away" \| "busy" \| "offline" \| null`   |               | Ring + glyph, and the word in the name ("Ada Lovelace, Busy")       |
-| `presenceLabels` | `Partial<Record<AvatarPresence, string>>`             | English       | The words                                                           |
-| `class`, ...rest | span attributes                                       |               | On the root; `class` on the presence wrapper when there is one      |
+| Prop             | Type                                                  | Default        | What                                                                      |
+| ---------------- | ----------------------------------------------------- | -------------- | ------------------------------------------------------------------------- |
+| `src`            | `string \| null`                                      |                | Unset, empty or failing: the fallback shows                               |
+| `name`           | `string`                                              |                | The initials, the tone seed and the accessible name                       |
+| `alt`            | `string`                                              | `name`         | The image's text and the fallback's label                                 |
+| `seed`           | `string`                                              | `name ?? alt`  | What the tone comes from (an id survives a rename)                        |
+| `size`           | see below                                             | `md`           |                                                                           |
+| `tone`           | `"primary" \| "secondary" \| "tertiary" \| "neutral"` | from `seed`    |                                                                           |
+| `edge`           | `"none" \| "hairline"`                                | `none`         | A 1px `outline-variant` box-shadow ring hugging the circle                |
+| `fallbackIcon`   | `IconName`                                            | `person`       | With neither a picture nor initials                                       |
+| `delay`          | `number` (ms)                                         | `0`            | `Avatar.Fallback delay`                                                   |
+| `decorative`     | `boolean`                                             | `false`        | Hidden from screen readers (the name is beside it, or on a control)       |
+| `presence`       | `"online" \| "away" \| "busy" \| "offline" \| null`   |                | Ring + glyph, and the word in the name ("Ada Lovelace, Busy")             |
+| `presenceLabels` | `Partial<Record<AvatarPresence, string>>`             | English        | The words                                                                 |
+| `editable`       | `boolean`                                             | `false`        | Shows the photo badge (below). NEW, not in e-store                        |
+| `badgeIcon`      | `IconName`                                            | `add`          | The badge's icon (`photo_camera`, `edit`, ...)                            |
+| `badgeLabel`     | `string`                                              | `Change photo` | The badge button's accessible name                                        |
+| `badgeLook`      | `"tonal" \| "filled"`                                 | `tonal`        | Google Contacts: tonal when viewing, filled when editing                  |
+| `onBadgeClick$`  | `QRL<(event, element) => void>`                       |                | The badge was pressed (open a file picker, a menu, ...)                   |
+| `class`, ...rest | span attributes                                       |                | On the root; `class` on the wrapper when there is one (presence or badge) |
 
 Parts: `Avatar.Root` (`size`, `tone`, `seed`, `edge`), `Avatar.Image` (`src`, `alt` required,
 `onLoadingStatusChange$`; put it BEFORE the fallback: it marks the root `loading` in a `useTask$`
@@ -56,13 +62,39 @@ with it.
 ## Presence
 
 `online` a filled dot (`positive`), `away` a crescent (`warning`), `busy` a bar (`error`),
-`offline` a hollow ring (`outline`): a different SHAPE per state, not colour alone (WCAG 1.4.1).
+`offline` a hollow ring (`outline`): a different SHAPE per state, not color alone (WCAG 1.4.1).
 The ring is an `outline` with an offset, so the root's `overflow-hidden` does not clip it and a
 `hairline` edge (a box-shadow) shows with it. The glyph sits outside the clipping root, in a
 `data-qds-avatar-presence` wrapper. Its cut-out is `--avatar-presence-cutout`, else `--field-bg`
 (declared by every `bg-surface*` utility in `tokens/utilities.css`), else `surface`.
 `positive` and `warning` are NOT M3 roles: `tokens/color/status.css`, e-store's values, flipped
 for dark.
+
+## Editable: the photo badge (NEW 2026-11-24, not in e-store)
+
+Owner, 2026-11-24: the Contacts person page needs Google Contacts' round "+" on the avatar
+("including the + button in the avatar when the editable ... the indicator Icon should have a prop").
+e-store's Avatar has no badge, so this is new. `editable` puts a real `IconButton` (`badgeIcon`,
+`badgeLabel`, `badgeLook`, `onBadgeClick$`) at the bottom-end corner, OUTSIDE the clipping root
+(in the same wrapper the presence glyph uses), with the presence cut-out as a 2px ring.
+
+- Sizes (measured on contacts.google.com, layout only, 2026-11-24: a 40px button on a 162px
+  avatar): `2xl` gets an `sm` (40) IconButton; `lg`, `xl`, `profile` an `xs` (32); smaller sizes
+  get NO badge (too small for a 48px target beside other controls), so `editable` is ignored.
+- The badge and the presence GLYPH share the corner: with a badge the glyph is not drawn; the
+  presence ring and the word in the name stay.
+- It is a button beside the avatar, not inside it: the avatar keeps its own name (or stays
+  `decorative`), the badge has its own. A file input, if any, is the caller's.
+
+PROOFED 2026-11-24: the IconButton is ours (tonal / filled, M3 icon-button spec); position and
+size measured in Chrome on Google Contacts; run in the playground (`/avatar/`, knobs `editable`,
+`badgeIcon`, `badgeLook`) and on `/contacts/<id>/`. Second agent (2026-11-24): keep it outside the
+clipped root, a real IconButton, sizes as above, exclusive with the glyph; leave out Google's
+hover "Choose a picture" popover. NOT PROOFED: Safari / iOS.
+
+Fixed with it (2026-11-24): `Avatar.Image` is always mounted, so when `src` goes away its task
+sets the status back to `idle` and the fallback shows again (it used to unmount first and leave
+an empty circle).
 
 ## ARIA
 

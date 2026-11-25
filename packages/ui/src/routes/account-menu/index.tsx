@@ -2,12 +2,11 @@ import { $, component$, useSignal, useTask$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import {
   AccountMenu,
+  DEFAULT_PRESENCE_OPTIONS,
   IconButton,
-  Knobs,
   Layout,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type {
   AccountMenuUser,
   AccountPresencePref,
@@ -29,6 +28,26 @@ const SEEN_AS: Record<AccountPresencePref, AvatarPresence> = {
   invisible: "offline",
 };
 
+/** What a host would show for each duration id (made-up times: no clock here). */
+const UNTIL: Record<string, string> = {
+  "1h": "Until 3:40 PM",
+  "4h": "Until 6:40 PM",
+  today: "Until end of day",
+  forever: "Until you change it",
+};
+
+const AVATAR_SIZES = [
+  "xs",
+  "search",
+  "appbar",
+  "md",
+  "post",
+  "lg",
+  "xl",
+  "profile",
+  "2xl",
+] as const;
+
 export default component$(() => {
   const knobs = useKnobs({
     signedIn: knob.boolean(true, "Signed in"),
@@ -42,15 +61,23 @@ export default component$(() => {
       "online",
     ),
     statusRows: knob.boolean(true, "Status rows"),
+    // Busy as a submenu of durations (2026-11-24); off: a plain Busy row.
+    busyDurations: knob.boolean(true, "Busy durations"),
     themeRows: knob.boolean(false, "Theme rows"),
     manageAccount: knob.boolean(true, "Manage account row"),
     align: knob.select(["start", "end"] as const, "end"),
+    // The trigger's avatar and the header's.
+    size: knob.select(AVATAR_SIZES, "appbar"),
+    headerSize: knob.select(AVATAR_SIZES, "lg"),
   });
 
   // The "session": what a host would read from its auth library. The knob and the menu both
   // write it; the menu only ever reads it through the `user` prop.
   const user = useSignal<AccountMenuUser | null>(DEMO_USER);
   const pref = useSignal<AccountPresencePref>("auto");
+  // The host's part of a duration: the id it was given and the end it words (a real host
+  // computes the time; this one only names it).
+  const duration = useSignal<string | undefined>(undefined);
   useTask$(({ track }) => {
     user.value = track(() => knobs.values.signedIn) ? DEMO_USER : null;
   });
@@ -70,17 +97,35 @@ export default component$(() => {
           <AccountMenu
             user={user.value}
             align={knobs.values.align}
+            size={knobs.values.size}
+            headerSize={knobs.values.headerSize}
             presence={
               knobs.values.presence === "none"
                 ? undefined
                 : knobs.values.presence
             }
-            statusText="Demo session, no auth"
+            statusText={
+              pref.value === "busy" && duration.value
+                ? UNTIL[duration.value]
+                : "Demo session, no auth"
+            }
             presencePref={pref.value}
+            presenceDuration={pref.value === "busy" ? duration.value : undefined}
+            presenceUntilText={
+              pref.value === "busy" && duration.value
+                ? UNTIL[duration.value]
+                : undefined
+            }
+            presenceOptions={
+              knobs.values.busyDurations
+                ? DEFAULT_PRESENCE_OPTIONS
+                : DEFAULT_PRESENCE_OPTIONS.map((o) => ({ ...o, durations: undefined }))
+            }
             onPresenceChange$={
               knobs.values.statusRows
-                ? $((value: AccountPresencePref) => {
+                ? $((value: AccountPresencePref, id?: string) => {
                     pref.value = value;
+                    duration.value = id;
                     knobs.values.presence = SEEN_AS[value];
                   })
                 : undefined

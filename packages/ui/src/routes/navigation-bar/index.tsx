@@ -1,13 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import {
-  Badge,
-  Knobs,
-  Layout,
-  NavigationBar,
-  knob,
-  useKnobs,
-} from "../../index";
+import { Badge, Layout, NavigationBar } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type { IconName } from "../../index";
 
 const destinations: {

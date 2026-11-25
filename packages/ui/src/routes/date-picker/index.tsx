@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { DatePicker, Knobs, Layout, knob, useKnobs } from "../../index";
+import { DatePicker, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const date = useSignal("");
@@ -15,6 +16,9 @@ export default component$(() => {
       "field (docked)",
     ),
     label: knob.text("Date"),
+    supportingText: knob.text("MM/DD/YYYY", "supportingText (docked)"),
+    error: knob.text("", "error (docked)"),
+    required: knob.boolean(false, "required (docked)"),
     min: knob.text("", "min (YYYY-MM-DD)"),
     max: knob.text("", "max (YYYY-MM-DD)"),
     clearable: knob.boolean(false),
@@ -29,6 +33,9 @@ export default component$(() => {
           {knobs.values.picker === "docked" ? (
             <DatePicker.Root
               label={knobs.values.label}
+              supportingText={knobs.values.supportingText}
+              error={knobs.values.error || undefined}
+              required={knobs.values.required}
               inputVariant={knobs.values.inputVariant}
               min={knobs.values.min}
               max={knobs.values.max}
@@ -67,4 +74,4 @@ export default component$(() => {
   );
 });
 
-export const head: DocumentHead = { title: "Date picker" };
+export const head: DocumentHead = { title: "Date picker: @seanperez/ui" };

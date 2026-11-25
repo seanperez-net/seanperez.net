@@ -8,11 +8,11 @@ NEW: e-store has no loading indicator.
 
 ## API
 
-| Prop | Default | |
-|---|---|---|
-| `contained` | false | `primary-container` circle behind an `on-primary-container` shape; default is a `primary` shape alone |
-| `size` | 48 | dp, clamped to 24..240 (M3); the shape keeps its 38 : 48 ratio |
-| `aria-label` / `aria-labelledby` | — | `role="progressbar"` with a name (M3 accessibility) |
+| Prop                             | Default |                                                                                                       |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `contained`                      | false   | `primary-container` circle behind an `on-primary-container` shape; default is a `primary` shape alone |
+| `size`                           | 48      | dp, clamped to 24..240 (M3); the shape keeps its 38 : 48 ratio                                        |
+| `aria-label` / `aria-labelledby` | —       | `role="progressbar"` with a name (M3 accessibility)                                                   |
 
 ## How it is built
 
@@ -31,7 +31,7 @@ The determinate Compose variant and pull-to-refresh (Compose only, not in the M3
 
 ## Proof
 
-- PROOFED 2026-11-23: colours, 48 / 38dp, size range, role and label (M3 pages); timings and
+- PROOFED 2026-11-23: colors, 48 / 38dp, size range, role and label (M3 pages); timings and
   shape order against the Compose source.
 - Measured in Chrome: 48x48, 96x96, contained fill `primary-container`.
 - NOT PROOFED: the polygon morph approximates Compose's cubic morph (rounded corners are

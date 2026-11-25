@@ -26,7 +26,7 @@ With a `description` or `error`, the label text gets its own id and names the in
 `aria-labelledby`: the `<label>` holds all three lines, and without it the description joined
 the switch's name ("Notifications Sent to your phone"; fixed in the 2026-11-23 review).
 
-## Sizes and colours (M3 tokens)
+## Sizes and colors (M3 tokens)
 
 Track 52 x 32, 2dp outline. Handle: off 16dp `outline`, on 24dp `on-primary`, with icons 24dp
 both ways, pressed 28dp. Hover / focus / pressed handle: `on-surface-variant` off,
@@ -38,8 +38,8 @@ logical (`inset-s-*`), so the handle runs the other way in RTL.
 
 ## Styles
 
-`switchVariants` (tv) slots: `root`, `control`, `track` (the input), `handle`, `onIcon`,
-`offIcon`; variant `icons`.
+`switchVariants` (tv) slots: `root`, `control`, `text`, `description`, `error`, `track` (the
+input), `handle`, `onIcon`, `offIcon`; variants `icons`, `size`.
 
 ## Usage
 
@@ -60,16 +60,16 @@ KEPT OURS, with e-store's options added. e-store's switch is a nine-part compoun
 | Form posting, `required`, `disabled` | native                                                                          | a second, hidden input kept in step by code    |
 | Label                                | `<label>` wraps the input                                                       | `<label for>` pointing at the button           |
 | Size                                 | one component, ~150 lines                                                       | nine parts, a headless layer and context       |
-| M3 visuals                           | same sizes and colours; now also icons, focus colours, state layer              | icons via the Material Symbols font            |
+| M3 visuals                           | same sizes and colors; now also icons, focus colors, state layer                | icons via the Material Symbols font            |
 
 Taken from e-store: `icons` / `showOnlySelectedIcon` (as `icons="both" | "selected"`), the
-`focus-ring` utility, the focus handle colours. Added 2026-11-23: `size="sm"` (e-store's 0.75
+`focus-ring` utility, the focus handle colors. Added 2026-11-23: `size="sm"` (e-store's 0.75
 scale: 39x24 track, handle 12 / 18 / pressed 21, 12dp icons; not an M3 size, NOT PROOFED) and
 its `Description` / `Error` parts as `description` / `error` props (one component here): both in
 the input's `aria-describedby`, `error` also `aria-invalid` (not while disabled). Checked in
-Chrome: both sizes in every icon mode, handle positions, describedby, error colour. Differs: the icons are props
-(`checkIcon`, `uncheckIcon`) and inline SVG; the unselected icon colour is M3's
-`surface-container-highest` (e-store left it the inherited colour).
+Chrome: both sizes in every icon mode, handle positions, describedby, error color. Differs: the icons are props
+(`checkIcon`, `uncheckIcon`) and inline SVG; the unselected icon color is M3's
+`surface-container-highest` (e-store left it the inherited color).
 
 PROOFED 2026-11-23: material-web switch tokens, APG switch, MDN `switch` role. Checked in Chrome:
 52x32 track, 16 / 24dp handle centred at 16 / 36px, 48px target, Space toggles, focus ring 3px,

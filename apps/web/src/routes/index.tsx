@@ -1,98 +1,68 @@
-import type { DocumentHead } from "@qwik.dev/router";
-import { component$, useSignal } from "@qwik.dev/core";
-import { AccountMenu, Layout, ThemeChanger } from "@seanperez/ui";
+import { component$ } from "@qwik.dev/core";
+import { routeLoader$, type DocumentHead } from "@qwik.dev/router";
+import { Icon, Layout, List } from "@seanperez/ui";
+import { formatDate } from "../feed/format";
+import { listPublished } from "../feed/posts.server";
 import { pageHead } from "../seo";
-import type { LayoutConfig } from "@seanperez/ui";
 
-const GITHUB = "https://github.com/seanperez-net";
-const SOURCE = "https://github.com/seanperez-net/seanperez.net";
+/** Published posts, newest first (drafts never leave /admin). */
+export const usePosts = routeLoader$(({ platform }) =>
+  listPublished(platform.env.DB),
+);
 
 /**
- * What the scaffold shows, as plain data. It is spread onto `Layout.Root`, which hands it to
- * the app bar, the rail, the drawer and the companion rail through context. A CMS can store
- * this object as it is.
+ * Home IS the feed (owner, 2026-11-24): the published posts, written in /admin. No pane header
+ * (owner, 2026-11-24: "why do we need that there"; the app bar already names the site). Each post
+ * is one link row (`list.md`, "Places to go"), its date as supporting text; a post opens at
+ * `/feed/<slug>/`. The Atom feed `/feed.xml` has no button on the page (owner, same day): feed
+ * readers find it through the `<link rel="alternate">` in `head` below (RSS / Atom
+ * autodiscovery).
  */
-const pages = [{ href: "/", label: "Home", icon: "home" as const }];
-
-const layout: LayoutConfig = {
-  title: "Sean Perez",
-  titleHref: "/",
-  activeHref: "/",
-  // The destinations. No drawer items: no drawer, the rail's menu button stays but is disabled; below 600px
-  // the app bar's menu button opens the modal drawer with these (e-store's defaults). GitHub is
-  // not a destination of this site: it is the page's own link and the account menu's.
-  railItems: pages,
-  // The light / dark switch: the layout puts it at the foot of the rail, or in the app bar below
-  // 600px.
-  themeToggle: true,
-  companions: [
-    { id: "about", label: "About", icon: "info" },
-    { id: "theme", label: "Theme", icon: "palette" },
-  ],
-};
-
 export default component$(() => {
-  // The companion rail's buttons open the supporting pane and choose what it shows (below 600px
-  // the pane's own opener does).
-  const supportExpanded = useSignal(false);
-  const activeCompanion = useSignal<string | null>(null);
-
+  const posts = usePosts();
   return (
-    <Layout.Root
-      {...layout}
-      bind:supportExpanded={supportExpanded}
-      bind:activeCompanion={activeCompanion}
-    >
-      <Layout.Rail />
-      {/* Only the modal drawer below 600px: no destination has children. */}
-      <Layout.Drawer />
-      <Layout.AppBar>
-        {/* The site has no sign-in: this is the owner's own avatar, with his links. */}
-        <AccountMenu
-          user={{ name: "Sean Perez" }}
-          accountLabel="About"
-          items={[
-            { label: "GitHub", href: GITHUB },
-            { label: "Source of this site", href: SOURCE },
-          ]}
-        />
-      </Layout.AppBar>
-      <Layout.Pane role="primary">
-        <Layout.PaneHeader title="Projects and code" />
-        <nav
-          class="flex flex-wrap gap-x-5 gap-y-2 text-primary"
-          aria-label="Links"
-        >
-          <a
-            href={GITHUB}
-            rel="me external"
-            class="underline underline-offset-4"
-          >
-            GitHub
-          </a>
-        </nav>
-      </Layout.Pane>
-      <Layout.SupportingPane>
-        {activeCompanion.value === "theme" ? (
-          <ThemeChanger />
+    <Layout.Pane role="primary" aria-labelledby="home-title">
+      {/* The page's heading for screen readers only (as /maps/): no visible header. */}
+      <h2 id="home-title" class="sr-only">
+        Feed
+      </h2>
+      {/* The pane's ONE body element (layout.md). */}
+      <div class="grid content-start">
+        {posts.value.length ? (
+          <List.Root aria-label="Posts">
+            {posts.value.map((post) => (
+              <List.Item
+                key={post.id}
+                href={`/feed/${post.slug}/`}
+                headline={post.title}
+                supportingText={formatDate(post.published_at)}
+              />
+            ))}
+          </List.Root>
         ) : (
-          <p class="text-body-medium">
-            Sean Perez: projects and code. This site is built with Qwik on
-            Cloudflare Workers.
-          </p>
+          // Empty state: an icon, a line saying what will be here, and why it is empty.
+          <div class="grid justify-items-center gap-2 py-16 text-center text-on-surface-variant">
+            {/* Decorative; `fill-current` takes the wrapper's color (no class on Icon). */}
+            <Icon name="article" size="xl" aria-hidden="true" />
+            <p class="text-title-medium text-on-surface">No posts yet</p>
+            <p class="text-body-medium">
+              New posts will show up here.
+            </p>
+          </div>
         )}
-      </Layout.SupportingPane>
-      <Layout.CompanionRail />
-      <Layout.Footer>
-        <p>
-          © Sean Perez ·{" "}
-          <a href={SOURCE} rel="external" class="underline underline-offset-4">
-            Source
-          </a>
-        </p>
-      </Layout.Footer>
-    </Layout.Root>
+      </div>
+    </Layout.Pane>
   );
 });
 
-export const head: DocumentHead = ({ url }) => pageHead("/", url);
+export const head: DocumentHead = ({ url }) => ({
+  ...pageHead("/", url),
+  links: [
+    {
+      rel: "alternate",
+      type: "application/atom+xml",
+      title: "Sean Perez: Feed",
+      href: "/feed.xml",
+    },
+  ],
+});

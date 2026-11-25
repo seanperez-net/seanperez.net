@@ -19,13 +19,14 @@ import {
   useTask$,
 } from "@qwik.dev/core";
 import { useNavigate } from "@qwik.dev/router";
+import type { PrefetchStrategy } from "@qwik.dev/router";
 import { tv } from "tailwind-variants/lite";
 import type { VariantProps } from "tailwind-variants/lite";
 import { useBindings } from "../../utils/bindings";
 import { freshJsx } from "../../utils/jsx-prop";
 import { rovingKeys } from "../../utils/roving-focus";
 import { safeHref } from "../../utils/safe-href";
-import { UnstyledButton } from "../button/unstyled-button";
+import { UnstyledButton, relIsExternal } from "../button/unstyled-button";
 import { Icon } from "../icon";
 import type { IconName } from "../icon";
 import { Item } from "../item";
@@ -135,7 +136,7 @@ export const listItemVariants = tv({
     "duration-200",
     "ease-standard",
     // Selected: `data-selected` (every selected row carries it; `aria-selected` only an option
-    // may carry); its colours are the `indicator` variant. Disabled: `data-disabled` (every
+    // may carry); its colors are the `indicator` variant. Disabled: `data-disabled` (every
     // disabled row; `aria-disabled` only on an option, the one row role that supports it).
     "data-disabled:opacity-38",
     "data-disabled:pointer-events-none",
@@ -169,8 +170,8 @@ export const listItemVariants = tv({
         "select-none",
         // State layers (M3: on-surface 8% hover, 12% focus and pressed) are painted as a
         // background IMAGE over the row's own fill, so a segmented row keeps its
-        // surface-container and a selected row its container colour underneath. e-store set
-        // `bg-on-surface/8`, which REPLACED the fill, and faded the selected colour to /90.
+        // surface-container and a selected row its container color underneath. e-store set
+        // `bg-on-surface/8`, which REPLACED the fill, and faded the selected color to /90.
         "hover:bg-linear-to-r hover:from-on-surface/8 hover:to-on-surface/8",
         "focus-visible:bg-linear-to-r focus-visible:from-on-surface/12 focus-visible:to-on-surface/12",
         // A control INSIDE the row with keyboard focus lights the row too.
@@ -189,7 +190,7 @@ export const listItemVariants = tv({
       ],
       false: "",
     },
-    /** Selected colours: `primary` (an option) or `secondary` (M3 navigation indicator). */
+    /** Selected colors: `primary` (an option) or `secondary` (M3 navigation indicator). */
     indicator: {
       primary: [
         "data-selected:bg-primary-container",
@@ -309,7 +310,7 @@ export interface ListRootProps
   rovingFocus?: boolean;
   /** `rounded`: pill rows with an inset margin. */
   shape?: "default" | "rounded";
-  /** Selected colours: `primary` (default) or `secondary` (M3 navigation indicator). */
+  /** Selected colors: `primary` (default) or `secondary` (M3 navigation indicator). */
   indicator?: "primary" | "secondary";
   /** `default`: M3 heights. `compact`: 40 / 56 / 72 (not an M3 value). */
   density?: "default" | "compact";
@@ -458,6 +459,22 @@ export interface ListItemProps
   href?: string;
   /** With `href`: a plain `<a>` (a full page load). */
   reload?: boolean;
+  /**
+   * With `href`: when the router's `Link` fetches the destination's bundles (default
+   * `"visible"`; `"intent"` for a heavy page such as a map). NEW 2026-11-24, not in e-store.
+   */
+  prefetchBundles?: PrefetchStrategy;
+  /**
+   * With `href`: the link's `rel` (`"me"` on a profile link, `"external"`). New, not in e-store.
+   * Use it with `reload` for a link off the site.
+   */
+  rel?: string;
+  /**
+   * With `href` and a `rel` containing `external`: the row ends with the `open_in_new` icon (its
+   * trailing icon, M3 list), named by this text for screen readers, as Button's. An explicit
+   * `end` / `endIcon` replaces it. NEW 2026-11-24, not in e-store.
+   */
+  externalLabel?: string;
   /** With `href`: `data-*` attributes for the `<a>` itself. */
   linkData?: { [key: `data-${string}`]: string | undefined };
   /** Classes on the `<li>`. */
@@ -479,6 +496,9 @@ const ListItem = component$<ListItemProps>((props) => {
     onClick$,
     href,
     reload,
+    prefetchBundles,
+    rel,
+    externalLabel = "external link",
     linkData,
     class: className,
     itemClass,
@@ -571,7 +591,17 @@ const ListItem = component$<ListItemProps>((props) => {
       start={start}
       startIcon={startIcon}
       startProps={startProps}
-      end={end}
+      end={
+        end ??
+        (href && !endIcon && relIsExternal(rel) ? (
+          // Mirrored in right-to-left: Google's `open_in_new` asset is `autoMirrored`.
+          <Icon
+            name="open_in_new"
+            label={externalLabel}
+            class="rtl:-scale-x-100"
+          />
+        ) : undefined)
+      }
       endIcon={endIcon}
       endProps={endProps}
       lines={lines}
@@ -626,6 +656,8 @@ const ListItem = component$<ListItemProps>((props) => {
           type="link"
           href={href ?? ""}
           reload={reload}
+          prefetchBundles={prefetchBundles}
+          rel={rel}
           class="block text-inherit no-underline"
           tabIndex={ctx.rovingFocus.value ? -1 : undefined}
           aria-label={ariaLabel}

@@ -9,7 +9,7 @@ import type { PropsOf } from "@qwik.dev/core";
  * reserved even when empty, so an error appearing does not move what is below.
  *
  * Changed from e-store: its `mt-.5` is not a Tailwind class (nothing was applied) and its
- * disabled colour read `aria-disabled`, which no element in the field carries; this reads
+ * disabled color read `aria-disabled`, which no element in the field carries; this reads
  * `:disabled`.
  */
 export type TextFieldSupportingTextProps = PropsOf<"div"> & {

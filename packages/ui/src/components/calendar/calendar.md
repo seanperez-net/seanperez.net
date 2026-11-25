@@ -3,30 +3,36 @@
 The date pickers' shared parts. Not a picker on its own: M3 has no stand-alone calendar component.
 
 - `calendar.ts`: date maths on `YYYY-MM-DD` strings (no `Date` in state): `toDateStr`,
-  `parseDateStr`, `isDateStr`, `todayStr`, `daysInMonth`, `addMonths`, `buildMonthGrid`,
-  `isOutOfRange`, `moveFocusDate`, `nextTapRange`, `parseTypedDate`, `toTypedDate`, the `Intl`
-  name and heading formatters.
-- `calendar-grid.tsx`: `CalendarGrid`, one month as an APG date grid, and `focusDay`.
+  `parseDateStr`, `isDateStr`, `todayStr`, `toDate`, `daysInMonth`, `addMonths`,
+  `buildMonthGrid` (`CalendarDay`), `isOutOfRange`, `clampDate`, `tabDateFor`, `GRID_KEYS`,
+  `moveFocusDate`, `nextTapRange`, `parseTypedDate`, `toTypedDate`, and the `Intl` formatters
+  (`monthNames`, `weekdayNames`, `formatMonthYear`, `formatFullDate`, `formatHeaderDate`,
+  `formatRangeHeader`).
+- `calendar-grid.tsx`: `CalendarGrid`, one month as an APG date grid, `calendarGridVariants`
+  (tv), and `focusDay`.
+
+Playground: `/calendar/` shows `CalendarGrid` on its own (the host's month arrows are plain
+buttons there; in a picker they are the picker's).
 
 From e-store's `components/calendar/calendar.tsx` (helpers, cell states) and
 `components/date-picker/date-picker.tsx` (typed-date parsing, header formats).
 
 ## CalendarGrid API
 
-| Prop                     | Type                     | Notes                                                                                               |
-| ------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------- |
-| `year`, `month`          | `number`                 | The month shown (`month` 0-based)                                                                   |
-| `selected`               | `string`                 | Single selection                                                                                    |
-| `rangeStart`, `rangeEnd` | `string`                 | Range selection (`rangeEnd` `""` while picking)                                                     |
-| `today`                  | `string`                 | Ring and `aria-current="date"`                                                                      |
-| `min`, `max`, `disabled` |                          | Days outside are `aria-disabled`                                                                    |
-| `locale`                 | `string`                 | Names                                                                                               |
-| `tabDate`                | `string`                 | The one day with `tabindex=0`                                                                       |
-| `outsideDays`            | `boolean`                | Docked: neighbouring months' days, dimmed, six rows always                                          |
-| `weekdays` / `days`      | `boolean`                | Render the weekday row / the days (a weekday row alone for the range list)                          |
-| `onPick$`                | `(date, enter?) => void` | Click, Enter, Space. `enter`: M3 "Enter saves and closes"                                           |
-| `onMove$`                | `(date) => void`         | A grid key moved to `date` (already within min / max). The picker shows that month, then `focusDay` |
-| `onFocusDate$`           | `(date) => void`         | A day got focus                                                                                     |
+| Prop                     | Type                          | Notes                                                                                                         |
+| ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `year`, `month`          | `number`                      | Required. The month shown (`month` 0-based)                                                                   |
+| `selected`               | `string`                      | Single selection                                                                                              |
+| `rangeStart`, `rangeEnd` | `string`                      | Range selection (`rangeEnd` `""` while picking)                                                               |
+| `today`                  | `string`                      | Required. Ring and `aria-current="date"`                                                                      |
+| `min`, `max`, `disabled` | `string`, `string`, `boolean` | Days outside `min` / `max` (every day with `disabled`) are `aria-disabled`                                    |
+| `locale`                 | `string`                      | Required. Names                                                                                               |
+| `tabDate`                | `string`                      | Required. The one day with `tabindex=0`                                                                       |
+| `outsideDays`            | `boolean`                     | Default `false`. Docked: neighbouring months' days, dimmed, six rows always                                   |
+| `weekdays` / `days`      | `boolean`                     | Default `true` / `true`. Render the weekday row / the days (a weekday row alone for the range list)           |
+| `onPick$`                | `(date, enter?) => void`      | Required. Click, Enter, Space. `enter`: M3 "Enter saves and closes"                                           |
+| `onMove$`                | `(date) => void`              | Required. A grid key moved to `date` (already within min / max). The picker shows that month, then `focusDay` |
+| `onFocusDate$`           | `(date) => void`              | A day got focus                                                                                               |
 
 ## ARIA and keys
 
@@ -46,7 +52,7 @@ From e-store's `components/calendar/calendar.tsx` (helpers, cell states) and
 | Day cells 48dp, 40dp circle, weekday row body-large on-surface                                   | PROOFED: m3 date pickers specs                                                                                                        |
 | Today 1dp primary ring, primary text; selected primary / on-primary; outside days on-surface 38% | PROOFED: m3 specs                                                                                                                     |
 | Range: ends primary, band secondary-container 40dp, text on-secondary-container                  | PROOFED: m3 specs (range)                                                                                                             |
-| State layer 8% hover, 10% focus / press in the day's text colour                                 | PROOFED: m3 specs tokens                                                                                                              |
+| State layer 8% hover, 10% focus / press in the day's text color                                  | PROOFED: m3 specs tokens                                                                                                              |
 | Day as the gridcell itself (not `<button aria-pressed>` inside, as e-store)                      | PROOFED: APG example. CHANGED from e-store                                                                                            |
 | Typed formats: slashes, dashes, dots, spaces, leading zero                                       | PROOFED: m3 accessibility. e-store took slashes and dashes only                                                                       |
 | `focusDay` retries a few frames while the month renders                                          | OURS (e-store has the same idea)                                                                                                      |

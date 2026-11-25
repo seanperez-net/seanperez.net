@@ -1,14 +1,12 @@
 import { component$ } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
 import {
-  Knobs,
   Layout,
   SplitButton,
-  knob,
   splitButtonLooks,
   splitButtonSizes,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({

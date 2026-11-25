@@ -1,13 +1,13 @@
 # Ripple
 
-Material Design 3 ripple effect using global event delegation and the Web Animations API. No per-component JavaScript: one set of document listeners handles every ripple-enabled element. From e-store's `components/ripple` (PROOFED 2026-11-23 against Qwik 2.0.0-rc.5 `qwikloader.debug.js`; not yet wired into `Layout.Root`, see "Status").
+Material Design 3 ripple effect using global event delegation and the Web Animations API. No per-component JavaScript: one set of document listeners handles every ripple-enabled element. From e-store's `components/ripple` (PROOFED 2026-11-23 against Qwik 2.0.0-rc.5 `qwikloader.debug.js`). Mounted in `Layout.Root` since 2026-11-23, see "Status".
 
 - **M3 spec**: https://m3.material.io/foundations/interaction/states/overview
 - **MDN**: https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API
 
 ## Status
 
-`RippleProvider` is not mounted anywhere yet. e-store's `Layout.Root` wraps its scaffold in it; ours does not, so no ripple is drawn until `Layout.Root` (or an app layout) renders `<RippleProvider>` and a component carries `data-ripple` with a `<RippleSurface />`.
+ON since 2026-11-23 (owner): `Layout.Root` wraps the scaffold in `<RippleProvider>`, as e-store's `Layout.Root` does, so every `data-ripple` host with a `<RippleSurface />` inside a `Layout.Root` ripples (today: `List` rows, `Carousel` items). Checked in Chrome on the playground's `/list/`: a row click runs the grow and fade animations. An app without `Layout.Root` mounts `RippleProvider` itself (below).
 
 ## Architecture
 
@@ -130,4 +130,7 @@ Web Animations API, Pointer Events and WeakMap: all modern evergreen browsers.
 
 ## Where it differs from e-store
 
-Nothing in the code. e-store's test file (`ripple.test.ts`) was not ported: this package has no test runner.
+- Reduced motion (new, not in e-store; e-store's ripple ignores it): with `prefers-reduced-motion: reduce` no ripple is drawn; the press state (`data-pressed`) still applies. The check is in `startPressAnimation` (`matchMedia`), because Web Animations do not follow CSS media queries; `fadeOutRipple` skips the fade when nothing was drawn. Checked in Chrome with `matchMedia` stubbed to report reduce: no animation on a row click.
+- `:scope >` surface lookup and the host-only `pointerleave` (fixes, commented in the code).
+
+e-store's test file (`ripple.test.ts`) was not ported: this package has no test runner.

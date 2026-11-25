@@ -72,13 +72,13 @@ export const itemVariants = tv({
     "**:[.item-trailing-supporting-text]:text-label-small",
     "**:[.item-trailing-supporting-text]:text-on-surface-variant",
 
-    // Leading / trailing content colour. M3: on-surface-variant for icons.
+    // Leading / trailing content color. M3: on-surface-variant for icons.
     "*:[.item-start]:text-on-surface-variant",
     "*:[.item-end]:text-on-surface-variant",
   ],
   variants: {
     /**
-     * The selected state's colours (on `data-selected`; `aria-selected` is not allowed on a
+     * The selected state's colors (on `data-selected`; `aria-selected` is not allowed on a
      * section). `primary`: a selected option, primary-container. `secondary`: M3's navigation
      * active indicator, secondary-container.
      */
@@ -169,7 +169,7 @@ export const itemVariants = tv({
       section: "",
       button: [
         "w-full cursor-pointer border-0 bg-transparent text-start",
-        // State layers as a background image over the fill (a selected row keeps its colour).
+        // State layers as a background image over the fill (a selected row keeps its color).
         "hover:bg-linear-to-r hover:from-on-surface/8 hover:to-on-surface/8",
         "focus-visible:bg-linear-to-r focus-visible:from-on-surface/12 focus-visible:to-on-surface/12",
         "active:bg-linear-to-r active:from-on-surface/12 active:to-on-surface/12",
@@ -264,7 +264,7 @@ export interface ItemTextParts {
 export interface ItemProps extends ItemVariantProps, ItemTextParts {
   /** `default`: M3 56dp one-line. `compact`: 40dp (not an M3 value). */
   density?: "default" | "compact";
-  /** Selected look (`data-selected`; colours from `indicator`). */
+  /** Selected look (`data-selected`; colors from `indicator`). */
   selected?: boolean;
   /** Paint the selected container (default). `List.Item` sets `false`: its `<li>` paints it. */
   selectedFill?: boolean;
@@ -444,11 +444,7 @@ export const Item = component$<ItemElementProps>(
     const attrs = {
       "data-qds-item": "",
       "data-lines":
-        multiline === "three-line"
-          ? "3"
-          : multiline === "two-line"
-            ? "2"
-            : "1",
+        multiline === "three-line" ? "3" : multiline === "two-line" ? "2" : "1",
       "data-selected": selected || undefined,
     };
     const classes = [

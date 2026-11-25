@@ -1,6 +1,7 @@
 import { $, component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Button, Files, Knobs, Layout, knob, useKnobs } from "../../index";
+import { Button, Files, Layout } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const submitted = useSignal<string[]>([]);

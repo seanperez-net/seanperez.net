@@ -9,7 +9,7 @@ import type { LayoutCompanion, LayoutDrawerItem, LayoutMode } from "../index";
  * categories, each a drawer item with its pages as children (the floating drawer shows them on
  * hover or focus of the category). A category's `href` is its first page.
  */
-const sections: LayoutDrawerItem[] = [
+const sections: (LayoutDrawerItem & { href: string })[] = [
   { href: "/", label: "Overview", icon: "home" },
   {
     href: "/button/",
@@ -19,6 +19,8 @@ const sections: LayoutDrawerItem[] = [
       { href: "/button/", label: "Button" },
       { href: "/icon-button/", label: "Icon button" },
       { href: "/fab/", label: "FAB" },
+      { href: "/fullscreen-button/", label: "Fullscreen button" },
+      { href: "/icon/", label: "Icon" },
       { href: "/fab-menu/", label: "FAB menu" },
       { href: "/split-button/", label: "Split button" },
       { href: "/toggle-group/", label: "Toggle group" },
@@ -29,8 +31,10 @@ const sections: LayoutDrawerItem[] = [
     label: "Inputs",
     icon: "edit",
     items: [
+      { href: "/calendar/", label: "Calendar" },
       { href: "/checkbox/", label: "Checkbox" },
       { href: "/chip/", label: "Chip" },
+      { href: "/color-picker/", label: "Color picker" },
       { href: "/combobox/", label: "Combobox" },
       { href: "/date-picker/", label: "Date picker" },
       { href: "/files-input/", label: "Files input" },
@@ -42,6 +46,7 @@ const sections: LayoutDrawerItem[] = [
       { href: "/switch/", label: "Switch" },
       { href: "/text-field/", label: "Text field" },
       { href: "/time-picker/", label: "Time picker" },
+      { href: "/turnstile/", label: "Turnstile" },
     ],
   },
   {
@@ -56,6 +61,8 @@ const sections: LayoutDrawerItem[] = [
       { href: "/modal/", label: "Modal" },
       { href: "/sheet/", label: "Bottom sheet" },
       { href: "/separator/", label: "Separator (divider)" },
+      { href: "/empty-state/", label: "Empty state" },
+      { href: "/list-detail/", label: "List-detail panes" },
     ],
   },
   {
@@ -71,6 +78,7 @@ const sections: LayoutDrawerItem[] = [
       { href: "/tabs/", label: "Tabs" },
       { href: "/toolbar/", label: "Toolbar" },
       { href: "/top-app-bar/", label: "Top app bar" },
+      { href: "/title-bar/", label: "Title bar" },
     ],
   },
   {
@@ -95,6 +103,7 @@ const sections: LayoutDrawerItem[] = [
       { href: "/account-menu/", label: "Account menu" },
       { href: "/avatar/", label: "Avatar" },
       { href: "/theme-changer/", label: "Theme changer" },
+      { href: "/theme-toggle/", label: "Theme toggle" },
     ],
   },
 ];
@@ -103,8 +112,15 @@ const sections: LayoutDrawerItem[] = [
 const pages = sections.flatMap((section) => section.items ?? [section]);
 
 // One companion (owner, 2026-11-23): the theme changer.
+// A second, emphasized one (2026-11-24) shows `LayoutCompanion.emphasis` (the site's Contact me).
 const companions: LayoutCompanion[] = [
   { id: "theme", label: "Theme", icon: "palette" },
+  {
+    id: "contact",
+    label: "Contact me",
+    icon: "waving_hand",
+    emphasis: "primary",
+  },
 ];
 
 /**
@@ -183,32 +199,45 @@ export default component$(() => {
           signOutHref="/"
         />
       </Layout.AppBar>
-      <Layout.Pane role="primary">
+      {/* `/list-detail/` renders `Layout.ListDetail` as the pane's one root: full bleed there. */}
+      <Layout.Pane
+        role="primary"
+        bleed={location.url.pathname.startsWith("/list-detail")}
+      >
         <Slot />
       </Layout.Pane>
       <Layout.SupportingPane>
         {/* One child: the pane's ruler grid puts each child in the same content cell. */}
-        <div class="grid content-start gap-6">
-          <ThemeChanger />
-          <Select.Root
-            value={layoutMode.value}
-            options={[
-              { value: "default", label: "default" },
-              { value: "compact", label: "compact" },
-            ]}
-            onValueChange$={(value) => (layoutMode.value = value as LayoutMode)}
-          >
-            <Select.Label label="layoutMode" />
-            <Select.Trigger>
-              <Select.Value />
-            </Select.Trigger>
-            <Select.Content>
-              <Select.Item value="default">default</Select.Item>
-              <Select.Item value="compact">compact</Select.Item>
-            </Select.Content>
-            <Select.SupportingText />
-          </Select.Root>
-        </div>
+        {activeCompanion.value === "contact" ? (
+          <p class="text-body-medium text-on-surface-variant">
+            An emphasized companion (`emphasis: "primary"`), as the site's
+            Contact me.
+          </p>
+        ) : (
+          <div class="grid content-start gap-6">
+            <ThemeChanger />
+            <Select.Root
+              value={layoutMode.value}
+              options={[
+                { value: "default", label: "default" },
+                { value: "compact", label: "compact" },
+              ]}
+              onValueChange$={(value) =>
+                (layoutMode.value = value as LayoutMode)
+              }
+            >
+              <Select.Label label="layoutMode" />
+              <Select.Trigger>
+                <Select.Value />
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="default">default</Select.Item>
+                <Select.Item value="compact">compact</Select.Item>
+              </Select.Content>
+              <Select.SupportingText />
+            </Select.Root>
+          </div>
+        )}
       </Layout.SupportingPane>
       <Layout.CompanionRail />
       <Layout.Footer>

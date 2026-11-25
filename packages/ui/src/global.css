@@ -25,6 +25,10 @@
   --breakpoint-md: 840px;
   --breakpoint-lg: 1200px;
   --breakpoint-xl: 1600px;
+  /* Tailwind's own 2xl (96rem = 1536px) would sit BELOW our xl; M3 has no class above
+     extra-large, so remove it (rule L12; `initial` deletes a theme key in tailwindcss 4.3.5).
+     Container queries (`@2xl:`) use `--container-2xl` and are not affected. */
+  --breakpoint-2xl: initial;
 }
 
 @layer base {
@@ -39,7 +43,7 @@
      2026-11-23: the search list showed the browser's grey bar because this rule was not ported).
      The `scrollbar-pane` look (tokens/utilities.css) as the default for every element under
      <body>, in the base layer so any utility still wins (`scrollbar-pane` with its track margins,
-     a `--scrollbar-thumb` colour). The document's own bar (<html>) is the browser's. Desktop
+     a `--scrollbar-thumb` color). The document's own bar (<html>) is the browser's. Desktop
      pointers only.
      Differs from e-store (same fix as our `scrollbar-pane`): the webkit test is
      `::-webkit-scrollbar-thumb`, and the webkit rules sit inside it, because Firefox 153 ESR
@@ -87,7 +91,7 @@
 }
 
 /* ThemeToggle puts `theme-transitioning` on <html> for 200ms while it swaps light and dark, so
-   the colours fade instead of snapping. It is only there during the swap, so the components'
+   the colors fade instead of snapping. It is only there during the swap, so the components'
    own hover and press transitions are untouched the rest of the time. */
 .theme-transitioning,
 .theme-transitioning *,

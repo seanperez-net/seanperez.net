@@ -3,17 +3,17 @@ import type { DocumentHead } from "@qwik.dev/router";
 import {
   AccountMenu,
   IconButton,
-  Knobs,
   Layout,
   Search,
   TopAppBar,
-  knob,
-  useKnobs,
 } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const knobs = useKnobs({
     title: knob.text("My app"),
+    // 2 here: the page already has its h1 (the playground's app bar).
+    headingLevel: knob.select(["1", "2"] as const, "2"),
     titleLink: knob.boolean(true),
     menuButton: knob.boolean(true),
     search: knob.boolean(true),
@@ -27,7 +27,7 @@ export default component$(() => {
         <TopAppBar
           title={knobs.values.title}
           titleHref={knobs.values.titleLink ? "#" : undefined}
-          headingLevel={2}
+          headingLevel={knobs.values.headingLevel === "1" ? 1 : 2}
           class="w-full rounded-lg"
         >
           {knobs.values.menuButton && (

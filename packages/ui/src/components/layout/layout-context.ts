@@ -1,18 +1,39 @@
 import { createContextId } from "@qwik.dev/core";
 import type { ReadonlySignal, Signal } from "@qwik.dev/core";
+import type { PrefetchStrategy } from "@qwik.dev/router";
 import type { IconName } from "../icon";
+
+/**
+ * When the router's `Link` fetches the destination's JavaScript (`PrefetchStrategy`): the
+ * router's default is `"visible"` (as soon as the link is on screen); `"intent"` waits for hover
+ * or focus. Use `"intent"` for a destination with a heavy bundle (a map library) that most
+ * visitors never open. NEW 2026-11-24 (perf audit), not in e-store.
+ */
+export type LayoutPrefetch = PrefetchStrategy;
 
 /** A row in the navigation drawer. Plain data. */
 export type LayoutDrawerItem = {
-  href: string;
+  /**
+   * The row's destination. Optional for a GROUP (an item with `items` inside a section): it is
+   * a button that opens and closes its rows, not a link (e-store's `NavItem.href?`, 2026-11-24).
+   */
+  href?: string;
   label: string;
+  /**
+   * A group inside a section (a child with its own `items`) starts open. Default: open only
+   * when it holds the page (e-store's rule). NEW 2026-11-24, not in e-store.
+   */
+  open?: boolean;
   icon?: IconName;
   /** A link to another site: it gets `rel="external"`. */
   external?: boolean;
+  /** When the row's `Link` prefetches the destination's bundles. Default: the router's (`"visible"`). */
+  prefetchBundles?: LayoutPrefetch;
   /**
    * The destination's sub-navigation (e-store's `NavItem.items`): rows under it in the standard
    * and modal drawers; in the floating drawer, the card a rail destination with the same `href`
-   * shows on hover or focus.
+   * shows on hover or focus. A child with `items` of its own is a GROUP: a row that opens and
+   * closes its rows (e-store's level-2 `DrawerButtonExpandable`, ported 2026-11-24).
    */
   items?: LayoutDrawerItem[];
 };
@@ -22,6 +43,11 @@ export type LayoutRailItem = {
   href: string;
   label: string;
   icon: IconName;
+  /**
+   * When the rail item's `Link` prefetches the destination's bundles (also used by the compact
+   * drawer's row for it). Default: the router's (`"visible"`).
+   */
+  prefetchBundles?: LayoutPrefetch;
 };
 
 /**
@@ -45,6 +71,22 @@ export type LayoutCompanion = {
   id: string;
   label: string;
   icon: IconName;
+  /**
+   * Makes this one button stand out from the other companions (NEW 2026-11-24, not in e-store,
+   * whose `CompanionApp.color` is a free CSS colour for the icon only). Unset: the rail's own
+   * colours. `primary`: M3's FAB colours at rest (`primary-container` / `on-primary-container`),
+   * the filled toggle icon button's when open (`primary` / `on-primary`). `tonal`: the tonal icon
+   * button's at rest (`secondary-container` / `on-secondary-container`), the tonal toggle's when
+   * open (`secondary` / `on-secondary`). Applies to the rail and to the compact sheet's tabs.
+   */
+  emphasis?: "primary" | "tonal";
+  /**
+   * The icon while this companion's panel is open (M3: a filled icon for the active item, so the
+   * open state is not shown by colour alone), e.g. `waving_hand_filled`. Unset: `icon` always.
+   * Same name as `NavigationBar`'s `iconSelected`. NEW 2026-11-24 (owner asked; second agent's
+   * suggestion).
+   */
+  iconSelected?: IconName;
 };
 
 /**
@@ -63,8 +105,10 @@ export type LayoutConfig = {
   /** The modal drawer's heading. */
   drawerTitle?: string;
   /**
-   * The drawer's destinations. None: no drawer from 600px, and the rail's menu button stays
-   * but is disabled. The compact modal drawer (below 600px) lists these, or the rail items when
+   * The drawer's destinations, for every route (the Layout picks what the page shows). None: no
+   * drawer from 600px, and the rail's menu button stays but is disabled. Floating: the rail's
+   * menu button works only on a page inside a section (`menuEnabled`), and a destination with
+   * children floats its card on hover or focus from any page. The compact modal drawer (below 600px) lists these, or the rail items when
    * there are none (e-store's `navDrawerItems` fallback), children included.
    */
   drawerItems?: LayoutDrawerItem[];
@@ -78,10 +122,12 @@ export type LayoutConfig = {
   drawer?: "auto" | "off";
   /**
    * The light / dark switch (`ThemeToggle`), rendered by the layout itself: at the foot of the
-   * rail from 600px, in the app bar below 600px. NEW (e-store's apps put `ThemeModeToggle` in
-   * `Layout.Rail`'s slot by hand).
+   * rail from 600px, in the app bar below 600px. `"rail"`: the rail's foot from 600px and, below
+   * 600px, the compact drawer's footer in the large labelled form (`ThemeToggle look="full"`),
+   * never the app bar: e-store's rule (L7; e-store's apps put `ThemeModeToggle` in the rail and
+   * the drawer footer by hand). NEW as a prop.
    */
-  themeToggle?: boolean;
+  themeToggle?: boolean | "rail";
   /**
    * e-store's `layoutMode` (`data-layout-mode` on the scaffold). `default`: 24px margins and
    * pane spacer, 28px pane corners from 600px. `compact`: 16px margins and spacer, 16px corners.
@@ -126,6 +172,12 @@ export type LayoutContextValue = {
   hasDrawer: ReadonlySignal<boolean>;
   /** The drawer item with children the page is in: the docked floating drawer shows its children. */
   activeSection: ReadonlySignal<LayoutDrawerItem | undefined>;
+  /**
+   * The rail's menu button works on this page: standard / modal, whenever there are drawer
+   * items; floating, only when the page is inside a section (`activeSection`). Otherwise it stays,
+   * disabled (owner, 2026-11-24).
+   */
+  menuEnabled: ReadonlySignal<boolean>;
   /** The drawer takes the nav track: standard and open, or floating, docked, with a section. */
   docked: ReadonlySignal<boolean>;
   /** The drawer as a modal sheet, below 600px. Always starts closed. */

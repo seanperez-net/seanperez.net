@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Badge, Knobs, Layout, Tabs, knob, useKnobs } from "../../index";
+import { Badge, Layout, Tabs } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 import type { IconName } from "../../index";
 
 const fixed: { value: string; label: string; icon: IconName }[] = [

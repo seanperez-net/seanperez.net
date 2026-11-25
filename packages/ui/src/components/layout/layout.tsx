@@ -3,34 +3,46 @@ import {
   Slot,
   component$,
   isServer,
+  sync$,
   useComputed$,
   useContext,
   useContextProvider,
+  useId,
   useSignal,
   useTask$,
 } from "@qwik.dev/core";
-import type { PropsOf, QRL, Signal } from "@qwik.dev/core";
+import type { JSXOutput, PropsOf, QRL, Signal } from "@qwik.dev/core";
 import { Link } from "@qwik.dev/router";
+import type { PrefetchStrategy } from "@qwik.dev/router";
 import { tv } from "tailwind-variants/lite";
 import { useBoundSignal } from "../../utils/use-bound-signal";
+import { freshJsx } from "../../utils/jsx-prop";
 import { Icon } from "../icon";
 import type { IconName } from "../icon";
+import { FullscreenButton } from "../fullscreen-button";
 import { IconButton } from "../icon-button";
 import { Modal } from "../modal";
 import { NavigationRail } from "../navigation-rail";
 import type { NavigationRailRootProps } from "../navigation-rail";
+import { RippleProvider } from "../ripple/ripple";
+import { Separator } from "../separator";
 import { ThemeToggle } from "../theme-toggle";
 import { TooltipProvider } from "../tooltip/tooltip-provider";
 import { TopAppBar } from "../top-app-bar";
 import type { TopAppBarProps } from "../top-app-bar";
 import { rovingKeys } from "../../utils/roving-focus";
-import { openPopover } from "../../utils/top-layer";
+import {
+  CLOSING_ATTR,
+  closeAnimated,
+  openPopover,
+} from "../../utils/top-layer";
 import { useThemeProvider } from "../../theme/theme-context";
 import type { ThemeProps } from "../../theme/theme-context";
 import { layoutContextId } from "./layout-context";
 import type {
   LayoutCompanion,
   LayoutConfig,
+  LayoutContextValue,
   LayoutDrawerItem,
   LayoutDrawerType,
 } from "./layout-context";
@@ -84,6 +96,21 @@ export const layoutVariants = tv({
     appBarMenu: ["sm:hidden"],
     appBarTheme: ["sm:hidden"],
     rail: ["scaffold-rail", "z-(--z-scaffold-rail)", "max-sm:hidden"],
+    // e-store's rail FAB box (`nav-rail.tsx` `data-qds-nav-rail-fab`: `py-3`, centred in the icon
+    // column). M3: a FAB nested in the rail rests at elevation level 0 (navigation rail
+    // guidelines, read 2026-11-24); level 1 on hover (ours: the FAB's own one-step rise).
+    railFab: [
+      "flex",
+      "w-full",
+      "shrink-0",
+      "items-center",
+      "justify-center",
+      "py-3",
+      "[&_[data-qds-fab]]:shadow-none",
+      "[&_[data-qds-fab]]:hover:shadow-1",
+      "[&_[data-qds-fab]]:focus-visible:shadow-none",
+      "[&_[data-qds-fab]]:active:shadow-none",
+    ],
 
     // e-store's floating drawer (`Layout.Drawer`, `drawerType="floating"`): the sub-navigation of
     // a rail destination with children, from 600px. Floating: a `popover="manual"` card beside the
@@ -112,6 +139,12 @@ export const layoutVariants = tv({
       // e-store's and the reference app's `me-1`: 4px before the primary pane.
       "data-[docked=true]:me-1",
       "data-[docked=true]:min-w-0",
+      // Slide, not reflow (`layout.css` "Slide, not reflow", NEW 2026-11-24): the track clips a
+      // card of the final width (the track less the 4px `me-1`), riding on the track's moving END
+      // edge, so the rows slide out from behind the rail instead of re-wrapping at each width.
+      "data-[docked=true]:layout-slide",
+      "data-[docked=true]:justify-end",
+      "data-[docked=true]:[--layout-slide-size:calc(var(--layout-drawer-panel-width)-var(--spacing))]",
       // Floating, from 600px: shown while open (a bare `flex` would show the closed popover).
       "sm:data-[docked=false]:open:flex",
       "data-[docked=false]:fixed",
@@ -129,6 +162,7 @@ export const layoutVariants = tv({
       "flex-1",
       "flex-col",
       "overflow-hidden",
+      "group-data-[docked=true]/drawer:layout-slide-content",
       // Floating only: the card, with the pane's corners (`--layout-pane-radius`, `layout.css`).
       // Docked it has NO surface, corners or shadow: it sits on the scaffold's surface beside
       // the rail, as e-store's (`layout.tsx` ~1874-1882) and the reference app's (vendure
@@ -147,11 +181,14 @@ export const layoutVariants = tv({
       "bg-(--layout-drawer-bg)",
       "shadow-2",
     ],
-    // The section's title in the card, over a divider (e-store's `DrawerPanel`).
     // The floating / docked card's list: 12dp from the card's top edge, as from its sides.
     drawerCardBody: ["pt-(--layout-drawer-inset)"],
-    // A section's name above its children in the compact modal drawer (M3 drawer headline,
-    // e-store's `navDrawerSectionVariants.headline`): title-small, not a link.
+    // The drawer's HEADLINE (M3 navigation drawer anatomy "Headline", material-web v0_192
+    // `headline-*` = title-small, `headline-color` = on-surface-variant, read 2026-11-24): a
+    // section's name above its children in the compact modal drawer and the standard one
+    // (e-store's `navDrawerSectionVariants.headline`), and the section's name at the top of the
+    // floating / docked card (e-store's `DrawerPanel` header, ported 2026-11-24). Not a link.
+    // On the rows' label line: 12dp inset + 16dp row padding = M3's 28dp left padding.
     drawerSection: [
       "flex",
       "h-14",
@@ -160,6 +197,62 @@ export const layoutVariants = tv({
       "text-title-small",
       "text-on-surface-variant",
     ],
+    // M3 guidelines (navigation-drawer, read 2026-11-24): "Dividers can be used to separate
+    // groups of destinations" (full width, `outline-variant`). Between a section and its
+    // siblings and before every group but the first: spacing and dividers carry the grouping,
+    // not indentation. 8dp above and below (e-store's `navDrawerSectionVariants.divider` `my-2`).
+    drawerDivider: ["my-2"],
+    // A group of rows inside a section (e-store's `DrawerButtonExpandable`,
+    // `navigation/nav-drawer-button.tsx`): a disclosure button with the label and a chevron,
+    // then its rows, opening and closing with e-store's grid-rows transition (0fr to 1fr, 200ms
+    // standard easing = M3 short4; none with reduced motion).
+    // Its OWN look since 2026-11-24 (owner: "there is no hierarchy on the typography"): a
+    // section label, not a destination. Google Chat's measured section headers (12px / 500, a
+    // disclosure arrow; e-store `findings-from-seanperez-ui-port.md` 173) = M3 `label-medium`,
+    // in `on-surface-variant`, 40dp high (e-store's `sm` row density), on the rows' label line.
+    // M3 has no collapsible section header; its nearest part (the drawer headline, title-small)
+    // is the same 14/500 as a row (label-large), so it could not rank below the rows' type.
+    drawerGroupButton: [
+      "group/drawer-group",
+      "flex",
+      "h-10",
+      "w-full",
+      "cursor-pointer",
+      "items-center",
+      "gap-3",
+      "rounded-full",
+      "ps-(--layout-drawer-row-inset)",
+      "pe-(--layout-drawer-row-inset)",
+      "text-start",
+      "text-label-medium",
+      "text-on-surface-variant",
+      "outline-none",
+      "hover:bg-on-surface/8",
+      "focus-visible:outline-2",
+      "focus-visible:outline-secondary",
+    ],
+    drawerGroupLabel: ["min-w-0", "flex-1", "truncate"],
+    drawerGroupChevron: [
+      "inline-flex",
+      "shrink-0",
+      "transition-transform",
+      "duration-short-4",
+      "ease-standard",
+      "group-aria-expanded/drawer-group:rotate-180",
+      "motion-reduce:transition-none",
+    ],
+    drawerGroupContent: [
+      "grid",
+      "grid-rows-[0fr]",
+      "transition-[grid-template-rows]",
+      "duration-short-4",
+      "ease-standard",
+      "data-[open=true]:grid-rows-[1fr]",
+      "motion-reduce:transition-none",
+    ],
+    // `overflow: clip`, not `hidden`: it clips the rows while the row track grows but is no
+    // scroll container (MDN `overflow`), so nothing in it can scroll or show a bar (2026-11-24).
+    drawerGroupInner: ["flex", "min-h-0", "flex-col", "overflow-clip"],
     drawerHeader: ["layout-drawer-header-rulers"],
     // The modal navigation drawer (below 600px only): a `Modal` on the start edge. Its bar's
     // inset puts the close button exactly where the app bar's menu button that opened it is.
@@ -168,14 +261,34 @@ export const layoutVariants = tv({
       "[--modal-bar-inset:calc(var(--layout-margin)-var(--layout-icon-button-overhang))]",
     ],
     drawerModalBody: [],
+    // The compact drawer's footer (e-store's nav drawer row 3, centred, `px-3`), holding the
+    // large light / dark switch with `themeToggle: "rail"`. At the drawer's END (`mt-auto`, the
+    // free space above it) and as far from the bottom edge as the rail's footer is
+    // (`--layout-margin`, the rail's `rail-margin` row), so it sits where the rail's switch does
+    // (owner 2026-11-24).
+    drawerFooter: [
+      "mt-auto",
+      "flex",
+      "shrink-0",
+      "items-center",
+      "justify-center",
+      "px-3",
+      "pt-4",
+      "pb-(--layout-margin)",
+    ],
     // The scrolling part, docked and modal. e-store's drawer list is a `scrollbar-pane` with the
     // default track margins (20px at each end), so the bar never touches the header or the edge.
+    // `scrollbar-gutter: stable` (NEW 2026-11-24, not in e-store): the bar's 8px are kept even
+    // while the list fits, so a group opening or closing past the drawer's height does not make
+    // every row jump 8px when the bar comes or goes (MDN `scrollbar-gutter`; no effect with
+    // overlay scrollbars, which take no room).
     drawerBody: [
       "layout-drawer-rulers",
       "min-h-0",
       "overflow-y-auto",
       "overscroll-contain",
       "scrollbar-pane",
+      "scrollbar-gutter-stable",
     ],
     drawerList: ["grid"],
     // M3 navigation drawer row: 56dp, full round, label-large; the current one is tinted.
@@ -187,9 +300,12 @@ export const layoutVariants = tv({
       "rounded-full",
       "ps-(--layout-drawer-row-inset)",
       "pe-(--layout-drawer-row-inset)",
-      // A child row (a destination's sub-navigation) starts on its parent's label line:
-      // 16 inset + 24 icon + 12 gap.
-      "data-nested:ps-13",
+      // A child row WITH an icon starts on its section's headline / group header line (M3:
+      // section labels sit on the rows' line); its icon sets it apart. One with NO icon is
+      // indented 12dp (e-store's expandable children, `nav-drawer-button.tsx`
+      // `padding-inline-start: 0.75rem`), so it does not read as the headline above it. The
+      // old 52dp indent lined up with a parent icon that is never drawn (2026-11-24).
+      "data-nested:not-has-[[data-qds-icon]]:ps-7",
       "text-label-large",
       "text-on-surface-variant",
       "outline-none",
@@ -198,6 +314,8 @@ export const layoutVariants = tv({
       "focus-visible:outline-secondary",
       "aria-[current=page]:bg-secondary-container",
       "aria-[current=page]:text-on-secondary-container",
+      // material-web v0_192 `active-label-text-weight` = label-large-weight-prominent (bold).
+      "aria-[current=page]:[font-weight:var(--text-label-large-prominent--font-weight)]",
     ],
 
     pane: [
@@ -210,9 +328,67 @@ export const layoutVariants = tv({
       // e-store's pane TV (`sm:rounded-xl`, compact `sm:rounded-lg`) as one variable:
       // `--layout-pane-radius` (`layout.css`), square below 600px.
       "rounded-(--layout-pane-radius)",
+      // In full screen (`FullscreenButton`, `Layout.PaneHeader fullscreen`) the pane is the whole
+      // screen: square corners. The UA's `:fullscreen` rule does the box (fixed, inset 0, 100%).
+      "[&:fullscreen]:rounded-none",
       // Square below 600px: nothing to clear there.
       "scrollbar-pane",
       "max-sm:[--scrollbar-track-margin:0px]",
+    ],
+    // List-detail (NEW 2026-11-24): `Layout.ListDetail` is the container the two-pane switch
+    // reads (43rem: the list's 360 + the 24 spacer + a 304 detail; the primary track at an 840px
+    // window with nothing beside it measured 696px). Which pane shows in single-pane comes from
+    // `data-view` (rule L19). The back arrow and the `<main>`'s surface: `layout.css`.
+    listDetail: [
+      "group/ld",
+      "@container/list-detail",
+      "relative",
+      "[grid-row:title-start/body-end]",
+      "flex",
+      "min-h-0",
+      "flex-col",
+    ],
+    listDetailGrid: [
+      "grid",
+      "min-h-0",
+      "flex-1",
+      "grid-cols-[minmax(0,1fr)]",
+      "grid-rows-[minmax(0,1fr)]",
+      "gap-x-(--layout-pane-spacer)",
+      "@min-[43rem]/list-detail:grid-cols-[var(--layout-pane-fixed)_minmax(0,1fr)]",
+    ],
+    // The two panes: each a `surface` card with the pane radius (square below 600px), as the
+    // scaffold's own panes; each scrolls itself on the pane rulers.
+    listPane: [
+      "layout-pane-rulers",
+      "scrollbar-pane",
+      "max-sm:[--scrollbar-track-margin:0px]",
+      "min-h-0",
+      "min-w-0",
+      "overflow-y-auto",
+      "bg-surface",
+      "rounded-(--layout-pane-radius)",
+      "@max-[43rem]/list-detail:group-data-[view=detail]/ld:hidden",
+    ],
+    detailPane: [
+      "layout-pane-rulers",
+      "scrollbar-pane",
+      "max-sm:[--scrollbar-track-margin:0px]",
+      "min-h-0",
+      "min-w-0",
+      "overflow-y-auto",
+      "bg-surface",
+      "rounded-(--layout-pane-radius)",
+      "@max-[43rem]/list-detail:group-data-[view=list]/ld:hidden",
+    ],
+    // 72px up: 16px above the compact side-sheet opener at the end edge (16px inset, 40 tall);
+    // 16px from the end edge (M3 FAB on compact). Below 600px, list view only.
+    listDetailFab: [
+      "absolute",
+      "end-4",
+      "bottom-18",
+      "sm:hidden",
+      "group-data-[view=detail]/ld:hidden",
     ],
     paneHeader: ["pane-header-bleed", "bg-surface"],
     paneHeaderRow: ["flex", "min-w-0", "items-center", "gap-2"],
@@ -233,17 +409,32 @@ export const layoutVariants = tv({
       "p-0",
       "text-on-surface",
       "outline-none",
-      // From 840px: a pane in the support track, shown while expanded.
+      // From 840px: a pane in the support track. Slide, not reflow (`layout.css`, NEW
+      // 2026-11-24): the `<aside>` only clips; its panel (below) is the 320dp surface, riding on
+      // the track's moving START edge, so it slides in from behind the companion rail. It is
+      // laid out at every state and HIDDEN while collapsed with `visibility`, delayed by the
+      // track's 300ms: visibility interpolates as visible until the end (CSS Transitions), so
+      // the pane stays on show while its track closes and turns hidden after, in every engine
+      // (no `display` / `overlay` discrete transition, rule L26). Hidden, it is out of the
+      // focus order and the accessibility tree.
       "md:relative",
       "md:inset-auto",
       "md:h-auto",
       "md:w-auto",
-      "md:rounded-(--layout-pane-radius)",
-      "md:bg-surface",
+      "md:layout-slide",
+      "md:[--layout-slide-size:var(--layout-support-expanded)]",
       // `--field-bg` (the floated label's patch) follows the fill. The `.bg-surface*` rules in
       // `tokens/utilities.css` match the plain class only, not `md:` / `max-md:` variants.
       "md:[--field-bg:var(--color-surface)]",
-      "md:data-[expanded=true]:flex",
+      // The popover UA style paints `Canvas` (white) on the <aside>; since the rounded surface
+      // moved onto the panel, that square white box showed at the panel's corners (owner,
+      // 2026-11-24: "put the corners back on the sub-rails Pane"). The <aside> paints nothing.
+      "md:bg-transparent",
+      "md:flex",
+      "md:data-[expanded=false]:invisible",
+      "md:transition-[visibility]",
+      "md:duration-medium-2",
+      "md:motion-reduce:transition-none",
       // Below 840px: an M3 modal side sheet on the end edge, shown while open (`open:` is
       // `:popover-open`; a bare `flex` would show the closed popover). Surface
       // `surface-container-low`, elevation level 1, 16dp inner corners, at most 400dp.
@@ -261,6 +452,35 @@ export const layoutVariants = tv({
       "max-md:shadow-1",
       // M3: the page behind a modal sheet is dimmed with scrim at 32%.
       "backdrop:bg-scrim/32",
+      // Motion below 840px (`layout.md` "Sheet motion"), as `Modal position="right"`: in from
+      // the end edge, 500ms Emphasized; out, 200ms, played while it is still open
+      // (`data-closing`) and only then `hidePopover()` (`closeAnimated`), so the sheet and its
+      // scrim stay in the top layer in every browser. Mirrored in right-to-left (L10).
+      "max-md:transition-[translate]",
+      "max-md:duration-long-2",
+      "max-md:ease-emphasized",
+      "max-md:translate-x-full",
+      "max-md:rtl:-translate-x-full",
+      "max-md:open:translate-x-0",
+      "max-md:starting:open:translate-x-full",
+      "max-md:rtl:starting:open:-translate-x-full",
+      "max-md:open:data-closing:translate-x-full",
+      "max-md:rtl:open:data-closing:-translate-x-full",
+      "max-md:open:data-closing:duration-short-4",
+      "backdrop:opacity-0",
+      "backdrop:transition-opacity",
+      "backdrop:ease-linear",
+      "backdrop:duration-long-2",
+      "open:backdrop:opacity-100",
+      "starting:open:backdrop:opacity-0",
+      "open:data-closing:backdrop:opacity-0",
+      "open:data-closing:backdrop:duration-short-4",
+      "motion-reduce:transition-none",
+      // Tailwind sorts the breakpoint variant AFTER `motion-reduce:`, so the plain
+      // `motion-reduce:transition-none` above lost to `max-md:transition-[translate]` (read in
+      // the playground's stylesheet, 2026-11-24): the sheet still slid under reduced motion.
+      "max-md:motion-reduce:transition-none",
+      "motion-reduce:backdrop:transition-none",
     ],
     // The part that scrolls: the pane's header and its body, on the pane ruler grid.
     supportPanel: [
@@ -272,6 +492,10 @@ export const layoutVariants = tv({
       "scrollbar-pane",
       // Below 840px only the start-side corners are round; the bar is on the square end side.
       "max-md:[--scrollbar-track-margin:0px]",
+      // From 840px the panel is the pane's surface, of its final width (see `supportingPane`).
+      "md:layout-slide-content",
+      "md:rounded-(--layout-pane-radius)",
+      "md:bg-surface",
     ],
     // The pane header takes the sheet's surface below 840px.
     supportHeader: [
@@ -347,8 +571,17 @@ export const layoutVariants = tv({
       "not-aria-expanded:focus-visible:translate-x-0",
     ],
     // The same tab below 600px, where the rail is hidden: it opens the supporting pane's sheet
-    // (e-store's sheet trigger). Shown whole: a phone has no hover to slide it out.
-    sheetTrigger: ["sm:hidden"],
+    // (e-store's sheet trigger). It peeks 24px like the rail's tab (owner 2026-11-23: "small until
+    // hovered"); a tap on the peeking part opens the sheet. While the sheet is open only the sheet
+    // shows: the tab is hidden (the sheet's own close button and the scrim close it).
+    sheetTrigger: [
+      "sm:hidden",
+      "translate-x-6",
+      "rtl:-translate-x-6",
+      "hover:translate-x-0",
+      "focus-visible:translate-x-0",
+      "aria-expanded:invisible",
+    ],
     // The collapsed tab: the brightest surface, raised one step (elevation level 1).
     sideToggleShape: [
       "absolute",
@@ -407,17 +640,26 @@ export const layoutVariants = tv({
       "before:absolute",
       "before:inset-0",
       "before:rounded-[inherit]",
-      "before:bg-on-surface",
       "before:opacity-0",
       "before:content-['']",
+      // M3 state layers (icon-button and navigation-rail specs): hover 8%, focus and press on
+      // top of it. The layer's colour is the variant's (`emphasis` below).
       "group-hover/companion:before:opacity-hover",
+      "group-focus-visible/companion:before:opacity-focus",
+      "group-active/companion:before:opacity-pressed",
       "group-focus-visible/companion:outline-2",
       "group-focus-visible/companion:outline-secondary",
-      "group-aria-pressed/companion:bg-secondary-container",
-      "group-aria-pressed/companion:text-on-secondary-container",
-      // The same pill in the compact sheet's tabs.
-      "group-aria-selected/companion:bg-secondary-container",
-      "group-aria-selected/companion:text-on-secondary-container",
+    ],
+    // `LayoutCompanion.iconSelected`: both icons are rendered, CSS shows one, from the same
+    // `aria-pressed` (rail) / `aria-selected` (compact sheet tabs) the pill's colours follow.
+    companionIconRest: [
+      "group-aria-pressed/companion:hidden",
+      "group-aria-selected/companion:hidden",
+    ],
+    companionIconSelected: [
+      "hidden",
+      "group-aria-pressed/companion:block",
+      "group-aria-selected/companion:block",
     ],
 
     footer: [
@@ -426,10 +668,61 @@ export const layoutVariants = tv({
       "text-center",
       "text-body-medium",
       // `on-surface-variant`: M3's low-emphasis TEXT role. `outline` is a border role and failed
-      // Lighthouse colour contrast here (3.84:1 against the 4.5:1 needed).
+      // Lighthouse color contrast here (3.84:1 against the 4.5:1 needed).
       "text-on-surface-variant",
     ],
   },
+  variants: {
+    /**
+     * `LayoutCompanion.emphasis` (NEW 2026-11-24, not in e-store): the companion pill's colours.
+     * Selected is the rail's `aria-pressed` and the compact sheet tab's `aria-selected`.
+     * PROOFED 2026-11-24 in Chrome against m3.material.io:
+     * - unset: navigation-rail/specs, active indicator `secondary-container`, icon
+     *   `on-secondary-container`; inactive icon `on-surface-variant` (the button's colour).
+     * - `primary`: at rest floating-action-button/specs' default colours (`primary-container` /
+     *   `on-primary-container`, the rail's FAB); selected icon-buttons/specs' filled toggle,
+     *   selected (`primary` / `on-primary`).
+     * - `tonal`: at rest icon-buttons/specs' tonal default (`secondary-container` /
+     *   `on-secondary-container`); selected the tonal toggle, selected (`secondary` /
+     *   `on-secondary`).
+     * The state layer is the content colour (`bg-current`), as M3's state layers are.
+     */
+    emphasis: {
+      none: {
+        companionPill: [
+          "before:bg-on-surface",
+          "group-aria-pressed/companion:bg-secondary-container",
+          "group-aria-pressed/companion:text-on-secondary-container",
+          // The same pill in the compact sheet's tabs.
+          "group-aria-selected/companion:bg-secondary-container",
+          "group-aria-selected/companion:text-on-secondary-container",
+        ],
+      },
+      primary: {
+        companionPill: [
+          "before:bg-current",
+          "bg-primary-container",
+          "text-on-primary-container",
+          "group-aria-pressed/companion:bg-primary",
+          "group-aria-pressed/companion:text-on-primary",
+          "group-aria-selected/companion:bg-primary",
+          "group-aria-selected/companion:text-on-primary",
+        ],
+      },
+      tonal: {
+        companionPill: [
+          "before:bg-current",
+          "bg-secondary-container",
+          "text-on-secondary-container",
+          "group-aria-pressed/companion:bg-secondary",
+          "group-aria-pressed/companion:text-on-secondary",
+          "group-aria-selected/companion:bg-secondary",
+          "group-aria-selected/companion:text-on-secondary",
+        ],
+      },
+    },
+  },
+  defaultVariants: { emphasis: "none" },
 });
 
 /** Material 3 expanded window size: from here there are two panes. */
@@ -451,10 +744,17 @@ const hasChildren = (item: LayoutDrawerItem) => !!item.items?.length;
 const isWithin = (active: string, href: string) =>
   active === href || (href !== "/" && active.startsWith(href));
 
-/** The destination is the page, or one of its children is. */
+/**
+ * The row is the page or holds it; a group (no `href` of its own), when any row inside it does.
+ * Recursive since 2026-11-24 (groups inside a section, e-store's level-2 `items`).
+ */
+const holds = (item: LayoutDrawerItem, active: string): boolean =>
+  (!!item.href && isWithin(active, item.href)) ||
+  !!item.items?.some((child) => holds(child, active));
+
+/** The destination is the page, or one of its children (at any depth) is. */
 const sectionIsActive = (item: LayoutDrawerItem, active: string) =>
-  item.href === active ||
-  !!item.items?.some((child) => isWithin(active, child.href));
+  item.href === active || !!item.items?.some((child) => holds(child, active));
 
 /** Whether focus is inside the floating drawer (its card must not close under it). */
 const focusInDrawer = (drawerId: string) =>
@@ -567,6 +867,13 @@ const LayoutRoot = component$<LayoutRootProps>(
           sectionIsActive(item, config.value.activeHref ?? ""),
       ),
     );
+    // The rail's menu button, per page (owner, 2026-11-24): floating, it docks the CURRENT
+    // section, so it works only on a page inside one; elsewhere it stays, disabled, and hover
+    // floats any section's card. NEW: e-store keeps it enabled on every page (its
+    // `hasDrawerChildren` looks at all drawer items) and, docked outside a section, floats nothing.
+    const menuEnabled = useComputed$(() =>
+      drawerType.value === "floating" ? !!activeSection.value : hasDrawer.value,
+    );
     const docked = useComputed$(() =>
       !hasDrawer.value
         ? false
@@ -595,6 +902,7 @@ const LayoutRoot = component$<LayoutRootProps>(
       peek,
       hasDrawer,
       activeSection,
+      menuEnabled,
       docked,
       drawerModalOpen,
       supportExpanded,
@@ -602,29 +910,33 @@ const LayoutRoot = component$<LayoutRootProps>(
     });
     const styles = layoutVariants();
 
+    // e-store's `Layout.Root` wraps its scaffold in `RippleProvider`: one set of document
+    // listeners draws the ripple of every `data-ripple` host (List rows, Carousel items).
     return (
-      <div
-        {...rest}
-        class={[styles.root(), className]}
-        data-nav={docked.value ? "" : undefined}
-        data-layout-mode={layoutMode}
-        data-support={supportExpanded.value ? "expanded" : "collapsed"}
-        data-trail={trailShown.value ? undefined : "hidden"}
-        // The compact modal drawer left open while the window grows past 600px would keep the page
-        // inert behind a rail that is now on show.
-        window:onResize$={() => {
-          if (drawerModalOpen.value && !matchMedia(COMPACT_QUERY).matches) {
-            drawerModalOpen.value = false;
-          }
-        }}
-      >
-        <a href={`#${mainId}`} class={styles.skipLink()}>
-          Skip to main content
-        </a>
-        <Slot />
-        {/* The plain tooltip of every `data-tooltip` control (e.g. IconButton). */}
-        <TooltipProvider />
-      </div>
+      <RippleProvider>
+        <div
+          {...rest}
+          class={[styles.root(), className]}
+          data-nav={docked.value ? "" : undefined}
+          data-layout-mode={layoutMode}
+          data-support={supportExpanded.value ? "expanded" : "collapsed"}
+          data-trail={trailShown.value ? undefined : "hidden"}
+          // The compact modal drawer left open while the window grows past 600px would keep the page
+          // inert behind a rail that is now on show.
+          window:onResize$={() => {
+            if (drawerModalOpen.value && !matchMedia(COMPACT_QUERY).matches) {
+              drawerModalOpen.value = false;
+            }
+          }}
+        >
+          <a href={`#${mainId}`} class={styles.skipLink()}>
+            Skip to main content
+          </a>
+          <Slot />
+          {/* The plain tooltip of every `data-tooltip` control (e.g. IconButton). */}
+          <TooltipProvider />
+        </div>
+      </RippleProvider>
     );
   },
 );
@@ -730,7 +1042,7 @@ const LayoutAppBar = component$<LayoutAppBarProps>(
           />
         )}
         <Slot name="pane" q:slot="pane" />
-        {layout.config.value.themeToggle && (
+        {layout.config.value.themeToggle === true && (
           <ThemeToggle size="sm" class={styles.appBarTheme()} />
         )}
         <Slot />
@@ -756,6 +1068,14 @@ export type LayoutRailProps = NavigationRailRootProps & {
   menuIcon?: IconName;
   /** Its icon while the drawer is open / docked. */
   menuOpenIcon?: IconName;
+  /**
+   * The app's key action: a FAB at the top of the rail, above the destinations (e-store's
+   * `Layout.Rail fab`, `navigation/nav-rail.tsx` ~360-375). M3 navigation rail guidelines, read
+   * 2026-11-24: "The menu icon and FAB should always be top-aligned"; a FAB nested in the rail
+   * rests at elevation level 0. A standard (56dp) or small FAB fits the collapsed rail. Rendered
+   * through `freshJsx` (e-store's Qwik rc workaround for JSX props). From 600px, as the rail.
+   */
+  fab?: JSXOutput;
 };
 
 /**
@@ -763,7 +1083,8 @@ export type LayoutRailProps = NavigationRailRootProps & {
  * Destinations are `Layout.Root railItems`; the default slot takes more `Layout.RailItem`s.
  * Its menu button is e-store's (`nav-rail.tsx` `handleMenuTrigger$`): with `drawerType`
  * `floating` it docks and undocks the floating drawer, otherwise it opens and closes the standard
- * drawer in the nav track. With no `drawerItems` there is no drawer: the button stays, disabled.
+ * drawer in the nav track. With no `drawerItems` there is no drawer: the button stays, disabled;
+ * floating, it is disabled too on a page outside every section (`menuEnabled`).
  * `Layout.Root themeToggle` puts the theme switch at its foot.
  */
 const LayoutRail = component$<LayoutRailProps>(
@@ -774,6 +1095,7 @@ const LayoutRail = component$<LayoutRailProps>(
     undockLabel = "Undock drawer",
     menuIcon = "menu",
     menuOpenIcon = "menu_open",
+    fab,
     class: className,
     onMouseLeave$,
     onFocusOut$,
@@ -786,26 +1108,34 @@ const LayoutRail = component$<LayoutRailProps>(
       drawerDocked,
       hoveredRailHref,
       peek,
-      hasDrawer,
+      menuEnabled,
+      docked,
     } = layout;
     const styles = layoutVariants();
     const floating = useComputed$(() => drawerType.value === "floating");
     // What the button shows as open: the docked floating drawer, or the open standard one.
     // e-store's: floating, the button shows the visitor's dock CHOICE (`drawerDocked`), which
     // persists across pages. On a page outside every section the docked track is just empty.
+    // The button does nothing on this page (no drawer items, or floating outside every section):
+    // never "open", whatever dock choice a page with a section left behind (2026-11-24).
     const menuOpen = useComputed$(() =>
-      floating.value
-        ? drawerDocked.value
-        : drawerType.value === "standard" && drawerOpen.value,
+      !menuEnabled.value
+        ? false
+        : floating.value
+          ? drawerDocked.value
+          : drawerType.value === "standard" && drawerOpen.value,
     );
+    // Disabled: the plain menu name, not "Dock drawer" (a disabled button names nothing to dock).
     const menuName = useComputed$(() =>
-      floating.value
-        ? menuOpen.value
-          ? undockLabel
-          : dockLabel
-        : menuOpen.value
-          ? closeMenuLabel
-          : menuLabel,
+      !menuEnabled.value
+        ? menuLabel
+        : floating.value
+          ? menuOpen.value
+            ? undockLabel
+            : dockLabel
+          : menuOpen.value
+            ? closeMenuLabel
+            : menuLabel,
     );
     // The drawer item a rail destination opens in the floating drawer, by `href`.
     // A destination with a sub-navigation (a drawer item of the same `href` with children) is
@@ -824,9 +1154,11 @@ const LayoutRail = component$<LayoutRailProps>(
     // (e-store's `hoveredRailHref`; the arrow is measured here instead of e-store's per-density
     // item pitch).
     const peekAt$ = $((href: string, element: HTMLElement) => {
-      // Docked (the choice, e-store's `isDrawerDocked`): hover never floats a card, even on a
-      // page whose section has no panel.
-      if (drawerType.value === "floating" && drawerDocked.value) return;
+      // Docked IN THE NAV TRACK (the choice on a page inside a section): hover never floats a
+      // card (e-store's, owner 2026-11-10). On a page outside every section the choice cannot
+      // dock anything, so hover floats any section's card (owner 2026-11-24; e-store floats
+      // nothing there while the choice is docked).
+      if (docked.value) return;
       // Focus in the card: the pointer passing over the rail must not swap it from under focus.
       if (focusInDrawer(layout.drawerId)) return;
       hoveredRailHref.value = href;
@@ -871,13 +1203,13 @@ const LayoutRail = component$<LayoutRailProps>(
           q:slot="header"
           icon={menuOpen.value ? menuOpenIcon : menuIcon}
           label={menuName.value}
-          // No drawer items: no drawer to open. The button stays (owner 2026-11-23), native
-          // `disabled`, so Tab skips it and a click does nothing.
-          disabled={!hasDrawer.value}
-          aria-controls={hasDrawer.value ? layout.drawerId : undefined}
-          aria-expanded={hasDrawer.value ? menuOpen.value : undefined}
+          // Nothing to open or dock on this page (`menuEnabled`): the button stays (owner
+          // 2026-11-23), native `disabled`, so Tab skips it and a click does nothing.
+          disabled={!menuEnabled.value}
+          aria-controls={menuEnabled.value ? layout.drawerId : undefined}
+          aria-expanded={menuEnabled.value ? menuOpen.value : undefined}
           onClick$={() => {
-            if (!hasDrawer.value) return;
+            if (!menuEnabled.value) return;
             if (drawerType.value === "floating") {
               drawerDocked.value = !drawerDocked.value;
               hoveredRailHref.value = null;
@@ -888,12 +1220,18 @@ const LayoutRail = component$<LayoutRailProps>(
             }
           }}
         />
+        {fab && (
+          <div data-layout-rail-fab="" class={styles.railFab()}>
+            {freshJsx(fab)}
+          </div>
+        )}
         {layout.config.value.railItems?.map((item) => (
           <NavigationRail.Item
             key={item.href}
             href={item.href}
             icon={item.icon}
             label={item.label}
+            prefetchBundles={item.prefetchBundles}
             current={currentOf(item.href)}
             onMouseEnter$={(_, element) => peekAt$(item.href, element)}
             onFocus$={(_, element) => {
@@ -916,6 +1254,8 @@ const LayoutRail = component$<LayoutRailProps>(
 export type LayoutDrawerItemProps = PropsOf<"a"> & {
   /** Marks the row the visitor is on. */
   current?: boolean;
+  /** When the row's `Link` prefetches the destination's bundles (the router's prop). */
+  prefetchBundles?: PrefetchStrategy;
   /** A child row (a destination's sub-navigation): starts on its parent's label line. */
   nested?: boolean;
 };
@@ -939,6 +1279,71 @@ const LayoutDrawerItemRow = component$<LayoutDrawerItemProps>(
 
 const drawerRel = (item: LayoutDrawerItem) =>
   item.external ? "external" : undefined;
+
+/**
+ * A group of drawer rows that opens and closes (e-store's `DrawerButtonExpandable`,
+ * `navigation/nav-drawer-button.tsx`, ported 2026-11-24 for the Messages app's sections): a
+ * `<button aria-expanded aria-controls>` row with the label and an `expand_more` chevron that
+ * turns, then the rows, revealed by a grid-rows transition. Its own component so its open state
+ * is a stable hook (e-store's reason). Differs from e-store: starts open when `item.open` (NEW;
+ * e-store opens only a group holding the page, which we also do), and the closed rows are
+ * `inert` (e-store leaves them in the Tab order while collapsed to 0px).
+ */
+const LayoutDrawerGroup = component$<{
+  item: LayoutDrawerItem;
+  nested: boolean;
+  activeHref: string;
+}>(({ item, nested, activeHref }) => {
+  const styles = layoutVariants();
+  const open = useSignal(!!item.open || holds(item, activeHref));
+  // `useId`: the docked and the compact modal drawer both render the same groups.
+  const uid = useId();
+  const contentId = `${uid}-rows`;
+  return (
+    <div data-layout-drawer-group="">
+      <button
+        type="button"
+        aria-expanded={open.value}
+        aria-controls={contentId}
+        data-nested={nested ? "" : undefined}
+        class={styles.drawerGroupButton()}
+        onClick$={() => {
+          open.value = !open.value;
+        }}
+      >
+        <span class={styles.drawerGroupLabel()}>{item.label}</span>
+        <span aria-hidden="true" class={styles.drawerGroupChevron()}>
+          {/* e-store's `expandIcon` at `size="sm"` (20dp). */}
+          <Icon name="expand_more" size="sm" />
+        </span>
+      </button>
+      <div
+        id={contentId}
+        data-open={open.value ? "true" : "false"}
+        class={styles.drawerGroupContent()}
+        inert={!open.value}
+      >
+        <div class={styles.drawerGroupInner()}>
+          {(item.items ?? []).map((child) => (
+            <LayoutDrawerItemRow
+              key={`child:${child.href ?? child.label}`}
+              href={child.href}
+              rel={drawerRel(child)}
+              prefetchBundles={child.prefetchBundles}
+              nested
+              current={!!child.href && child.href === activeHref}
+            >
+              {/* A child's own icon is drawn (2026-11-24): with the header text-only, the
+                  rows' icons are what sets them apart from it (M3 rows: optional icon). */}
+              {child.icon && <Icon name={child.icon} />}
+              {child.label}
+            </LayoutDrawerItemRow>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export type LayoutDrawerProps = Omit<PropsOf<"aside">, "popover"> & {
   /** The modal drawer's title and name. Defaults to `Layout.Root drawerTitle`, else "Menu". */
@@ -992,11 +1397,38 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
     const styles = layoutVariants();
     const panelRef = useSignal<HTMLElement>();
     const floating = useComputed$(() => drawerType.value === "floating");
+    // Whether the drawer is laid out in the nav track: `docked`, but it stays true while the
+    // track closes, so the drawer slides out behind the rail instead of vanishing first
+    // (owner 2026-11-24; NEW, not in e-store, whose docked drawer also disappears at once). The
+    // scaffold's track (`data-nav`) still follows `docked` at once. Its section is kept too, as
+    // the page may have left the section that was docked.
+    const inTrack = useSignal(false);
+    const trackSection = useSignal<LayoutDrawerItem>();
+    useTask$(({ track, cleanup }) => {
+      const isDocked = track(() => docked.value);
+      const section = track(() => activeSection.value);
+      if (isDocked || isServer || !inTrack.value) {
+        inTrack.value = isDocked;
+        trackSection.value = isDocked ? section : undefined;
+        return;
+      }
+      // Undocked: the exit. Not awaited (a task holds the render until it resolves).
+      let current = true;
+      cleanup(() => {
+        current = false;
+      });
+      afterTrackTransition(document.getElementById(drawerId), () => {
+        if (!current) return;
+        inTrack.value = false;
+        trackSection.value = undefined;
+      });
+    });
     // Floating and not docked: the hovered or focused destination's section, if it has children.
     const peekSection = useComputed$(() =>
-      // e-store's: the floating card is only for the undocked choice. Docked with no section
-      // on this page, the track is empty (0px) and nothing floats.
-      !floating.value || layout.drawerDocked.value
+      // Not while the section is docked in the nav track (nor while it slides out). Outside every
+      // section the dock choice docks nothing, so the card floats on hover (owner 2026-11-24;
+      // e-store floats nothing there while docked).
+      !floating.value || docked.value || inTrack.value
         ? undefined
         : (layout.config.value.drawerItems ?? []).find(
             (item) => hasChildren(item) && item.href === hoveredRailHref.value,
@@ -1004,7 +1436,7 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
     );
     // What the floating card shows: the docked section, else the peeked one.
     const shownSection = useComputed$(() =>
-      docked.value ? activeSection.value : peekSection.value,
+      inTrack.value ? trackSection.value : peekSection.value,
     );
     const modalTitle = useComputed$(
       () => header ?? layout.config.value.drawerTitle ?? "Menu",
@@ -1024,29 +1456,70 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
       else if (!open && showing) panel.hidePopover();
     });
 
+    // A row, or a group of rows when the item has its own `items` (e-store's level-2 children).
+    // A divider before every group but the first (M3: dividers separate groups).
     const rows = (items: LayoutDrawerItem[], nested: boolean) =>
-      items.map((item) => (
-        <LayoutDrawerItemRow
-          key={`${nested ? "child:" : ""}${item.href}`}
-          href={item.href}
-          rel={drawerRel(item)}
-          nested={nested}
-          current={item.href === layout.config.value.activeHref}
-        >
-          {!nested && item.icon && <Icon name={item.icon} />}
-          {item.label}
-        </LayoutDrawerItemRow>
-      ));
+      items.flatMap((item, index) =>
+        hasChildren(item) ? (
+          [
+            index > 0 && (
+              <Separator
+                key={`group-divider:${index}`}
+                decorative
+                class={styles.drawerDivider()}
+              />
+            ),
+            <LayoutDrawerGroup
+              // The index too: two groups may share a label.
+              key={`group:${index}:${item.label}`}
+              item={item}
+              nested={nested}
+              activeHref={layout.config.value.activeHref ?? ""}
+            />,
+          ]
+        ) : (
+          <LayoutDrawerItemRow
+            key={`${nested ? "child:" : ""}${item.href ?? item.label}`}
+            href={item.href}
+            rel={drawerRel(item)}
+            prefetchBundles={item.prefetchBundles}
+            nested={nested}
+            current={item.href === layout.config.value.activeHref}
+          >
+            {item.icon && <Icon name={item.icon} />}
+            {item.label}
+          </LayoutDrawerItemRow>
+        ),
+      );
     // Every destination; one with children is a section: its name as a headline (not a link to
     // the same page as its first child), then its children.
+    // A section is set off from its neighbours by a divider on each side (M3 guidelines: a
+    // divider, then the section label; e-store's `navDrawerSectionVariants`).
     const allRows = (items: LayoutDrawerItem[]) =>
-      items.flatMap((item) =>
+      items.flatMap((item, index) =>
         hasChildren(item)
           ? [
-              <div key={`section:${item.href}`} class={styles.drawerSection()}>
+              index > 0 && (
+                <Separator
+                  key={`section-divider:${index}`}
+                  decorative
+                  class={styles.drawerDivider()}
+                />
+              ),
+              <div
+                key={`section:${item.href ?? item.label}`}
+                class={styles.drawerSection()}
+              >
                 {item.label}
               </div>,
               ...rows(item.items ?? [], true),
+              index < items.length - 1 && (
+                <Separator
+                  key={`section-end:${index}`}
+                  decorative
+                  class={styles.drawerDivider()}
+                />
+              ),
             ]
           : rows([item], false),
       );
@@ -1062,10 +1535,13 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
             // on the attribute.
             popover="manual"
             data-layout-drawer=""
-            data-docked={docked.value ? "true" : "false"}
+            data-docked={inTrack.value ? "true" : "false"}
+            // Sliding out of the track (`inTrack`): its rows are going, so out of reach.
+            data-closing={inTrack.value && !docked.value ? "" : undefined}
+            inert={inTrack.value && !docked.value}
             class={[styles.drawer(), className]}
             style={
-              docked.value
+              inTrack.value
                 ? undefined
                 : {
                     top: "var(--layout-app-bar-height)",
@@ -1107,24 +1583,26 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
             // destination on the rail.
             document:onKeyDown$={[
               $((event: KeyboardEvent) => {
-              if (event.key !== "Escape" || !peekSection.value) return;
-              const href = hoveredRailHref.value;
-              const inside = !!panelRef.value?.contains(document.activeElement);
-              hoveredRailHref.value = null;
-              const destination = href
-                ? document.querySelector<HTMLElement>(
-                    `#${railId} a[href="${CSS.escape(href)}"]`,
-                  )
-                : null;
-              if (inside && destination) {
-                destination.setAttribute("data-no-peek", "");
-                destination.focus();
-              }
+                if (event.key !== "Escape" || !peekSection.value) return;
+                const href = hoveredRailHref.value;
+                const inside = !!panelRef.value?.contains(
+                  document.activeElement,
+                );
+                hoveredRailHref.value = null;
+                const destination = href
+                  ? document.querySelector<HTMLElement>(
+                      `#${railId} a[href="${CSS.escape(href)}"]`,
+                    )
+                  : null;
+                if (inside && destination) {
+                  destination.setAttribute("data-no-peek", "");
+                  destination.focus();
+                }
               }),
               onDocumentKeyDown$,
             ]}
           >
-            {!docked.value && peekSection.value && (
+            {!inTrack.value && peekSection.value && (
               <span
                 aria-hidden="true"
                 class={styles.drawerArrow()}
@@ -1145,6 +1623,11 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
                       class={styles.drawerList()}
                       aria-label={shownSection.value?.label}
                     >
+                      {/* e-store's `DrawerPanel` header: the section's name as the drawer's
+                          headline (the nav is already named by it, so hidden from AT). */}
+                      <div aria-hidden="true" class={styles.drawerSection()}>
+                        {shownSection.value.label}
+                      </div>
                       {rows(shownSection.value.items ?? [], false)}
                     </nav>
                   </div>
@@ -1159,7 +1642,10 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
             {...rest}
             id={drawerId}
             data-layout-drawer=""
-            data-docked={docked.value ? "true" : "false"}
+            data-docked={inTrack.value ? "true" : "false"}
+            // Sliding out of the track (`inTrack`): its rows are going, so out of reach.
+            data-closing={inTrack.value && !docked.value ? "" : undefined}
+            inert={inTrack.value && !docked.value}
             class={[styles.drawer(), className]}
           >
             <div class={styles.drawerCard()}>
@@ -1204,6 +1690,16 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
                   {allRows(compactList(layout.config.value))}
                 </nav>
               </div>
+              {/* e-store's rule (owner 2026-11-24): light / dark in the rail, and in the drawer's
+                  footer where there is no rail, in its large labelled form. */}
+              {layout.config.value.themeToggle === "rail" && (
+                <div
+                  class={styles.drawerFooter()}
+                  data-qds-nav-drawer-footer=""
+                >
+                  <ThemeToggle look="full" />
+                </div>
+              )}
             </Modal.Content>
           </Modal.Root>
         )}
@@ -1219,6 +1715,14 @@ const LayoutDrawer = component$<LayoutDrawerProps>(
 export type LayoutPaneProps = Omit<PropsOf<"main">, "role"> & {
   /** Only "primary" exists: the page's `<main>`. One per page. */
   role?: "primary";
+  /**
+   * Full-bleed content, from e-store's `Layout.Pane bleed` (2026-11-19, ported 2026-11-23): the
+   * content fills the whole pane box, for a map or a canvas that owns its own gestures. No
+   * insets, no scroll: the pane clips (its rounding clips the content too) and stops scroll
+   * chaining. A `Layout.PaneHeader` stacks above the content. Pass ONE root element. Sets
+   * `data-qds-pane-bleed` (rules in `layout.css`).
+   */
+  bleed?: boolean;
 };
 
 /**
@@ -1226,7 +1730,7 @@ export type LayoutPaneProps = Omit<PropsOf<"main">, "role"> & {
  * does not. Give it a `Layout.PaneHeader` and ONE other element (the body).
  */
 const LayoutPane = component$<LayoutPaneProps>(
-  ({ role = "primary", class: className, ...rest }) => {
+  ({ role = "primary", bleed = false, class: className, ...rest }) => {
     const layout = useContext(layoutContextId);
     const styles = layoutVariants();
     return (
@@ -1234,6 +1738,7 @@ const LayoutPane = component$<LayoutPaneProps>(
         {...rest}
         id={layout.mainId}
         data-pane={role}
+        data-qds-pane-bleed={bleed ? "" : undefined}
         tabIndex={-1}
         class={[styles.pane(), className]}
       >
@@ -1248,20 +1753,198 @@ export type LayoutPaneHeaderProps = PropsOf<"header"> & {
   title: string;
   /** 1 when the pane title is the page's main heading; 2 (default) under an app bar title. */
   headingLevel?: 1 | 2;
+  /**
+   * The heading's `id`, for a region named by the title (`aria-labelledby`). Not `id`: that is
+   * the `<header>`'s, which also holds the actions, so a name taken from it read "Contacts (1)
+   * Full screen". NEW 2026-11-24, not in e-store.
+   */
+  titleId?: string;
+  /**
+   * A full-screen toggle for the primary pane, after the slot's actions (`FullscreenButton` on
+   * the pane's `<main>`). Shown only where the browser can put an element in full screen. NEW
+   * 2026-11-24, not in e-store (whose layout has no pane full screen; the button is its).
+   */
+  fullscreen?: boolean;
+  /** That button's name. */
+  fullscreenLabel?: string;
+  /**
+   * Where the back arrow goes (a detail page's list); no arrow without it. e-store's
+   * `PaneHeader backHref` / `backLabel` / `backIcon` (ported 2026-11-24): an `IconButton` link
+   * before the title, flipped in RTL, marked `data-pane-header-back`. Inside `Layout.ListDetail`
+   * it shows in single-pane only (M3 list-detail: "Back button: Appears in detail view only for
+   * single-pane layouts"), by CSS (`layout.css`).
+   */
+  backHref?: string;
+  /** The back arrow's accessible name (e-store's default). */
+  backLabel?: string;
+  /** The back arrow's icon. */
+  backIcon?: IconName;
+  /**
+   * Keep the title for screen readers but do not draw it: the page shows the name in its body, as
+   * Google Contacts' person page (back arrow, then only the actions). The row keeps its layout.
+   * NEW 2026-11-24 (owner: match Google Contacts).
+   */
+  hideTitle?: boolean;
 };
 
 /** A pane's own header: its title, then its actions (the default slot). Sticks while the pane scrolls. */
 const LayoutPaneHeader = component$<LayoutPaneHeaderProps>(
-  ({ title, headingLevel = 2, class: className, ...rest }) => {
+  ({
+    title,
+    headingLevel = 2,
+    titleId,
+    fullscreen = false,
+    fullscreenLabel = "Full screen",
+    backHref,
+    backLabel = "Back",
+    backIcon = "arrow_back",
+    hideTitle = false,
+    class: className,
+    ...rest
+  }) => {
+    const layout = useContext(layoutContextId);
     const styles = layoutVariants();
     const Heading = headingLevel === 1 ? "h1" : "h2";
     return (
       <header {...rest} class={[styles.paneHeader(), className]}>
         <div class={styles.paneHeaderRow()}>
-          <Heading class={styles.paneTitle()}>{title}</Heading>
+          {backHref && (
+            <IconButton
+              type="link"
+              href={backHref}
+              icon={backIcon}
+              label={backLabel}
+              flipIconInRtl
+              data-pane-header-back=""
+            />
+          )}
+          <Heading
+            id={titleId}
+            class={hideTitle ? "sr-only" : styles.paneTitle()}
+          >
+            {title}
+          </Heading>
+          {/* The hidden title's place: the actions stay at the end. */}
+          {hideTitle && <span class="flex-1" />}
           <Slot />
+          {fullscreen && (
+            <FullscreenButton
+              targetId={layout.mainId}
+              label={fullscreenLabel}
+            />
+          )}
         </div>
       </header>
+    );
+  },
+);
+
+/* ------------------------------------------------------------------ */
+/*  List-detail (two panes inside the primary track)                   */
+/* ------------------------------------------------------------------ */
+
+export type LayoutListDetailProps = PropsOf<"div"> & {
+  /**
+   * Which pane shows while there is room for one only: `list` or `detail`. Give it from the URL
+   * (rule L19: never from the window width in render). Default `list`.
+   */
+  view?: "list" | "detail";
+  /**
+   * The app's key action as a FAB (JSX, e.g. an M3 `FAB`), at the lower end corner of the list
+   * pane below 600px, on the list view only (M3: the FAB sits at the lower end corner on compact;
+   * from 600px it belongs in the rail, `Layout.Rail fab`). Placed above the compact side-sheet
+   * opener. Placement only: the FAB is the caller's.
+   */
+  fab?: JSXOutput;
+};
+
+/**
+ * M3's LIST-DETAIL canonical layout as TWO PANES in the primary track (NEW 2026-11-24).
+ * m3.material.io/foundations/layout/canonical-layouts/list-detail (read 2026-11-24): "A
+ * list-detail layout uses two panes"; one pane on compact, two from expanded; the back button in
+ * single-pane only; selection in two-pane only. /breakpoints/expanded: the fixed pane is 360dp,
+ * "The spacer between panes is 24dp".
+ *
+ * Sources: e-store's pane roles (`Layout.Pane role="secondary"` = its fixed `layout-pane-fixed`
+ * pane beside the flexible primary one, `packages/ui/PLAN.md` "List-detail — use Layout.Panes +
+ * role=secondary", its gallery's `gap-(--layout-pane-spacer) md:grid-cols-[360px_1fr]` demo).
+ * e-store's own apps instead split ONE pane with a border (`chat-workspace.tsx`), which is not
+ * M3's two panes; ours was a copy of that until 2026-11-24 (owner: "i dont think your using the
+ * correct css etc and panes"). The structure here is NEW; second agent reviewed.
+ *
+ * Put it as the ONE root of `Layout.Pane role="primary" bleed`: the `<main>` then paints no
+ * surface (`layout.css`), and the two parts below are the panes. Two panes from a 43rem CONTAINER
+ * width (the primary track, not the window: the drawer and the supporting pane take room from
+ * it); one below, chosen by `view`. Below 600px the panes are square and edge to edge (the pane
+ * radius is 0 there).
+ */
+const LayoutListDetail = component$<LayoutListDetailProps>(
+  ({ view = "list", fab, class: className, ...rest }) => {
+    const styles = layoutVariants();
+    return (
+      <div
+        {...rest}
+        data-qds-list-detail=""
+        data-view={view}
+        class={[styles.listDetail(), className]}
+      >
+        <div class={styles.listDetailGrid()}>
+          <Slot />
+        </div>
+        {fab && (
+          <div data-qds-list-detail-fab="" class={styles.listDetailFab()}>
+            {freshJsx(fab)}
+          </div>
+        )}
+      </div>
+    );
+  },
+);
+
+export type LayoutListPaneProps = PropsOf<"section">;
+
+/**
+ * The list pane: the fixed 360dp pane (e-store's `secondary` sizing). A `<section>`: name it
+ * (`aria-labelledby` its `Layout.PaneHeader titleId`). Give it a `Layout.PaneHeader` and ONE body
+ * element; it scrolls itself on the pane rulers, like `Layout.Pane`.
+ */
+const LayoutListPane = component$<LayoutListPaneProps>(
+  ({ class: className, ...rest }) => {
+    const styles = layoutVariants();
+    return (
+      <section
+        {...rest}
+        data-qds-list-pane=""
+        class={[styles.listPane(), className]}
+      >
+        <Slot />
+      </section>
+    );
+  },
+);
+
+export type LayoutDetailPaneProps = PropsOf<"div"> & {
+  /**
+   * The content fills the pane and scrolls itself (a conversation with its composer pinned at the
+   * bottom): no rulers, no scroll here. Default: the pane scrolls, on the pane rulers, and takes a
+   * `Layout.PaneHeader` and ONE body element (as `Layout.Pane`).
+   */
+  bleed?: boolean;
+};
+
+/** The detail pane: the flexible pane beside the list (e-store's `primary` sizing). */
+const LayoutDetailPane = component$<LayoutDetailPaneProps>(
+  ({ bleed = false, class: className, ...rest }) => {
+    const styles = layoutVariants();
+    return (
+      <div
+        {...rest}
+        data-qds-detail-pane=""
+        data-qds-pane-bleed={bleed ? "" : undefined}
+        class={[styles.detailPane(), className]}
+      >
+        <Slot />
+      </div>
     );
   },
 );
@@ -1287,9 +1970,41 @@ export type LayoutSupportingPaneProps = Omit<
   showIcon?: IconName;
 };
 
-
 /** Below 840px (not the expanded window size) the supporting pane is a modal side sheet. */
 const isSheetWidth = () => !matchMedia(EXPANDED_QUERY).matches;
+
+/**
+ * Calls `done` once the scaffold's track transition (`grid-template-columns`, 300ms, `layout.css`)
+ * started by the change just made has ended (NEW 2026-11-24, not in e-store): what a region that
+ * closes by its track waits for before it hides its content, so the content slides out with the
+ * track instead of vanishing first. Two frames first: a `useTask$` runs before Qwik patches the
+ * DOM, so the transition does not exist yet. `getAnimations()` brings the style up to date; with
+ * reduced motion (no transition) or a cancelled one it settles at once, and a timeout ends the
+ * wait if a transition never finishes (as `closeAnimated`).
+ */
+const afterTrackTransition = (from: Element | null, done: () => void) => {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const scaffold = from?.closest(".layout-scaffold");
+      const running = (scaffold?.getAnimations() ?? []).filter(
+        (animation) =>
+          animation instanceof CSSTransition &&
+          animation.transitionProperty === "grid-template-columns" &&
+          animation.playState === "running",
+      );
+      if (running.length === 0) {
+        done();
+        return;
+      }
+      void Promise.race([
+        Promise.all(
+          running.map((animation) => animation.finished.catch(() => {})),
+        ),
+        new Promise((resolve) => setTimeout(resolve, 450)),
+      ]).then(done);
+    }),
+  );
+};
 
 /**
  * The control that opened each sheet. Recorded by the click handlers (their element), not read
@@ -1303,13 +2018,26 @@ function rememberSheetOpener(supportId: string, opener: HTMLElement) {
   if (sheet && !sheet.contains(opener)) sheetOpeners.set(sheet, opener);
 }
 
-/** The first control in the sheet that is on show: the selected tab, else the close button. */
-const firstSheetControl = (sheet: HTMLElement) =>
-  Array.from(
-    sheet.querySelectorAll<HTMLElement>(
-      '[role="tab"][tabindex="0"], button, a[href], input, select, textarea',
-    ),
-  ).find((element) => element.getClientRects().length > 0);
+/**
+ * Where focus goes when the sheet opens: a control the open panel marks `data-autofocus` (a form
+ * opens on its first field; NEW 2026-11-24, owner), else the first control on show: the selected
+ * tab, else the close button. `data-autofocus`, not `autofocus`: the native attribute would also
+ * take focus on page load wherever the pane is server-rendered beside the page (HTML autofocus).
+ */
+const firstSheetControl = (sheet: HTMLElement) => {
+  const shown = (element: HTMLElement) => element.getClientRects().length > 0;
+  const marked = Array.from(
+    sheet.querySelectorAll<HTMLElement>("[data-autofocus]:not(:disabled)"),
+  ).find(shown);
+  return (
+    marked ??
+    Array.from(
+      sheet.querySelectorAll<HTMLElement>(
+        '[role="tab"][tabindex="0"], button, a[href], input, select, textarea',
+      ),
+    ).find(shown)
+  );
+};
 
 /**
  * Opens the sheet (below 840px) and makes it modal: every other region of the scaffold is
@@ -1320,6 +2048,9 @@ const firstSheetControl = (sheet: HTMLElement) =>
  */
 function openSupportSheet(sheet: HTMLElement) {
   if (!sheet.isConnected || !isSheetWidth()) return;
+  // Opened again while its exit plays: it never left the top layer; the exit is dropped and the
+  // enter transition runs back from where it is.
+  sheet.removeAttribute(CLOSING_ATTR);
   if (!sheet.matches(":popover-open")) {
     const doc = sheet.ownerDocument;
     const opener =
@@ -1375,6 +2106,31 @@ function showSupport(
 }
 
 /**
+ * Opens the supporting pane on companion `id`, from a page's own control (a list row, a card),
+ * the way the companion rail's buttons do: it notes `opener` so focus goes back to it when the
+ * sheet (below 840px) closes, and opens the sheet even when `supportExpanded` is already true.
+ * Setting `activeCompanion` / `supportExpanded` by hand does neither. Call it from an event
+ * handler (browser only); read `layout` with `useContext(layoutContextId)`. NEW 2026-11-24, not
+ * in e-store (its companion panels open only from its companion rail).
+ */
+export function openCompanion(
+  layout: Pick<
+    LayoutContextValue,
+    "supportId" | "supportExpanded" | "activeCompanion"
+  >,
+  id: string,
+  opener?: HTMLElement | null,
+) {
+  layout.activeCompanion.value = id;
+  const pane = {
+    supportId: layout.supportId,
+    supportExpanded: layout.supportExpanded,
+  };
+  if (opener) showSupport(pane, opener);
+  else layout.supportExpanded.value = true;
+}
+
+/**
  * Whether the supporting pane is on show to the visitor: from 840px the expanded state, below
  * that the sheet being open (the two can disagree after a server render; see `showSupport`).
  */
@@ -1385,6 +2141,46 @@ function supportShown(layout: {
   if (!isSheetWidth()) return layout.supportExpanded.value;
   return !!document.getElementById(layout.supportId)?.matches(":popover-open");
 }
+
+/**
+ * Notes on the sheet, at once (a `sync$`: a lazy handler runs after the browser has acted), that
+ * it was asked to close: Escape with no menu or other popup open inside it (that Escape is the
+ * popup's), or a press that began AND ended on its scrim (outside it; a drag out of the sheet
+ * is not a dismissal). Listens on the document for presses. Serialized as text: everything it uses is inline.
+ */
+const markSheetDismiss = sync$((event: Event, sheet: HTMLElement) => {
+  if (event.type === "keydown") {
+    const key = (event as KeyboardEvent).key;
+    if (key !== "Escape") return;
+    const inner = Array.from(
+      sheet.querySelectorAll(":popover-open, dialog[open]"),
+    );
+    if (inner.length === 0) sheet.setAttribute("data-dismiss", "");
+    return;
+  }
+  if (!sheet.matches(":popover-open")) return;
+  const pointer = event as PointerEvent;
+  const target = pointer.target as Element | null;
+  const box = sheet.getBoundingClientRect();
+  // On the sheet itself (a browser that hit-tests its `::backdrop` to it): outside its box.
+  // Elsewhere: not in it, and not in another top-layer popup (a snackbar, a tooltip).
+  const outside =
+    target === sheet
+      ? !(
+          pointer.clientX >= box.left &&
+          pointer.clientX <= box.right &&
+          pointer.clientY >= box.top &&
+          pointer.clientY <= box.bottom
+        )
+      : !!target && !target.closest(":popover-open, dialog[open]");
+  if (event.type === "pointerdown") {
+    sheet.toggleAttribute("data-scrim-down", outside);
+    return;
+  }
+  const began = sheet.hasAttribute("data-scrim-down");
+  sheet.removeAttribute("data-scrim-down");
+  if (began && outside) sheet.setAttribute("data-dismiss", "");
+});
 
 /**
  * The supporting pane: the second pane, opened and closed from `Layout.CompanionRail` (or a
@@ -1437,7 +2233,12 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
       const sheet = sheetRef.value;
       if (!sheet || !isSheetWidth()) return;
       if (expanded) openSupportSheet(sheet);
-      else if (sheet.matches(":popover-open")) sheet.hidePopover();
+      else if (sheet.matches(":popover-open")) {
+        // The exit plays, then `hidePopover()`; not awaited (the task must not hold the render).
+        void closeAnimated(sheet, () => {
+          if (sheet.matches(":popover-open")) sheet.hidePopover();
+        });
+      }
     });
 
     // Escape, a press on the scrim or `hidePopover()`: a sheet that closes collapses the pane,
@@ -1452,9 +2253,24 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
       activeCompanion.value = null;
     });
 
+    // The companion (and so the page's panel content) is cleared only once the pane is gone, so
+    // the content slides out with it (2026-11-24): below 840px by the sheet's `toggle` after its
+    // exit (`onSheetToggle$`), from 840px when the support track has closed.
     const close$ = $(() => {
       supportExpanded.value = false;
-      activeCompanion.value = null;
+      if (isSheetWidth()) return;
+      afterTrackTransition(sheetRef.value ?? null, () => {
+        if (!supportExpanded.value) activeCompanion.value = null;
+      });
+    });
+
+    // The sheet is `popover="manual"`: a `popover="auto"` closes itself on Escape and on a press
+    // outside, at once and uncancellably (HTML spec: light dismiss), which skipped the exit. So
+    // those two are ours: both noted at once by `markSheetDismiss`, acted on here.
+    const dismiss$ = $((_: Event, sheet: HTMLElement) => {
+      const asked = sheet.hasAttribute("data-dismiss");
+      sheet.removeAttribute("data-dismiss");
+      if (asked && isSheetWidth() && sheet.matches(":popover-open")) close$();
     });
 
     return (
@@ -1463,12 +2279,17 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
           {...rest}
           ref={sheetRef}
           id={layout.supportId}
-          popover="auto"
+          popover="manual"
           tabIndex={-1}
           aria-labelledby={titleId}
           data-expanded={supportExpanded.value ? "true" : "false"}
           class={[styles.supportingPane(), className]}
           onToggle$={onSheetToggle$}
+          onKeyDown$={[markSheetDismiss, dismiss$]}
+          // On the document: a press on a popover's `::backdrop` is not hit-tested to the
+          // popover (Chrome, 2026-11-24: it lands on the scaffold), unlike a dialog's.
+          document:onPointerDown$={markSheetDismiss}
+          document:onPointerUp$={[markSheetDismiss, dismiss$]}
           // Crossing 840px: a sheet left open turns back into the pane (it stays expanded); a
           // pane left expanded when the window narrows collapses instead of popping up as a modal.
           // Crossing 600px with the sheet open shows or hides the tab row.
@@ -1478,6 +2299,7 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
             const open = sheet.matches(":popover-open");
             tabsShown.value = open && matchMedia(COMPACT_QUERY).matches;
             if (!isSheetWidth()) {
+              sheet.removeAttribute(CLOSING_ATTR);
               if (open) sheet.hidePopover();
             } else if (supportExpanded.value && !open) {
               supportExpanded.value = false;
@@ -1514,8 +2336,23 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
                     class={styles.sheetTab()}
                     onClick$={() => (activeCompanion.value = app.id)}
                   >
-                    <span class={styles.companionPill()}>
-                      <Icon name={app.icon} />
+                    <span
+                      class={styles.companionPill({ emphasis: app.emphasis })}
+                    >
+                      <Icon
+                        name={app.icon}
+                        class={
+                          app.iconSelected
+                            ? styles.companionIconRest()
+                            : undefined
+                        }
+                      />
+                      {app.iconSelected && (
+                        <Icon
+                          name={app.iconSelected}
+                          class={styles.companionIconSelected()}
+                        />
+                      )}
                     </span>
                     <span class={styles.sheetTabLabel()}>{app.label}</span>
                   </button>
@@ -1542,6 +2379,10 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
                 <h2 id={titleId} class={styles.paneTitle()}>
                   {heading.value}
                 </h2>
+                {/* The open companion's own actions (a "more" menu), before Close. FROM E-STORE
+                    (`Layout.SupportingPane` `header-actions` slot, 2026-11-25): projected
+                    children, never a JSX prop. */}
+                <Slot name="header-actions" />
                 <IconButton
                   icon={closeIcon}
                   label={closeLabel}
@@ -1558,7 +2399,7 @@ const LayoutSupportingPane = component$<LayoutSupportingPaneProps>(
           <button
             type="button"
             aria-label={showLabel}
-            title={showLabel}
+            data-tooltip=""
             aria-controls={layout.supportId}
             aria-expanded={sheetOpen.value}
             class={[styles.sideToggle(), styles.sheetTrigger()]}
@@ -1629,7 +2470,7 @@ const LayoutCompanionRail = component$<LayoutCompanionRailProps>(
               key={app.id}
               type="button"
               aria-label={app.label}
-              title={app.label}
+              data-tooltip=""
               aria-controls={layout.supportId}
               aria-pressed={
                 supportExpanded.value && activeCompanion.value === app.id
@@ -1646,8 +2487,19 @@ const LayoutCompanionRail = component$<LayoutCompanionRailProps>(
                 else showSupport(pane, element);
               }}
             >
-              <span class={styles.companionPill()}>
-                <Icon name={app.icon} />
+              <span class={styles.companionPill({ emphasis: app.emphasis })}>
+                <Icon
+                  name={app.icon}
+                  class={
+                    app.iconSelected ? styles.companionIconRest() : undefined
+                  }
+                />
+                {app.iconSelected && (
+                  <Icon
+                    name={app.iconSelected}
+                    class={styles.companionIconSelected()}
+                  />
+                )}
               </span>
             </button>
           ))}
@@ -1656,7 +2508,7 @@ const LayoutCompanionRail = component$<LayoutCompanionRailProps>(
           <button
             type="button"
             aria-label={trailShown.value ? hideLabel : showLabel}
-            title={trailShown.value ? hideLabel : showLabel}
+            data-tooltip=""
             aria-expanded={trailShown.value}
             aria-controls={layout.trailId}
             class={[styles.sideToggle(), styles.sideToggleRail()]}
@@ -1753,6 +2605,9 @@ export const Layout = {
   DrawerItem: LayoutDrawerItemRow,
   Pane: LayoutPane,
   PaneHeader: LayoutPaneHeader,
+  ListDetail: LayoutListDetail,
+  ListPane: LayoutListPane,
+  DetailPane: LayoutDetailPane,
   SupportingPane: LayoutSupportingPane,
   CompanionRail: LayoutCompanionRail,
   SupportToggle: LayoutSupportToggle,

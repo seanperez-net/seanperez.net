@@ -32,7 +32,7 @@ import { destructureBindings, useBindings } from "../../utils/bindings";
  *   `on-surface-variant`).
  * - Disabled: unchecked outline `on-surface` 38%; checked box `on-surface` 38% with a `surface`
  *   tick (tokens). e-store faded the whole box to 38%, so a disabled checked box stayed `primary`.
- * Added 2026-11-23: e-store's colour props (`accentColor`, `checkmarkColor`, `uncheckedColor`,
+ * Added 2026-11-23: e-store's color props (`accentColor`, `checkmarkColor`, `uncheckedColor`,
  * `uncheckedBgColor`, with `contrastingCheckmark`) as CSS variables over the M3 roles, and its
  * `touch-state-layer`; M3's error state (`error`, material-web `_md-comp-checkbox.scss`
  * `*-error-*` tokens; new, not in e-store).
@@ -92,7 +92,7 @@ export const checkboxVariants = tv({
       "size-4.5",
       "rounded-[2px]",
       "border-2",
-      // The colour props arrive as CSS variables; without them, the M3 roles.
+      // The color props arrive as CSS variables; without them, the M3 roles.
       "border-(--checkbox-unchecked,var(--color-on-surface-variant))",
       "bg-(--checkbox-unchecked-bg,transparent)",
       "transition-colors",
@@ -196,7 +196,7 @@ export const checkboxVariants = tv({
 /**
  * Black or white for a tick on `color` (by its WCAG relative luminance), e-store's: what a native
  * checkbox does for `accent-color`, which the drawn box does not get for free. Parses `#rgb`,
- * `#rrggbb(aa)` and `rgb()` / `rgba()`; anything else (a named colour, a `var()`) gives undefined
+ * `#rrggbb(aa)` and `rgb()` / `rgba()`; anything else (a named color, a `var()`) gives undefined
  * and the tick keeps `on-primary`.
  */
 export function contrastingCheckmark(
@@ -249,17 +249,17 @@ export type CheckboxProps = Omit<
   /** Submitted when checked (default "on"). */
   value?: string;
   /**
-   * M3 error state: `error` colours and `aria-invalid` on the input. Describe the error in text
+   * M3 error state: `error` colors and `aria-invalid` on the input. Describe the error in text
    * too (`aria-describedby`). Ignored while `disabled`. New, not in e-store.
    */
   error?: boolean;
-  /** The checked fill (any CSS colour), e-store's. The tick picks black or white to contrast. */
+  /** The checked fill (any CSS color), e-store's. The tick picks black or white to contrast. */
   accentColor?: string;
-  /** The tick's colour: `auto` (default; black or white against `accentColor`) or a CSS colour. */
+  /** The tick's color: `auto` (default; black or white against `accentColor`) or a CSS color. */
   checkmarkColor?: "auto" | (string & {});
-  /** The unchecked outline (any CSS colour). Default `on-surface-variant`. */
+  /** The unchecked outline (any CSS color). Default `on-surface-variant`. */
   uncheckedColor?: string;
-  /** The unchecked fill (any CSS colour). Default transparent. */
+  /** The unchecked fill (any CSS color). Default transparent. */
   uncheckedBgColor?: string;
   /** The circle's own state layer (default true). Off where a row already paints one. */
   "touch-state-layer"?: boolean;
@@ -316,14 +316,14 @@ export const Checkbox = component$<CheckboxProps>((allProps) => {
   } = destructureBindings(allProps, CHECKBOX_BINDS);
   const generatedId = useId();
   const styles = checkboxVariants({ stateLayer });
-  // Colours reach the box as CSS variables, so checked / unchecked stays in CSS (e-store's).
+  // Colors reach the box as CSS variables, so checked / unchecked stays in CSS (e-store's).
   const checkmark =
     checkmarkColor !== "auto"
       ? checkmarkColor
       : accentColor
         ? contrastingCheckmark(accentColor)
         : undefined;
-  const colours: Record<string, string> = {
+  const colors: Record<string, string> = {
     ...(accentColor ? { "--checkbox-accent": accentColor } : {}),
     ...(uncheckedColor ? { "--checkbox-unchecked": uncheckedColor } : {}),
     ...(uncheckedBgColor
@@ -363,7 +363,7 @@ export const Checkbox = component$<CheckboxProps>((allProps) => {
     <label data-qds-checkbox="" class={[styles.root(), labelClass]}>
       <span
         class={styles.control()}
-        style={Object.keys(colours).length ? colours : undefined}
+        style={Object.keys(colors).length ? colors : undefined}
       >
         <input
           {...rest}
@@ -373,7 +373,7 @@ export const Checkbox = component$<CheckboxProps>((allProps) => {
           value={value}
           checked={checked.value}
           data-indeterminate={indeterminate ? "" : undefined}
-          // A disabled checkbox is not validated (M3's disabled colours win).
+          // A disabled checkbox is not validated (M3's disabled colors win).
           aria-invalid={error && !rest.disabled ? "true" : undefined}
           onInput$={handleInput$}
           document:onReset$={handleReset$}

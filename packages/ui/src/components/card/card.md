@@ -10,16 +10,16 @@ Ported from e-store's `components/card/` on 2026-11-23, cut to what M3 has.
 
 ## M3 values (PROOFED 2026-11-23 against the M3 token table and material-web tokens)
 
-| Token                      | Elevated              | Filled                    | Outlined                |
-| -------------------------- | --------------------- | ------------------------- | ----------------------- |
-| Container                  | surface-container-low | surface-container-highest | surface                 |
-| Outline                    | none                  | none                      | 1dp outline-variant     |
-| Elevation at rest          | level 1               | level 0                   | level 0                 |
-| Hovered / focused / pressed| 2 / 1 / 1             | 1 / 0 / 0                 | 1 / 0 / 0               |
-| Dragged                    | level 4               | level 3                   | level 3                 |
-| Disabled container         | surface at 38%, level 1 | surface-variant at 38%, level 0 | (none)        |
-| Disabled outline           |                       |                           | outline at 12%          |
-| Focused outline            |                       |                           | on-surface              |
+| Token                       | Elevated                | Filled                          | Outlined            |
+| --------------------------- | ----------------------- | ------------------------------- | ------------------- |
+| Container                   | surface-container-low   | surface-container-highest       | surface             |
+| Outline                     | none                    | none                            | 1dp outline-variant |
+| Elevation at rest           | level 1                 | level 0                         | level 0             |
+| Hovered / focused / pressed | 2 / 1 / 1               | 1 / 0 / 0                       | 1 / 0 / 0           |
+| Dragged                     | level 4                 | level 3                         | level 3             |
+| Disabled container          | surface at 38%, level 1 | surface-variant at 38%, level 0 | (none)              |
+| Disabled outline            |                         |                                 | outline at 12%      |
+| Focused outline             |                         |                                 | on-surface          |
 
 Shape 12dp. Side padding 16dp. Up to 8dp between cards. Text start-aligned. State layer
 on-surface: hover 8%, focus 10%, pressed 10%, dragged 16%. Focus indicator: 3dp `secondary`,
@@ -31,35 +31,36 @@ container's values only; content at 38% is e-store's and M3's general disabled r
 
 ## Parts
 
-| Part               | Element                    | What                                                                    |
-| ------------------ | -------------------------- | ----------------------------------------------------------------------- |
-| `Card.Root`        | `div`, router `Link`, `a`  | The container. Sets `--field-bg` to its fill.                           |
-| `Card.Media`       | `img`, or `div` with a slot| Edge-to-edge thumbnail, image or video (M3 anatomy).                    |
-| `Card.Header`      | `header`                   | Headline and subhead, 16dp gutter.                                      |
-| `Card.Title`       | `h3`                       | Headline: title-large, on-surface.                                      |
-| `Card.Description` | `p`                        | Subhead / supporting text: body-medium, on-surface-variant.             |
-| `Card.Content`     | `div`                      | Body. `full` is edge to edge (a list), the others 16dp.                 |
-| `Card.Footer`      | `footer`                   | Actions, 8dp apart, end-aligned.                                        |
-| `Card.Action`      | `button`, `Link`, `a`      | A stretched control over the card: the card with the BUTTON role.       |
+| Part               | Element                     | What                                                              |
+| ------------------ | --------------------------- | ----------------------------------------------------------------- |
+| `Card.Root`        | `div`, router `Link`, `a`   | The container. Sets `--field-bg` to its fill.                     |
+| `Card.Media`       | `img`, or `div` with a slot | Edge-to-edge thumbnail, image or video (M3 anatomy).              |
+| `Card.Header`      | `header`                    | Headline and subhead, 16dp gutter.                                |
+| `Card.Title`       | `h3`                        | Headline: title-large, on-surface.                                |
+| `Card.Description` | `p`                         | Subhead / supporting text: body-medium, on-surface-variant.       |
+| `Card.Content`     | `div`                       | Body. `full` is edge to edge (a list), the others 16dp.           |
+| `Card.Footer`      | `footer`                    | Actions, 8dp apart, end-aligned.                                  |
+| `Card.Action`      | `button`, `Link`, `a`       | A stretched control over the card: the card with the BUTTON role. |
 
 ## API
 
 ### `Card.Root`
 
-| Prop               | Type                                  | Default      | Notes |
-| ------------------ | ------------------------------------- | ------------ | ----- |
-| `as`               | `"div" \| "link" \| "a"`              | `"div"`      | `link`: the router's `<Link>`; `a`: a full page load. |
-| `variant`          | `"elevated" \| "filled" \| "outlined"`| `"elevated"` | M3 card type. |
-| `rounded`          | `"md" \| "pane"`                       | `"md"`       | `pane`: the layout's pane radius (`--layout-pane-radius`: 28px, 16px compact, square below 600px; 28px outside a scaffold). e-store's `rounded="pane"` (`card.tsx` 91-96), 2026-11-23. |
-| `interactive`      | `boolean`                             | `true` for `link` / `a` | State layer, hover elevation, focus ring. Set it on a card holding a `Card.Action`. |
-| `disabled`         | `boolean`                             | `false`      | M3 disabled values; a link card renders no link (`role="link"` + `aria-disabled`). |
-| `dragged`          | `boolean`                             | `false`      | M3 dragged state (raised, 16% layer) while the app moves the card. No drag behaviour. |
-| `href`             | `string`                              |              | Through `safeHref`. |
-| `target`           | `"_blank"`                            |              | `as="a"` only; adds `rel="noopener noreferrer"`. |
-| `aria-label`, `aria-labelledby`, `aria-describedby`, `id`, `style`, `data-*`, `class` | | | Forwarded. |
+| Prop                                                                                  | Type                                   | Default                 | Notes                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `as`                                                                                  | `"div" \| "link" \| "a"`               | `"div"`                 | `link`: the router's `<Link>`; `a`: a full page load.                                                                                                                                  |
+| `variant`                                                                             | `"elevated" \| "filled" \| "outlined"` | `"elevated"`            | M3 card type.                                                                                                                                                                          |
+| `rounded`                                                                             | `"md" \| "pane"`                       | `"md"`                  | `pane`: the layout's pane radius (`--layout-pane-radius`: 28px, 16px compact, square below 600px; 28px outside a scaffold). e-store's `rounded="pane"` (`card.tsx` 91-96), 2026-11-23. |
+| `interactive`                                                                         | `boolean`                              | `true` for `link` / `a` | State layer, hover elevation, focus ring. Set it on a card holding a `Card.Action`.                                                                                                    |
+| `disabled`                                                                            | `boolean`                              | `false`                 | M3 disabled values; a link card renders no link (`role="link"` + `aria-disabled`).                                                                                                     |
+| `dragged`                                                                             | `boolean`                              | `false`                 | M3 dragged state (raised, 16% layer) while the app moves the card. No drag behaviour.                                                                                                  |
+| `href`                                                                                | `string`                               |                         | Through `safeHref`.                                                                                                                                                                    |
+| `target`                                                                              | `"_blank"`                             |                         | `as="a"` only; adds `rel="noopener noreferrer"`.                                                                                                                                       |
+| `rel`                                                                                 | `string`                               |                         | `as="a"` only; kept, and a new tab adds `noopener noreferrer` (e.g. `"external"`). NEW 2026-11-24                                                                                      |
+| `aria-label`, `aria-labelledby`, `aria-describedby`, `id`, `style`, `data-*`, `class` |                                        |                         | Forwarded.                                                                                                                                                                             |
 
 `--field-bg`: elevated `surface-container-low`, filled `surface-container-highest`, outlined
-`surface`. A floated `TextField` / `Select` label inside a card paints this colour.
+`surface`. A floated `TextField` / `Select` label inside a card paints this color.
 
 ### `Card.Media`
 
@@ -74,13 +75,13 @@ or center as the layout scales").
 
 ### `Card.Action`
 
-| Prop            | Type                             | Default    |
-| --------------- | -------------------------------- | ---------- |
-| `as`            | `"button" \| "link" \| "a"`      | `"button"` |
-| `onClick$`      | `QRL`                            |            |
-| `href`, `target`| as Root                          |            |
-| `disabled`      | `boolean`                        |            |
-| `aria-label`, `aria-labelledby`, `aria-describedby`, `class` | | |
+| Prop                                                         | Type                        | Default    |
+| ------------------------------------------------------------ | --------------------------- | ---------- |
+| `as`                                                         | `"button" \| "link" \| "a"` | `"button"` |
+| `onClick$`                                                   | `QRL`                       |            |
+| `href`, `target`                                             | as Root                     |            |
+| `disabled`                                                   | `boolean`                   |            |
+| `aria-label`, `aria-labelledby`, `aria-describedby`, `class` |                             |            |
 
 ## ARIA and keyboard (PROOFED 2026-11-23: M3 accessibility page, ARIA in HTML)
 

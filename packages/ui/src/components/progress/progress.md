@@ -11,15 +11,19 @@ From e-store's `Progress` (`Progress.Linear` / `Progress.Circular`, `value` / `m
 
 ## API (both)
 
-| Prop | Default | |
-|---|---|---|
-| `value` | — | 0..`max`; omit for indeterminate |
-| `max` | 1 | |
-| `wavy` | false | wavy active indicator |
-| `thickness` | `"default"` | `"thick"`: 8dp stroke (M3's sample of the configurable thickness) |
-| `valueText` | — | `aria-valuetext` |
-| `aria-label` / `aria-labelledby` | — | M3: always name it, e.g. "Loading news article" |
-| `Linear` `stopIndicator` | true | the 4dp dot at the track's end (keep it unless the track has 3:1 contrast) |
+Parts: `Progress.Linear` (`LinearProgressProps`) and `Progress.Circular`
+(`CircularProgressProps`).
+
+| Prop                             | Default     |                                                                            |
+| -------------------------------- | ----------- | -------------------------------------------------------------------------- |
+| `value`                          | —           | 0..`max`; omit for indeterminate                                           |
+| `max`                            | 1           |                                                                            |
+| `wavy`                           | false       | wavy active indicator                                                      |
+| `thickness`                      | `"default"` | `"thick"`: 8dp stroke (M3's sample of the configurable thickness)          |
+| `valueText`                      | —           | `aria-valuetext`                                                           |
+| `aria-label` / `aria-labelledby` | —           | M3: always name it, e.g. "Loading news article"                            |
+| `id`, `class`                    | —           | on the `progressbar` element                                               |
+| `Linear` `stopIndicator`         | true        | the 4dp dot at the track's end (keep it unless the track has 3:1 contrast) |
 
 ## Numbers
 
@@ -43,7 +47,7 @@ Buffer, `fourColor`, sm / md / lg circular sizes, the `surface` track option, `g
 
 ## Proof
 
-- PROOFED 2026-11-23: colours, sizes, gap, stop indicator, configurations, ARIA (M3 pages,
+- PROOFED 2026-11-23: colors, sizes, gap, stop indicator, configurations, ARIA (M3 pages,
   WAI-ARIA 1.2 `progressbar`); timings against the Compose source.
 - Measured in Chrome: linear 4 / 8 / 10 / 14px boxes, indicator at 40% of 448 = 179px, 4px gap,
   4x4 stop; circular boxes 40 / 44 / 48 / 52.

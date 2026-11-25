@@ -1,6 +1,7 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Knobs, Layout, Slider, knob, useKnobs } from "../../index";
+import { Layout, Slider } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 const sizes = ["xs", "sm", "md", "lg", "xl"] as const;
 

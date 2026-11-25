@@ -1,14 +1,24 @@
 import { component$, useSignal } from "@qwik.dev/core";
 import type { DocumentHead } from "@qwik.dev/router";
-import { Button, Knobs, Layout, TextField, knob, useKnobs } from "../../index";
+import { Button, Layout, TextField } from "../../index";
+import { Knobs, knob, useKnobs } from "../../components/knobs";
 
 export default component$(() => {
   const email = useSignal("");
   const picker = useSignal(false);
   const knobs = useKnobs({
     variant: knob.select(["outlined", "filled", "plain", "tonal"], "outlined"),
+    type: knob.select(
+      ["email", "text", "password", "tel", "url", "search", "number"],
+      "email",
+    ),
     density: knob.select(["default", "compact"], "default"),
     textSize: knob.select(["auto", "title-large", "headline-small"], "auto"),
+    dateType: knob.select(
+      ["date", "datetime-local", "month", "time", "week", "color"],
+      "date",
+      "type (picker field)",
+    ),
     resize: knob.select(["none", "vertical", "horizontal", "both"], "none"),
     label: knob.text("Email"),
     placeholder: knob.text("name@example.com"),
@@ -29,7 +39,7 @@ export default component$(() => {
         <div class="grid w-full max-w-sm gap-2">
           <TextField
             name="email"
-            type="email"
+            type={knobs.values.type}
             variant={knobs.values.variant}
             density={knobs.values.density}
             textSize={knobs.values.textSize}
@@ -57,9 +67,9 @@ export default component$(() => {
           />
           <TextField
             name="when"
-            type="date"
             variant={knobs.values.variant}
             density={knobs.values.density}
+            type={knobs.values.dateType}
             label="Date"
             showPicker={picker}
             disabled={knobs.values.disabled}

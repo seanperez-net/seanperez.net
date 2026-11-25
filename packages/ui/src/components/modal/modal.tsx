@@ -20,7 +20,7 @@ import { Icon } from "../icon";
 import type { IconName } from "../icon";
 import { Button } from "../button";
 import { iconButtonVariants } from "../icon-button";
-import { openModal } from "../../utils/top-layer";
+import { closeAnimated, openModal } from "../../utils/top-layer";
 import { useBoundSignal } from "../../utils/use-bound-signal";
 
 /**
@@ -42,6 +42,7 @@ import { useBoundSignal } from "../../utils/use-bound-signal";
 export type ModalPosition =
   | "center"
   | "fullScreen"
+  | "adaptive"
   | "bottom"
   | "left"
   | "right";
@@ -50,11 +51,11 @@ type ModalContext = {
   contentRef: Signal<HTMLDialogElement | undefined>;
   isOpen: Signal<boolean>;
   position: Readonly<Signal<ModalPosition>>;
-  closeOnOutsideClick: boolean;
+  closeOnOutsideClick: Readonly<Signal<boolean>>;
   isTitle: Signal<boolean>;
   isDescription: Signal<boolean>;
   localId: string;
-  alert: boolean;
+  alert: Readonly<Signal<boolean>>;
 };
 
 export const modalContextId = createContextId<ModalContext>("ui-modal");
@@ -74,20 +75,29 @@ export const modalContentVariants = tv({
     "text-on-surface",
     // A closed dialog is hidden only by the browser's own rule, which a `flex` class would beat.
     "not-open:hidden",
-    // Stays fixed to the window while it animates out (a closing dialog stops being `:modal`).
+    // Fixed to the window as a modal is (`:modal`), stated for every state.
     "fixed",
     // A scroll that reaches the end of the dialog does not carry on into the page (iOS).
     "overscroll-contain",
-    // `max-height`: a bottom sheet expanded by its drag handle.
-    "transition-[opacity,translate,scale,display,overlay,max-height]",
-    "transition-discrete",
-    // M3: the page behind is dimmed with scrim at 32%.
+    // Motion (`modal.md` "Motion"). Enter: `@starting-style` (`starting:open:`). Exit: the Root
+    // sets `data-closing` while the dialog is still open (in the top layer, scrim and all), the
+    // `open:data-closing:` classes give the closed look, and `dialog.close()` runs when that
+    // transition ends (`closeAnimated`, `utils/top-layer.ts`). No `display` / `overlay` in the
+    // list: Safari and Firefox cannot transition `overlay`, so an exit that ran after `close()`
+    // played under the page with no scrim (iOS, 2026-11-24). `max-height`: a bottom sheet
+    // expanded by its drag handle.
+    "transition-[opacity,translate,max-height]",
+    // M3: the page behind is dimmed with scrim at 32%, faded linearly (material-web's scrim).
     "backdrop:bg-scrim/32",
     "backdrop:opacity-0",
-    "backdrop:transition-all",
-    "backdrop:transition-discrete",
+    "backdrop:transition-opacity",
+    "backdrop:ease-linear",
     "open:backdrop:opacity-100",
     "starting:open:backdrop:opacity-0",
+    "open:data-closing:backdrop:opacity-0",
+    // Reduced motion: no transition, it appears and goes at once (rule L23).
+    "motion-reduce:transition-none",
+    "motion-reduce:backdrop:transition-none",
   ],
   variants: {
     position: {
@@ -104,18 +114,22 @@ export const modalContentVariants = tv({
         "shadow-3",
         "open:flex",
         "open:flex-col",
+        // material-web's dialog: in, 500ms Emphasized, sliding 50px down as it fades in; out,
+        // 150ms Emphasized accelerate, back up 50px (no scale: M3 transition patterns).
         "opacity-0",
         "open:opacity-100",
         "starting:open:opacity-0",
-        "scale-95",
-        "open:scale-100",
-        "starting:open:scale-95",
-        "duration-200",
-        "ease-standard-accelerate",
-        "open:ease-standard-decelerate",
-        "backdrop:duration-200",
-        "motion-reduce:scale-100",
-        "motion-reduce:starting:open:scale-100",
+        "open:data-closing:opacity-0",
+        "-translate-y-[50px]",
+        "open:translate-y-0",
+        "starting:open:-translate-y-[50px]",
+        "open:data-closing:-translate-y-[50px]",
+        "duration-long-2",
+        "ease-emphasized",
+        "open:data-closing:duration-short-3",
+        "open:data-closing:ease-emphasized-accelerate",
+        "backdrop:duration-long-2",
+        "open:data-closing:backdrop:duration-short-3",
       ],
       // M3 full-screen dialog: square corners, the whole window.
       fullScreen: [
@@ -129,13 +143,72 @@ export const modalContentVariants = tv({
         "bg-surface-container-high",
         "open:flex",
         "open:flex-col",
+        // Enters the screen: 400ms Emphasized decelerate; exits: 200ms Emphasized accelerate
+        // (M3 easing and duration pairs).
         "opacity-0",
         "open:opacity-100",
         "starting:open:opacity-0",
-        "duration-200",
-        "ease-standard-accelerate",
-        "open:ease-standard-decelerate",
-        "backdrop:duration-200",
+        "open:data-closing:opacity-0",
+        "translate-y-12",
+        "open:translate-y-0",
+        "starting:open:translate-y-12",
+        "open:data-closing:translate-y-12",
+        "duration-medium-4",
+        "ease-emphasized-decelerate",
+        "open:data-closing:duration-short-4",
+        "open:data-closing:ease-emphasized-accelerate",
+        "backdrop:duration-medium-4",
+        "open:data-closing:backdrop:duration-short-4",
+      ],
+      // M3 adaptive dialog (2026-11-24, for forms): "Full-screen dialogs are for compact
+      // breakpoints only ... For medium and expanded breakpoints, use a basic dialog"; "Dialogs
+      // can swap variants as the breakpoint changes" (m3.material.io/components/dialogs/
+      // guidelines). Below 600px it IS `fullScreen`, from 600px `center` at its full 560px
+      // (M3 full-screen width "Container width; Max 560dp"; a form needs the room: the basic
+      // dialog's fit-content width shrank to its inputs' 20-character intrinsic width). CSS
+      // only, no breakpoint read in render (rule L19). Every class is a literal so Tailwind
+      // finds it; both sides are prefixed so neither depends on variant order.
+      adaptive: [
+        "bg-surface-container-high",
+        "open:flex",
+        "open:flex-col",
+        "opacity-0",
+        "open:opacity-100",
+        "starting:open:opacity-0",
+        "open:data-closing:opacity-0",
+        "open:data-closing:ease-emphasized-accelerate",
+        // Compact: the full-screen dialog (as `fullScreen`).
+        "max-sm:inset-0",
+        "max-sm:m-0",
+        "max-sm:h-dvh",
+        "max-sm:max-h-dvh",
+        "max-sm:w-dvw",
+        "max-sm:max-w-dvw",
+        "max-sm:rounded-none",
+        "max-sm:translate-y-12",
+        "max-sm:open:translate-y-0",
+        "max-sm:starting:open:translate-y-12",
+        "max-sm:open:data-closing:translate-y-12",
+        "max-sm:duration-medium-4",
+        "max-sm:ease-emphasized-decelerate",
+        "max-sm:open:data-closing:duration-short-4",
+        "max-sm:backdrop:duration-medium-4",
+        "max-sm:open:data-closing:backdrop:duration-short-4",
+        // From 600px: the basic dialog (as `center`), 560px wide or the window less 24px a side.
+        "sm:m-auto",
+        "sm:max-h-[calc(100dvh-3rem)]",
+        "sm:w-[min(35rem,calc(100dvw-3rem))]",
+        "sm:rounded-xl",
+        "sm:shadow-3",
+        "sm:-translate-y-[50px]",
+        "sm:open:translate-y-0",
+        "sm:starting:open:-translate-y-[50px]",
+        "sm:open:data-closing:-translate-y-[50px]",
+        "sm:duration-long-2",
+        "sm:ease-emphasized",
+        "sm:open:data-closing:duration-short-3",
+        "sm:backdrop:duration-long-2",
+        "sm:open:data-closing:backdrop:duration-short-3",
       ],
       // M3 bottom sheet: 28px top corners, surface-container-low, at most 640px wide, 72dp below
       // the window's top (56dp once the window is wider than 640dp). With a `Modal.DragHandle`
@@ -158,15 +231,18 @@ export const modalContentVariants = tv({
         "shadow-1",
         "open:flex",
         "open:flex-col",
+        // M3: "This Bottom sheet enters with Emphasized decelerate and exits permanently with
+        // Emphasized accelerate": 400ms in, 200ms out (the suggested pairs).
         "translate-y-full",
         "open:translate-y-0",
         "starting:open:translate-y-full",
-        "duration-300",
-        "ease-emphasized-accelerate",
-        "open:ease-emphasized-decelerate",
-        "backdrop:duration-300",
-        "motion-reduce:translate-y-0",
-        "motion-reduce:starting:open:translate-y-0",
+        "open:data-closing:translate-y-full",
+        "duration-medium-4",
+        "ease-emphasized-decelerate",
+        "open:data-closing:duration-short-4",
+        "open:data-closing:ease-emphasized-accelerate",
+        "backdrop:duration-medium-4",
+        "open:data-closing:backdrop:duration-short-4",
       ],
       // M3 modal side sheet / modal navigation drawer: 16px inner corners,
       // surface-container-low, at most 400px wide, the window's full height.
@@ -186,15 +262,17 @@ export const modalContentVariants = tv({
         "shadow-1",
         "open:flex",
         "open:flex-col",
+        // M3: "This drawer enters and exits temporarily with Emphasized easing": 500ms in,
+        // 200ms out (enter long, exit short: M3 "Enter vs. exit transitions").
         "-translate-x-full",
         "open:translate-x-0",
         "starting:open:-translate-x-full",
-        "duration-300",
-        "ease-emphasized-accelerate",
-        "open:ease-emphasized-decelerate",
-        "backdrop:duration-300",
-        "motion-reduce:translate-x-0",
-        "motion-reduce:starting:open:translate-x-0",
+        "open:data-closing:-translate-x-full",
+        "duration-long-2",
+        "ease-emphasized",
+        "open:data-closing:duration-short-4",
+        "backdrop:duration-long-2",
+        "open:data-closing:backdrop:duration-short-4",
       ],
       right: [
         "inset-y-0",
@@ -212,15 +290,17 @@ export const modalContentVariants = tv({
         "shadow-1",
         "open:flex",
         "open:flex-col",
+        // M3: "This drawer enters and exits temporarily with Emphasized easing": 500ms in,
+        // 200ms out (enter long, exit short: M3 "Enter vs. exit transitions").
         "translate-x-full",
         "open:translate-x-0",
         "starting:open:translate-x-full",
-        "duration-300",
-        "ease-emphasized-accelerate",
-        "open:ease-emphasized-decelerate",
-        "backdrop:duration-300",
-        "motion-reduce:translate-x-0",
-        "motion-reduce:starting:open:translate-x-0",
+        "open:data-closing:translate-x-full",
+        "duration-long-2",
+        "ease-emphasized",
+        "open:data-closing:duration-short-4",
+        "backdrop:duration-long-2",
+        "open:data-closing:backdrop:duration-short-4",
       ],
     },
   },
@@ -242,6 +322,8 @@ export const modalBarVariants = tv({
     position: {
       center: "h-16",
       fullScreen: "h-14",
+      // The full-screen bar, on compact only: from 600px the Header and Footer take over.
+      adaptive: "h-14 sm:hidden",
       bottom: "h-16",
       left: "h-16",
       right: "h-16",
@@ -267,7 +349,13 @@ export const modalHeaderVariants = tv({
       dialog: "p-6",
       sheet: "px-6 pb-4",
     },
+    /** `position="adaptive"`: compact shows the bar's headline instead. */
+    adaptive: {
+      true: "max-sm:hidden",
+      false: "",
+    },
   },
+  defaultVariants: { adaptive: false },
 });
 
 export const modalSectionVariants = tv({
@@ -302,6 +390,8 @@ export const modalFooterVariants = tv({
     position: {
       center: "justify-end",
       fullScreen: "justify-end",
+      // Compact: the bar's action (Save) and close button replace the footer (M3 full screen).
+      adaptive: "justify-end max-sm:hidden",
       bottom: "justify-end",
       left: "justify-end",
       right: "justify-start",
@@ -310,7 +400,7 @@ export const modalFooterVariants = tv({
 });
 
 const isDialogPosition = (position: ModalPosition): boolean =>
-  position === "center" || position === "fullScreen";
+  position === "center" || position === "fullScreen" || position === "adaptive";
 
 /**
  * A backdrop press targets the `<dialog>` itself (the `::backdrop` belongs to it) AND lands
@@ -362,8 +452,8 @@ const Root = component$<ModalRootProps>(
   ({
     "bind:open": givenOpen,
     position: givenPosition,
-    closeOnOutsideClick = true,
-    alert = false,
+    closeOnOutsideClick: givenCloseOnOutsideClick,
+    alert: givenAlert,
     class: className,
     ...rest
   }) => {
@@ -375,6 +465,12 @@ const Root = component$<ModalRootProps>(
     const position = useComputed$<ModalPosition>(
       () => givenPosition ?? "center",
     );
+    // Signals, not the values at creation, so a change of either prop applies to an open or a
+    // later dialog without remounting the Root (as `position`).
+    const closeOnOutsideClick = useComputed$(
+      () => givenCloseOnOutsideClick ?? true,
+    );
+    const alert = useComputed$(() => givenAlert ?? false);
 
     useTask$(({ track }) => {
       const open = track(isOpen);
@@ -382,7 +478,9 @@ const Root = component$<ModalRootProps>(
       const dialog = contentRef.value;
       if (!dialog) return;
       if (open) openModal(dialog);
-      else if (dialog.open) dialog.close();
+      // The exit plays first, then `close()` (see `closeAnimated`). Not awaited: the task must
+      // not hold the render.
+      else if (dialog.open) void closeAnimated(dialog, () => dialog.close());
     });
 
     useContextProvider(modalContextId, {
@@ -468,9 +566,11 @@ const Close = component$<ModalCloseProps>(
 
 export type ModalContentProps = Omit<
   PropsOf<"dialog">,
-  "open" | "onClose$" | "onPointerDown$" | "onPointerUp$"
+  "open" | "onClose$" | "onCancel$" | "onPointerDown$" | "onPointerUp$"
 > & {
   onClose$?: QRL<(event: Event, element: HTMLDialogElement) => void>;
+  /** Escape (or a phone's back gesture) asked it to close; it then closes with its exit. */
+  onCancel$?: QRL<(event: Event, element: HTMLDialogElement) => void>;
 };
 
 /** The surface: the `<dialog>` itself. Always rendered closed; the Root opens it. */
@@ -478,6 +578,7 @@ const Content = component$<ModalContentProps>(
   ({
     class: className,
     onClose$,
+    onCancel$,
     // A name or description passed by the caller wins over the Title / Description defaults.
     "aria-label": ariaLabel,
     "aria-labelledby": labelledBy,
@@ -490,10 +591,16 @@ const Content = component$<ModalContentProps>(
     const backdropUp$ = $((event: PointerEvent, dialog: HTMLDialogElement) => {
       const wasDown = dialog.hasAttribute("data-backdrop-down");
       dialog.removeAttribute("data-backdrop-down");
-      if (!wasDown || !context.closeOnOutsideClick) return;
+      if (!wasDown || !context.closeOnOutsideClick.value) return;
       if (isBackdropClick(dialog, event)) context.isOpen.value = false;
     });
-    // Escape, or anything else that closes the dialog natively.
+    // Escape: the browser's own close is cancelled (`preventdefault:cancel`) so the Root plays
+    // the exit first, as material-web's dialog does. When Chrome makes `cancel` uncancellable
+    // (a second Escape with no click in between: the close-watcher rule) it closes at once.
+    const cancel$ = $(() => {
+      context.isOpen.value = false;
+    });
+    // Anything else that closes the dialog natively.
     const closed$ = $(() => {
       context.isOpen.value = false;
     });
@@ -502,7 +609,7 @@ const Content = component$<ModalContentProps>(
       <dialog
         {...rest}
         ref={context.contentRef}
-        role={context.alert ? "alertdialog" : undefined}
+        role={context.alert.value ? "alertdialog" : undefined}
         aria-label={ariaLabel}
         aria-labelledby={
           labelledBy ??
@@ -523,6 +630,8 @@ const Content = component$<ModalContentProps>(
         ]}
         onPointerDown$={markBackdropDown}
         onPointerUp$={backdropUp$}
+        preventdefault:cancel
+        onCancel$={[cancel$, onCancel$]}
         onClose$={[closed$, onClose$]}
       >
         <Slot />
@@ -542,6 +651,11 @@ export type ModalCloseTitleActionProps = Omit<PropsOf<"div">, "title"> & {
   namesDialog?: boolean;
   /** A text button at the end of the bar (M3 full-screen dialog: "Save"). */
   actionLabel?: string;
+  /**
+   * The action's button type. `"submit"` when the bar is inside the dialog's `<form>`, so Save
+   * submits it as the footer's Save does (`position="adaptive"`). Default `"button"`.
+   */
+  actionType?: "button" | "submit";
   /** Runs when the action is pressed. The dialog stays open: close it here if it should. */
   onAction$?: QRL<(event: PointerEvent, element: HTMLElement) => void>;
 };
@@ -558,6 +672,7 @@ const CloseTitleAction = component$<ModalCloseTitleActionProps>(
     closeLabel = "Close",
     namesDialog = false,
     actionLabel,
+    actionType = "button",
     onAction$,
     class: className,
     ...rest
@@ -587,7 +702,7 @@ const CloseTitleAction = component$<ModalCloseTitleActionProps>(
           data-tooltip=""
           class={[
             iconButtonVariants(),
-            "order-last group-data-[position=fullScreen]/bar:order-first group-data-[position=left]/bar:order-first",
+            "order-last group-data-[position=adaptive]/bar:order-first group-data-[position=fullScreen]/bar:order-first group-data-[position=left]/bar:order-first",
           ]}
           onClick$={close$}
         >
@@ -604,7 +719,12 @@ const CloseTitleAction = component$<ModalCloseTitleActionProps>(
           <span class="flex-1" aria-hidden="true" />
         )}
         {actionLabel && (
-          <Button look="text" label={actionLabel} onClick$={onAction$} />
+          <Button
+            type={actionType}
+            look="text"
+            label={actionLabel}
+            onClick$={onAction$}
+          />
         )}
       </div>
     );
@@ -633,6 +753,7 @@ const Header = component$<ModalHeaderProps>(
             variant: isDialogPosition(context.position.value)
               ? "dialog"
               : "sheet",
+            adaptive: context.position.value === "adaptive",
           }),
           className,
         ]}

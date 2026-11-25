@@ -9,6 +9,7 @@ import {
   useContextProvider,
   useId,
   useSignal,
+  useTask$,
 } from "@qwik.dev/core";
 import type { PropsOf, QRL, Signal } from "@qwik.dev/core";
 import { tv } from "tailwind-variants/lite";
@@ -105,6 +106,8 @@ export const comboboxVariants = tv({
     empty:
       "hidden px-3 py-6 text-center text-body-large text-on-surface-variant",
     error: "px-4 pt-1 text-body-small text-error",
+    // M3 text field supporting text (body-small, on-surface-variant, 16dp in).
+    supporting: "px-4 pt-1 text-body-small text-on-surface-variant",
   },
   variants: {
     variant: {
@@ -158,6 +161,9 @@ interface ComboboxContextType {
   inputId: string;
   contentId: string;
   errorId: string;
+  supportingId: string;
+  /** `freeText`: the input itself posts under this name. */
+  name: string | undefined;
   anchorName: string;
   inputRef: Signal<HTMLInputElement | undefined>;
   contentRef: Signal<HTMLElement | undefined>;
@@ -165,9 +171,14 @@ interface ComboboxContextType {
   disabled: Readonly<Signal<boolean>>;
   error: Readonly<Signal<string | undefined>>;
   variant: Readonly<Signal<ComboboxVariant>>;
+  freeText: Readonly<Signal<boolean>>;
+  filter: Readonly<Signal<boolean>>;
+  supportingText: Readonly<Signal<string | undefined>>;
   selectItem$: QRL<(value: string, label: string) => void>;
   /** Empties the field and the value (the clear button). */
   clear$: QRL<() => void>;
+  /** `freeText`: the typed text becomes the value. */
+  setText$: QRL<(text: string) => void>;
 }
 
 const comboboxContextId = createContextId<ComboboxContextType>(
@@ -198,6 +209,21 @@ export type ComboboxRootProps = PropsOf<"div"> & {
   displayValue?: string;
   /** `outlined` (M3, default) or `tonal` (e-store's compact filled field, no floating label). */
   variant?: ComboboxVariant;
+  /**
+   * The typed text IS the value (NEW, 2026-11-24, not in e-store): the input posts it under
+   * `name` (no hidden input), `value` / `bind:value` is the text and follows every edit, a
+   * chosen option puts its `label` in the field, and closing the list keeps what was typed.
+   * APG combobox "list autocomplete" with a free value (the suggestions only help).
+   */
+  freeText?: boolean;
+  /**
+   * Hide options that do not contain the typed text (default `true`). `false` when the caller
+   * already chose the options for the text (remote suggestions, which match "Muenchen" to
+   * "München").
+   */
+  filter?: boolean;
+  /** M3 supporting text under the field (the error replaces it). */
+  supportingText?: string;
 };
 
 const Root = component$<ComboboxRootProps>((props) => {
@@ -211,6 +237,9 @@ const Root = component$<ComboboxRootProps>((props) => {
     error: _error,
     displayValue,
     variant: _variant,
+    freeText: givenFreeText,
+    filter: _filter,
+    supportingText: _supportingText,
     // The id belongs to the input (the control), not this wrapper.
     id: givenId,
     class: className,
@@ -219,14 +248,17 @@ const Root = component$<ComboboxRootProps>((props) => {
   /* eslint-enable @typescript-eslint/no-unused-vars */
   const open = useSignal(false);
   const selectedValue = useBoundSignal(bindValue, givenValue ?? "");
-  const selectedLabel = useSignal(displayValue ?? "");
-  const search = useSignal(displayValue ?? "");
+  // Free text: the value is the text, so it starts in the field.
+  const startText = displayValue ?? (givenFreeText ? selectedValue.value : "");
+  const selectedLabel = useSignal(startText);
+  const search = useSignal(startText);
   const highlightedId = useSignal("");
 
   const generatedId = useId();
   const inputId = givenId ?? `${generatedId}-input`;
   const contentId = `${generatedId}-listbox`;
   const errorId = `${generatedId}-error`;
+  const supportingId = `${generatedId}-supporting`;
   // A dashed-ident: a consumer id may hold characters an ident cannot.
   const anchorName = `--combobox-${generatedId.replace(/[^\w-]/g, "")}`;
   const inputRef = useSignal<HTMLInputElement | undefined>();
@@ -236,19 +268,33 @@ const Root = component$<ComboboxRootProps>((props) => {
     disabled?: boolean;
     error?: string;
     variant?: ComboboxVariant;
+    freeText?: boolean;
+    filter?: boolean;
+    supportingText?: string;
   } = props;
   const disabled = useComputed$(() => state.disabled ?? false);
+  const freeText = useComputed$(() => state.freeText ?? false);
+  const filter = useComputed$(() => state.filter ?? true);
+  const supportingText = useComputed$(() => state.supportingText || undefined);
   const variant = useComputed$(() => state.variant ?? "outlined");
   const error = useComputed$(() => state.error || undefined);
 
   const selectItem$ = $((value: string, label: string) => {
-    selectedValue.value = value;
+    // Free text: the field's text is the value, so the option's label is what is kept.
+    const chosen = freeText.value ? label : value;
+    selectedValue.value = chosen;
     selectedLabel.value = label;
     search.value = label;
     highlightedId.value = "";
-    onValueChange$?.(value);
+    onValueChange$?.(chosen);
     contentRef.value?.hidePopover();
     inputRef.value?.focus();
+  });
+
+  const setText$ = $((text: string) => {
+    selectedLabel.value = text;
+    selectedValue.value = text;
+    onValueChange$?.(text);
   });
 
   const clear$ = $(() => {
@@ -262,6 +308,14 @@ const Root = component$<ComboboxRootProps>((props) => {
     inputRef.value?.focus();
   });
 
+  // Free text: a value set from outside (a "Use my location" answer) is shown in the field.
+  useTask$(({ track }) => {
+    const value = track(selectedValue);
+    if (!freeText.value || value === search.value) return;
+    search.value = value;
+    selectedLabel.value = value;
+  });
+
   useContextProvider(comboboxContextId, {
     open,
     search,
@@ -271,14 +325,20 @@ const Root = component$<ComboboxRootProps>((props) => {
     inputId,
     contentId,
     errorId,
+    supportingId,
+    name,
     anchorName,
     inputRef,
     contentRef,
     disabled,
     error,
     variant,
+    freeText,
+    filter,
+    supportingText,
     selectItem$,
     clear$,
+    setText$,
   });
 
   const styles = comboboxVariants();
@@ -292,11 +352,19 @@ const Root = component$<ComboboxRootProps>((props) => {
       class={[styles.root(), className]}
     >
       <Slot />
-      {name && <input type="hidden" name={name} value={selectedValue.value} />}
-      {error.value && (
+      {name && !freeText.value && (
+        <input type="hidden" name={name} value={selectedValue.value} />
+      )}
+      {error.value ? (
         <div id={errorId} class={styles.error()}>
           {error.value}
         </div>
+      ) : (
+        supportingText.value && (
+          <div id={supportingId} class={styles.supporting()}>
+            {supportingText.value}
+          </div>
+        )
       )}
     </div>
   );
@@ -305,6 +373,19 @@ const Root = component$<ComboboxRootProps>((props) => {
 /* ------------------------------------------------------------------ */
 /*  Input                                                             */
 /* ------------------------------------------------------------------ */
+
+/**
+ * A press on the list, an option or the button must not take focus from the input (APG
+ * combobox). A `sync$` handler, not the bare `preventdefault:mousedown` attribute: qwikloader
+ * (installed `@qwik.dev/core` 2.0.0-rc.5, `qwikloader.debug.js` `dispatch` / `addEventOrRoot`)
+ * only reads that attribute while handling an event type some element has a handler for; its
+ * defaults are `click` and `input`. On a page with no `onMouseDown$` the press focused the
+ * listbox (`tabIndex={-1}`) or the nearest focusable ancestor, the input's focus-out closed the
+ * list, and a slow press chose nothing (Chrome, 2026-11-24). Same fix as Search.
+ */
+const keepInputFocus = sync$((event: MouseEvent) => {
+  event.preventDefault();
+});
 
 /** Claimed synchronously: arrows must not move the caret, Enter on an option must not submit. */
 const claimKeys = sync$((event: KeyboardEvent) => {
@@ -335,6 +416,15 @@ export type ComboboxInputProps = Omit<
   clearLabel?: string;
   /** Name of the button while the field is empty. */
   openLabel?: string;
+  /**
+   * A trailing action icon button before the clear / open button (NEW, 2026-11-24, not in
+   * e-store): M3 text fields allow a trailing icon button. A Tab stop of its own (unlike the
+   * clear / open button): it is a separate command, not a part of the field. Needs
+   * `actionLabel` (its name and tooltip).
+   */
+  actionIcon?: IconName;
+  actionLabel?: string;
+  onAction$?: QRL<(event: PointerEvent, element: HTMLButtonElement) => void>;
   onInput$?: QRL<(event: InputEvent, element: HTMLInputElement) => void>;
   onKeyDown$?: QRL<(event: KeyboardEvent, element: HTMLInputElement) => void>;
   onClick$?: QRL<(event: PointerEvent, element: HTMLInputElement) => void>;
@@ -348,6 +438,9 @@ const Input = component$<ComboboxInputProps>(
     expandIcon = "expand_more",
     clearLabel = "Clear",
     openLabel = "Show options",
+    actionIcon,
+    actionLabel,
+    onAction$,
     onInput$,
     onKeyDown$,
     onClick$,
@@ -363,6 +456,10 @@ const Input = component$<ComboboxInputProps>(
 
     const handleInput$ = $((_: InputEvent, input: HTMLInputElement) => {
       ctx.search.value = input.value;
+      if (ctx.freeText.value) {
+        // The text is the value: closing the list keeps it.
+        ctx.setText$(input.value);
+      }
       // The options under the highlight may have just been filtered out.
       ctx.highlightedId.value = "";
       show$();
@@ -407,7 +504,7 @@ const Input = component$<ComboboxInputProps>(
     // browser toggles the list, and a click on an invoker is not a light dismiss, so there is no
     // race between the light dismiss and this handler.
     // APG: the list closes when the field loses focus (Tab, a click elsewhere). Focus never
-    // moves into the list or the button (both `preventdefault:mousedown`).
+    // moves into the list or the button (both `keepInputFocus` on mousedown).
     const handleFocusOut$ = $(() => {
       if (ctx.open.value) ctx.contentRef.value?.hidePopover();
     });
@@ -441,7 +538,15 @@ const Input = component$<ComboboxInputProps>(
               : rest["aria-labelledby"]
           }
           aria-invalid={ctx.error.value ? "true" : undefined}
-          aria-describedby={ctx.error.value ? ctx.errorId : undefined}
+          aria-describedby={
+            ctx.error.value
+              ? ctx.errorId
+              : ctx.supportingText.value
+                ? ctx.supportingId
+                : undefined
+          }
+          // Free text: the input itself is the form value.
+          name={ctx.freeText.value ? ctx.name : rest.name}
           disabled={ctx.disabled.value || undefined}
           placeholder={placeholder}
           value={ctx.search.value}
@@ -463,6 +568,19 @@ const Input = component$<ComboboxInputProps>(
             {label}
           </label>
         )}
+        {actionIcon && (
+          // A raw <button> with the field's own button classes (U7), as the clear button.
+          <button
+            type="button"
+            aria-label={actionLabel}
+            data-tooltip=""
+            disabled={ctx.disabled.value || undefined}
+            class={comboboxVariants().button()}
+            onClick$={onAction$}
+          >
+            <Icon name={actionIcon} />
+          </button>
+        )}
         {/* Not a Tab stop (APG combobox: the input is the one stop); the keyboard has Escape,
             the arrows and select-all + Delete. */}
         <button
@@ -473,7 +591,7 @@ const Input = component$<ComboboxInputProps>(
           popovertarget={ctx.search.value ? undefined : ctx.contentId}
           disabled={ctx.disabled.value || undefined}
           // Focus stays in the input.
-          preventdefault:mousedown
+          onMouseDown$={keepInputFocus}
           class={comboboxVariants().button()}
           onClick$={handleButton$}
         >
@@ -499,7 +617,7 @@ export type ComboboxContentProps = Omit<PropsOf<"div">, "onToggle$"> & {
 };
 
 const Content = component$<ComboboxContentProps>(
-  ({ onToggle$, class: className, ...rest }) => {
+  ({ onToggle$, onMouseDown$, class: className, ...rest }) => {
     const ctx = useContext(comboboxContextId);
     const styles = comboboxVariants();
 
@@ -528,7 +646,7 @@ const Content = component$<ComboboxContentProps>(
         aria-labelledby={`${ctx.inputId}-label`}
         // Focus stays on the input; a scrollable popover is otherwise a Tab stop in Chrome.
         tabIndex={-1}
-        preventdefault:mousedown
+        onMouseDown$={[keepInputFocus, onMouseDown$]}
         onToggle$={[handleToggle$, onToggle$]}
         style={{
           positionAnchor: ctx.anchorName,
@@ -579,6 +697,7 @@ const Item = component$<ComboboxItemProps>(
     keywords,
     selectedIcon = "check",
     onClick$,
+    onMouseDown$,
     class: className,
     ...rest
   }) => {
@@ -586,8 +705,11 @@ const Item = component$<ComboboxItemProps>(
     const itemId = useId();
     // Fixed for the item's lifetime: label and keywords are its identity.
     const matchText = [label, ...(keywords ?? [])].join(" ").toLowerCase();
-    const isSelected = useComputed$(() => ctx.selectedValue.value === value);
+    const isSelected = useComputed$(
+      () => ctx.selectedValue.value === (ctx.freeText.value ? label : value),
+    );
     const isHidden = useComputed$(() => {
+      if (!ctx.filter.value) return false;
       const term = ctx.search.value.trim().toLowerCase();
       // The chosen label in the field is not a search: show everything.
       if (!term || term === ctx.selectedLabel.value.toLowerCase()) return false;
@@ -610,7 +732,7 @@ const Item = component$<ComboboxItemProps>(
         data-value={value}
         hidden={isHidden.value || undefined}
         // The pointer must not take focus from the input.
-        preventdefault:mousedown
+        onMouseDown$={[keepInputFocus, onMouseDown$]}
         onClick$={[choose$, onClick$]}
         class={[styles.item(), className]}
       >
