@@ -26,7 +26,14 @@ import { ChatMessageBubble } from "../message-bubble/message-bubble";
  */
 export const messageListVariants = tv({
   slots: {
-    scroller: "flex min-h-0 flex-1 flex-col-reverse overflow-y-auto",
+    // `overflow-y: auto` clips sideways too (CSS computes `overflow-x` to `auto`), which cut the
+    // avatars' presence ring (2px outline + 2px offset, `appbar` size) at the pane's edge (owner,
+    // 2026-11-25). 4px of inline padding, given back by a negative margin: the messages stay where
+    // they were, the ring has room. Same for the message menu's focus ring at the end.
+    scroller: [
+      "flex min-h-0 flex-1 flex-col-reverse overflow-y-auto",
+      "-mx-1 px-1",
+    ],
     list: "flex flex-col pb-2",
   },
 });
