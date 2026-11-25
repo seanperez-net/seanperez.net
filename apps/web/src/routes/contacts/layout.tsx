@@ -524,6 +524,9 @@ export default component$(() => {
           list pane's lower end corner below (the part places it). */}
       <Layout.ListDetail
         view={view.value}
+        // ONE pane, as Google Contacts (owner 2026-11-25: "we have an extra pane"): the list is
+        // its own page; a person replaces it, back arrow to the list. Messages keeps two.
+        panes="one"
         fab={action.value ? <AppActionFab action={action.value} /> : undefined}
       >
         <Layout.ListPane aria-labelledby={LIST_TITLE_ID}>

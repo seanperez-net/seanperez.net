@@ -499,7 +499,17 @@
   background-color: var(--color-surface-container);
 }
 @container list-detail (min-width: 43rem) {
-  [data-qds-list-detail] [data-pane-header-back] {
+  [data-qds-list-detail]:not([data-panes="one"]) [data-pane-header-back] {
     display: none;
   }
+}
+/* `panes="one"` (NEW 2026-11-25, Google Contacts' single pane): one column at every width, the
+ * pane `view` names, the back arrow always (rule above skips it). Unlayered, so it wins over the
+ * slots' two-pane utilities. */
+[data-qds-list-detail][data-panes="one"] > div {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-qds-list-detail][data-panes="one"][data-view="detail"] [data-qds-list-pane],
+[data-qds-list-detail][data-panes="one"][data-view="list"] [data-qds-detail-pane] {
+  display: none;
 }

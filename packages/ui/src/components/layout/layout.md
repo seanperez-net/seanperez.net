@@ -269,6 +269,10 @@ only in two-pane, a placeholder in the detail pane until something is chosen).
   (from 600px it is the rail's).
 - Each pane is a `layout-pane-rulers` scroller (`scrollbar-pane`); `DetailPane bleed` for a
   detail that scrolls itself (a chat transcript with a pinned composer).
+- `panes="one"` (NEW 2026-11-25, owner: Contacts had "an extra pane" next to Google's): ONE pane
+  at every width, the one `view` names, the back arrow always shown (`layout.css`). Google Contacts
+  measured 2026-11-25: the list is its own page, a person replaces it with a back arrow. Contacts
+  uses it; Messages keeps the default `two`.
 - Playground: `/list-detail/`. Used by Contacts and Messages in `apps/web`.
 - e-store's apps (chat, contacts) split ONE pane with a border; its gallery shows two surfaces
   with `gap-(--layout-pane-spacer)`. We took the two surfaces (M3's text). NOT PROOFED by the owner.

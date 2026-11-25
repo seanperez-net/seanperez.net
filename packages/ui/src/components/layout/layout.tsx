@@ -1850,6 +1850,13 @@ export type LayoutListDetailProps = PropsOf<"div"> & {
    */
   view?: "list" | "detail";
   /**
+   * `two` (default): M3's two panes from a 43rem container width. `one` (NEW 2026-11-25, owner:
+   * "our contacts still looks different then the official one we have an extra pane"): ONE pane at
+   * every width, as Google Contacts (measured 2026-11-25: the list is its own page; opening a
+   * person replaces it, with a back arrow). `view` picks the pane, the back arrow always shows.
+   */
+  panes?: "one" | "two";
+  /**
    * The app's key action as a FAB (JSX, e.g. an M3 `FAB`), at the lower end corner of the list
    * pane below 600px, on the list view only (M3: the FAB sits at the lower end corner on compact;
    * from 600px it belongs in the rail, `Layout.Rail fab`). Placed above the compact side-sheet
@@ -1879,13 +1886,14 @@ export type LayoutListDetailProps = PropsOf<"div"> & {
  * radius is 0 there).
  */
 const LayoutListDetail = component$<LayoutListDetailProps>(
-  ({ view = "list", fab, class: className, ...rest }) => {
+  ({ view = "list", panes = "two", fab, class: className, ...rest }) => {
     const styles = layoutVariants();
     return (
       <div
         {...rest}
         data-qds-list-detail=""
         data-view={view}
+        data-panes={panes}
         class={[styles.listDetail(), className]}
       >
         <div class={styles.listDetailGrid()}>
