@@ -8,6 +8,7 @@ import {
   useContext,
   useContextProvider,
   useId,
+  useOnDocument,
   useSignal,
   useTask$,
 } from "@qwik.dev/core";
@@ -916,12 +917,42 @@ const LayoutRoot = component$<LayoutRootProps>(
     const menuEnabled = useComputed$(() =>
       drawerType.value === "floating" ? !!activeSection.value : hasDrawer.value,
     );
-    const docked = useComputed$(() =>
+    // The dock CHOICE in force on this page: what `data-nav` shows, so CSS decides the track
+    // (`layout.css` "Drawer auto-float") and the server-rendered page is right before any
+    // JavaScript.
+    const dockChoice = useComputed$(() =>
       !hasDrawer.value
         ? false
         : drawerType.value === "floating"
           ? drawerDocked.value && !!activeSection.value
           : drawerType.value === "standard" && drawerOpen.value,
+    );
+    // Drawer auto-float (NEW 2026-11-25, owner): whether a docked drawer leaves the panes their
+    // minimum widths, as CSS decided it (`--layout-nav-fit` on the `[data-layout-nav-fit]` probe,
+    // read by one ResizeObserver below). True until measured, as the server renders.
+    const navRoom = useSignal(true);
+    // The drawer is IN the nav track: the choice, when there is room. Every part keys off this
+    // (the slide out, the floating card, hover); `drawerDocked` / `drawerOpen` keep the choice,
+    // which comes back with the room.
+    const docked = useComputed$(() => dockChoice.value && navRoom.value);
+    // Short of room, whatever the choice: the rail's button then acts on the floating card
+    // (floating) or the modal drawer (standard / modal) instead of the track.
+    const navForced = useComputed$(() => hasDrawer.value && !navRoom.value);
+    // One observer on the probe, set up when the page starts (qwik-v2 skill: `qinit`, not
+    // `useVisibleTask$`). It fires on observe, then only when the probe's width flips between 0
+    // and the drawer's, so it does no work while the window is dragged inside one state.
+    useOnDocument(
+      "qinit",
+      $(() => {
+        const probe = document.querySelector<HTMLElement>(
+          `[data-layout-nav-fit="${drawerId}"]`,
+        );
+        if (!probe || typeof ResizeObserver === "undefined") return;
+        new ResizeObserver(() => {
+          const room = probe.getBoundingClientRect().width > 0;
+          if (navRoom.value !== room) navRoom.value = room;
+        }).observe(probe);
+      }),
     );
     const supportExpanded = useBoundSignal(givenSupportExpanded, false);
     const activeCompanion = useBoundSignal<string | null>(
@@ -946,6 +977,7 @@ const LayoutRoot = component$<LayoutRootProps>(
       activeSection,
       menuEnabled,
       docked,
+      navForced,
       drawerModalOpen,
       supportExpanded,
       activeCompanion,
@@ -959,14 +991,27 @@ const LayoutRoot = component$<LayoutRootProps>(
         <div
           {...rest}
           class={[styles.root(), className]}
-          data-nav={docked.value ? "" : undefined}
+          data-nav={dockChoice.value ? "" : undefined}
+          // Forced off the track for lack of room: what the drawer is instead (tests, styling).
+          data-nav-effective={
+            dockChoice.value && navForced.value
+              ? drawerType.value === "floating"
+                ? "floating"
+                : "modal"
+              : undefined
+          }
           data-layout-mode={layoutMode}
           data-support={supportExpanded.value ? "expanded" : "collapsed"}
           data-trail={trailShown.value ? undefined : "hidden"}
           // The compact modal drawer left open while the window grows past 600px would keep the page
           // inert behind a rail that is now on show.
           window:onResize$={() => {
-            if (drawerModalOpen.value && !matchMedia(COMPACT_QUERY).matches) {
+            // Not the modal a standard drawer opened for lack of room (auto-float, from 600px).
+            if (
+              drawerModalOpen.value &&
+              !matchMedia(COMPACT_QUERY).matches &&
+              !navForced.value
+            ) {
               drawerModalOpen.value = false;
             }
           }}
@@ -975,6 +1020,14 @@ const LayoutRoot = component$<LayoutRootProps>(
             Skip to main content
           </a>
           <Slot />
+          {/* Drawer auto-float: the probe that shows JavaScript what CSS decided. */}
+          {hasDrawer.value && (
+            <span
+              aria-hidden="true"
+              data-layout-nav-fit={drawerId}
+              class="layout-nav-fit"
+            />
+          )}
           {/* The plain tooltip of every `data-tooltip` control (e.g. IconButton). */}
           <TooltipProvider />
         </div>
@@ -1152,9 +1205,22 @@ const LayoutRail = component$<LayoutRailProps>(
       peek,
       menuEnabled,
       docked,
+      navForced,
+      drawerModalOpen,
+      activeSection,
     } = layout;
     const styles = layoutVariants();
     const floating = useComputed$(() => drawerType.value === "floating");
+    // Drawer auto-float (NEW 2026-11-25, owner): short of room the button shows and toggles what
+    // the drawer EFFECTIVELY is, never the dock choice (kept, it comes back with the room):
+    // floating, the current section's card (as hover does); standard / modal, the modal drawer.
+    const forcedFloat = useComputed$(() => navForced.value && floating.value);
+    const forcedModal = useComputed$(
+      () =>
+        navForced.value &&
+        !floating.value &&
+        hasModalDrawer(layout.config.value),
+    );
     // What the button shows as open: the docked floating drawer, or the open standard one.
     // e-store's: floating, the button shows the visitor's dock CHOICE (`drawerDocked`), which
     // persists across pages. On a page outside every section the docked track is just empty.
@@ -1163,21 +1229,30 @@ const LayoutRail = component$<LayoutRailProps>(
     const menuOpen = useComputed$(() =>
       !menuEnabled.value
         ? false
-        : floating.value
-          ? drawerDocked.value
-          : drawerType.value === "standard" && drawerOpen.value,
+        : forcedFloat.value
+          ? !!activeSection.value &&
+            hoveredRailHref.value === activeSection.value.href
+          : forcedModal.value
+            ? drawerModalOpen.value
+            : floating.value
+              ? drawerDocked.value
+              : drawerType.value === "standard" && drawerOpen.value,
     );
     // Disabled: the plain menu name, not "Dock drawer" (a disabled button names nothing to dock).
     const menuName = useComputed$(() =>
       !menuEnabled.value
         ? menuLabel
-        : floating.value
+        : forcedFloat.value || forcedModal.value
           ? menuOpen.value
-            ? undockLabel
-            : dockLabel
-          : menuOpen.value
             ? closeMenuLabel
-            : menuLabel,
+            : menuLabel
+          : floating.value
+            ? menuOpen.value
+              ? undockLabel
+              : dockLabel
+            : menuOpen.value
+              ? closeMenuLabel
+              : menuLabel,
     );
     // The drawer item a rail destination opens in the floating drawer, by `href`.
     // A destination with a sub-navigation (a drawer item of the same `href` with children) is
@@ -1248,10 +1323,33 @@ const LayoutRail = component$<LayoutRailProps>(
           // Nothing to open or dock on this page (`menuEnabled`): the button stays (owner
           // 2026-11-23), native `disabled`, so Tab skips it and a click does nothing.
           disabled={!menuEnabled.value}
-          aria-controls={menuEnabled.value ? layout.drawerId : undefined}
+          aria-controls={
+            menuEnabled.value
+              ? forcedModal.value
+                ? `${layout.drawerId}-modal`
+                : layout.drawerId
+              : undefined
+          }
           aria-expanded={menuEnabled.value ? menuOpen.value : undefined}
-          onClick$={() => {
+          onClick$={async () => {
             if (!menuEnabled.value) return;
+            // Short of room (auto-float): the card or the modal, the choice untouched.
+            if (forcedFloat.value) {
+              const href = activeSection.value?.href;
+              if (!href || menuOpen.value) {
+                hoveredRailHref.value = null;
+                return;
+              }
+              const destination = document.querySelector<HTMLElement>(
+                `#${layout.railId} a[href="${CSS.escape(href)}"]`,
+              );
+              if (destination) await peekAt$(href, destination);
+              return;
+            }
+            if (forcedModal.value) {
+              drawerModalOpen.value = !drawerModalOpen.value;
+              return;
+            }
             if (drawerType.value === "floating") {
               drawerDocked.value = !drawerDocked.value;
               hoveredRailHref.value = null;

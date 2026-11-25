@@ -131,7 +131,9 @@
    reference app's) and keeps a 4px end margin (`me-1`) inside the track. */
 @media (min-width: 600px) {
   .layout-scaffold[data-nav]:has([data-layout-drawer]) {
-    --layout-scaffold-nav: var(--layout-drawer-panel-width);
+    /* The drawer's width, or 0px while it must float to keep two panes ("Drawer auto-float"
+       below). */
+    --layout-scaffold-nav: var(--layout-nav-fit);
     /* e-store's (`layout.tsx` ~1765, `--layout-scaffold-margin-start: 0px` while a panel is
        docked): the primary pane starts at the drawer track's end, no margin track between. */
     --layout-scaffold-margin-start: 0px;
@@ -156,6 +158,125 @@
   .layout-scaffold:has([data-layout-trail]):not([data-trail="hidden"]) {
     --layout-scaffold-trail: var(--layout-trail-width);
     --layout-scaffold-margin-end: 0px;
+  }
+}
+
+/* ── Drawer auto-float (NEW 2026-11-25, not in e-store; owner's request) ─────────────────────
+ * A docked drawer gives up its track when docking it would leave the panes under their minimum
+ * widths, and takes it back when the room returns. The visitor's dock choice (`data-nav`) is kept;
+ * only the effective width changes. M3 calls this "levitate": "A co-planar pane can float when
+ * switching breakpoint or orientation" (m3.material.io/foundations/layout/scaffold/panes, read
+ * 2026-11-25).
+ *
+ * The decision is CSS, from tokens, so the server-rendered page is right at every width:
+ *   room = the scaffold less every track but the body and the nav track (rail, end margin,
+ *          spacer, supporting pane, companion rail: the same variables the grid uses). Leaving
+ *          the nav track out means the answer does not flip when the track opens or closes
+ *          (e-store's rule in `supportPaneSqueezed`).
+ *   need = what the body must keep, per pair of panes: `--layout-list-detail-min` for a
+ *          two-pane `ListDetail`, `--layout-body-min` beside the supporting pane (from 840px);
+ *          0 without that pair.
+ *   fit  = per pair, the drawer's width when the body keeps that `need` beside it, or when it
+ *          would not even without it (floating would not save that pair: stay docked, owner);
+ *          else 0. The drawer floats when ANY pair is saved by it (`min()` of the pairs): at
+ *          1000px Messages keeps its supporting pane beside a 360px body even though its list
+ *          and detail cannot both show.
+ * A percentage in a grid track resolves against the scaffold's width, and two `clamp()` steps
+ * (x 10000, so the ramp is under 0.03px) turn the comparison into 0 or the width. The computed
+ * value keeps the `%`, so dragging the window across the line does NOT start the track
+ * transition (the drawer goes at once); a pane opening changes it, so the 300ms slide runs.
+ * Measured in Chrome 2026-11-25 (`.claude/notes/drawer-auto-float-2026-11-25.md`).
+ *
+ * `[data-layout-nav-fit]` (rendered by `Layout.Root`) is a 0px-high probe across every column
+ * whose width is the same `fit` (its percentage resolves against that whole row): Root's one
+ * ResizeObserver reads it, so the drawer's behaviour (the floating card, the rail button)
+ * follows this decision with no second formula in JavaScript. */
+.layout-scaffold {
+  --layout-nav-fit: var(--layout-drawer-panel-width);
+}
+@media (min-width: 600px) {
+  .layout-scaffold {
+    --layout-nav-rail: 0px;
+    --layout-nav-need-ld: 0px;
+    --layout-nav-need-support: 0px;
+    --layout-nav-room: calc(
+      100% - var(--layout-nav-rail) -
+        var(--layout-scaffold-margin-end, var(--layout-margin)) -
+        var(--layout-scaffold-support-spacer, 0px) -
+        var(--layout-scaffold-support, 0px) -
+        var(--layout-scaffold-trail, var(--layout-scaffold-trailing, 0px))
+    );
+    /* Per pair of panes: the drawer's width, unless floating it would save that pair. */
+    --layout-nav-fit-ld: max(
+      clamp(
+        0px,
+        (
+            var(--layout-nav-room) - var(--layout-drawer-panel-width) -
+              var(--layout-nav-need-ld)
+          ) *
+          10000 + var(--layout-drawer-panel-width),
+        var(--layout-drawer-panel-width)
+      ),
+      clamp(
+        0px,
+        (var(--layout-nav-need-ld) - var(--layout-nav-room)) * 10000,
+        var(--layout-drawer-panel-width)
+      )
+    );
+    --layout-nav-fit-support: max(
+      clamp(
+        0px,
+        (
+            var(--layout-nav-room) - var(--layout-drawer-panel-width) -
+              var(--layout-nav-need-support)
+          ) *
+          10000 + var(--layout-drawer-panel-width),
+        var(--layout-drawer-panel-width)
+      ),
+      clamp(
+        0px,
+        (var(--layout-nav-need-support) - var(--layout-nav-room)) * 10000,
+        var(--layout-drawer-panel-width)
+      )
+    );
+    --layout-nav-fit: min(
+      var(--layout-nav-fit-ld),
+      var(--layout-nav-fit-support)
+    );
+  }
+  .layout-scaffold:has([data-layout-rail]) {
+    --layout-nav-rail: var(--layout-rail-width);
+  }
+  .layout-scaffold:has([data-qds-list-detail]:not([data-panes="one"])) {
+    --layout-nav-need-ld: var(--layout-list-detail-min);
+  }
+}
+@media (min-width: 840px) {
+  .layout-scaffold[data-support="expanded"] {
+    --layout-nav-need-support: var(--layout-body-min);
+  }
+}
+.layout-nav-fit {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  align-self: start;
+  block-size: 0;
+  inline-size: var(--layout-nav-fit);
+  visibility: hidden;
+  pointer-events: none;
+}
+/* Before JavaScript, or while the track snaps shut, the docked drawer sits clipped in a 0px
+ * track: its rows must leave the Tab order and the accessibility tree too. The docked `<aside>`
+ * is a size container (its width is the track's), and its card hides at 0px. It hides only once
+ * the track is closed, so a slide-out still shows its rows (rule L27). */
+@media (min-width: 600px) {
+  .layout-scaffold [data-layout-drawer][data-docked="true"] {
+    container: layout-nav / inline-size;
+  }
+}
+@container layout-nav (width < 1px) {
+  [data-layout-drawer] > * {
+    visibility: hidden;
   }
 }
 
@@ -509,7 +630,9 @@
 [data-qds-list-detail][data-panes="one"] > div {
   grid-template-columns: minmax(0, 1fr);
 }
-[data-qds-list-detail][data-panes="one"][data-view="detail"] [data-qds-list-pane],
-[data-qds-list-detail][data-panes="one"][data-view="list"] [data-qds-detail-pane] {
+[data-qds-list-detail][data-panes="one"][data-view="detail"]
+  [data-qds-list-pane],
+[data-qds-list-detail][data-panes="one"][data-view="list"]
+  [data-qds-detail-pane] {
   display: none;
 }

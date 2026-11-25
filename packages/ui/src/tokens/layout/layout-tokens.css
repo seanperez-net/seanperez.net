@@ -21,6 +21,14 @@
      (m3.material.io/foundations/layout/breakpoints/expanded, read 2026-11-24). e-store's token
      name (`--layout-pane-fixed`); its large-window 412dp step is not taken. */
   --layout-pane-fixed: 360px;
+  /* The narrowest the primary pane may get beside the supporting pane before a docked drawer
+     floats to make room ("Drawer auto-float", `layout.md`). e-store's token name and value
+     (`--layout-body-min`, M3's 360dp fixed pane); its 40% cap is not taken. Owner 2026-11-25. */
+  --layout-body-min: 360px;
+  /* The width `Layout.ListDetail` needs for its two panes: 360 list + 24 spacer + 304 detail.
+     MUST equal the `43rem` literal of its container query (`layout.tsx` `listDetail*`,
+     `layout.css`): a query condition cannot read a token. Owner 2026-11-25. */
+  --layout-list-detail-min: 43rem;
 
   /* Navigation rail (leading) and its docked drawer. */
   --layout-rail-width: 88px;

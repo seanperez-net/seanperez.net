@@ -97,8 +97,9 @@ min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the 
   2026-11-23 after the owner saw a rail click turn the docked drawer back into the floating one).
   Only the rail's menu button writes it; a rail click or a page change never does. Docked on a
   page outside every section, the nav track is 0px (no `data-nav`), nothing floats on hover, and
-  the button still reads "Undock drawer"; back in a section the card is docked again. Only the
-  600px breakpoint changes the drawer's form (the modal below it). Not persisted across reloads
+  the button still reads "Undock drawer"; back in a section the card is docked again. The 600px
+  breakpoint changes the drawer's form (the modal below it), and from 600px a lack of room can
+  take it off the track (see "Drawer auto-float" below). Not persisted across reloads
   (`bind:drawerDocked` starts `false`), as e-store's.
 
 - Groups inside a section (2026-11-24, ported from e-store's `DrawerButtonExpandable`,
@@ -173,6 +174,40 @@ min-w-0 overflow-hidden`; its comment: a tinted docked slab was rejected by the 
   - App side: `apps/web/src/routes/layout.tsx` `DRAWER_GROUPS` (rail `href` -> groups); /admin
     passes none. Checked in Chrome 2026-11-24 (site at 1000 / 700 / 390 in iframes, light and
     dark; playground Overview disabled, categories enabled).
+
+## Drawer auto-float (NEW 2026-11-25, not in e-store)
+
+Owner, 2026-11-25: "the drawer can change to floating and forced back into docked if necessary to
+keep the two panes open if the min width of each pane isnt met". Approved design and research:
+`packages/ui/.claude/notes/drawer-auto-float-2026-11-25.md` (option C, second agent agreed).
+M3's "levitate" (m3.material.io/foundations/layout/scaffold/panes, read 2026-11-25: "A co-planar
+pane can float when switching breakpoint or orientation").
+
+- The dock CHOICE (`drawerDocked`; `drawerOpen` for standard) is kept and still drives `data-nav`.
+  CSS decides the track (`layout.css` "Drawer auto-float"): the drawer's width, or 0px when
+  docking it would leave a pair of panes under its minimum while floating it would not:
+  - a two-pane `ListDetail` needs `--layout-list-detail-min` (43rem, paired by a spec with the
+    container query literal);
+  - the primary pane beside an expanded supporting pane (from 840px) needs `--layout-body-min`
+    (360px, e-store's token).
+    When even the floating drawer cannot keep a pair, the drawer stays docked (owner). Server-rendered
+    pages are right at every width before JavaScript.
+- `Layout.Root` renders an `aria-hidden` probe (`[data-layout-nav-fit]`) whose width is the same
+  decision, and ONE ResizeObserver on it (set up at `qinit`) writes `navRoom`. Context:
+  `docked` = choice AND room (the slide out, the floating card and hover follow it), `navForced`
+  = no room. The scaffold shows `data-nav-effective="floating"` (or `"modal"`) while forced.
+- The rail's menu button shows the EFFECTIVE state while forced (owner): floating, it opens and
+  closes the current section's card ("Open menu" / "Close menu", `aria-expanded` = the card);
+  standard / modal, it opens the modal drawer (`aria-controls` = `${drawerId}-modal`), which a
+  resize past 600px then leaves open. The choice is untouched and comes back with the room.
+- Motion (measured in Chrome 2026-11-25): dragging the window across the line starts NO track
+  transition (the track's computed value keeps its `%`), so the drawer goes at once and returns
+  at once; a pane opening or closing changes it, so the 300ms slide runs with the `inTrack`
+  exit. Before JavaScript, or while the track closes, the clipped rows leave the Tab order: the
+  docked `<aside>` is a size container (`layout-nav`) and its card is `visibility: hidden` under
+  1px. Reduced motion: the scaffold's guard, unchanged (L23).
+- Not ported: e-store's supporting-pane squeeze into a sheet (`supportPaneSqueezed`), planned
+  (`.claude/PLAN.md`). Specs: `layout.spec.tsx`, `apps/web/e2e/drawer-auto-float.spec.ts`.
 
 ## The drawer's header (2026-11-25, from e-store's `DrawerPanel`)
 

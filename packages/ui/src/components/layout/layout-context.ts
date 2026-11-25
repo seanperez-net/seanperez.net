@@ -178,8 +178,19 @@ export type LayoutContextValue = {
    * disabled (owner, 2026-11-24).
    */
   menuEnabled: ReadonlySignal<boolean>;
-  /** The drawer takes the nav track: standard and open, or floating, docked, with a section. */
+  /**
+   * The drawer takes the nav track: standard and open, or floating, docked, with a section, AND
+   * there is room for it beside the panes (drawer auto-float, 2026-11-25). The visitor's choice
+   * stays in `drawerOpen` / `drawerDocked`.
+   */
   docked: ReadonlySignal<boolean>;
+  /**
+   * Drawer auto-float (NEW 2026-11-25): a docked drawer would leave the panes under their
+   * minimum widths (`layout.css` "Drawer auto-float"), so the drawer takes no track. The rail's
+   * menu button then floats the section's card (floating) or opens the modal drawer (standard /
+   * modal), and shows that state.
+   */
+  navForced: ReadonlySignal<boolean>;
   /** The drawer as a modal sheet, below 600px. Always starts closed. */
   drawerModalOpen: Signal<boolean>;
   /** Whether the supporting pane is shown. `Layout.Root bind:supportExpanded`. */
